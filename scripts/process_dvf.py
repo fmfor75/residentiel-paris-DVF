@@ -224,8 +224,16 @@ def parse_txt_pipe(lines, annee):
             bati = to_f(g(idx['surf'])) if idx['surf'] >= 0 else 0
             surf = bati
         
-        tl   = g(idx['type']) if idx['type'] >= 0 else ''
-        try: nbpp = int(float(g(idx['nbpp']))) if idx['nbpp'] >= 0 and g(idx['nbpp']) else 0
+        # type_local : le header cquest a une colonne supplémentaire → décalage +1
+        # col35 dans header = Nombre de lots (entier), col36 = Type local (texte)
+        tl_idx = idx['type']
+        tl = g(tl_idx) if tl_idx >= 0 else ''
+        # Si la valeur est un entier court (nb lots), essayer col+1
+        if tl.isdigit() and tl_idx + 1 < len(c):
+            tl = g(tl_idx + 1)
+        
+        nbpp_idx = idx['nbpp']
+        try: nbpp = int(float(g(nbpp_idx))) if nbpp_idx >= 0 and g(nbpp_idx) else 0
         except: nbpp = 0
 
         date = g(idx['date'])[:10] if idx['date'] >= 0 else ''
@@ -233,6 +241,8 @@ def parse_txt_pipe(lines, annee):
             p = date.split('/')
             if len(p) == 3: date = f"{p[2]}-{p[1].zfill(2)}-{p[0].zfill(2)}"
 
+        # Clé de mutation : date + valeur + commune + no_plan
+        # (plusieurs lignes peuvent partager la même mutation pour des locaux différents)
         plan = g(idx['plan']) if idx['plan'] >= 0 else ''
         mut_id = f"{date}_{int(val) if val else 0}_{code_5}_{plan}"
         key = f"{arr_num}_{mut_id}"
@@ -240,7 +250,8 @@ def parse_txt_pipe(lines, annee):
         if key not in mutations:
             mutations[key] = {'arr': arr_num, 'val': val, 'date': date, 'locaux': []}
         if val > 0: mutations[key]['val'] = val
-        if surf > 0:
+        # Ajouter ce local si on a une surface ou un type reconnu
+        if surf > 0 or tl:
             mutations[key]['locaux'].append({'surf': surf, 'type': tl, 'nbpp': nbpp})
 
     print(f"    {len(mutations)} mutations Paris | {skipped} hors Paris")
