@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Étude de Marché · Paris Résidentiel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:       #f8f9fa;
+  --surface:  #ffffff;
+  --surface2: #f1f3f5;
+  --surface3: #e9ecef;
+  --border:   #dee2e6;
+  --border2:  #ced4da;
+  --text1:    #212529;
+  --text2:    #495057;
+  --text3:    #868e96;
+  --text4:    #adb5bd;
+  --accent:   #1971c2;
+  --accent2:  #1864ab;
+  --gold:     #e67700;
+  --gold2:    #f59f00;
+  --green:    #2f9e44;
+  --green2:   #ebfbee;
+  --red:      #c92a2a;
+  --red2:     #fff5f5;
+  --blue2:    #e7f5ff;
+  --radius:   8px;
+  --shadow:   0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow2:  0 4px 12px rgba(0,0,0,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text1); font-family:'Sora',sans-serif; font-size:14px; line-height:1.5; min-height:100vh; }
+
+/* ── TOPBAR ─────────────────────────── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 40px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.topbar-brand { display:flex; align-items:center; gap:10px; }
+.topbar-logo {
+  width:32px; height:32px; background:var(--accent); border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  color:white; font-size:14px; font-weight:700; letter-spacing:-0.5px; flex-shrink:0;
+}
+.topbar-title { font-size:15px; font-weight:600; color:var(--text1); letter-spacing:-0.2px; }
+.topbar-sub { font-size:11px; color:var(--text3); font-family:'JetBrains Mono',monospace; margin-top:1px; }
+.topbar-right { display:flex; align-items:center; gap:16px; }
+.status-pill {
+  display:flex; align-items:center; gap:6px;
+  background:var(--green2); border:1px solid #b2f2bb; border-radius:20px;
+  padding:4px 10px; font-size:11px; color:var(--green); font-family:'JetBrains Mono',monospace;
+}
+.status-pill .dot { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.status-pill.loading { background:#fff9db; border-color:#ffe066; color:var(--gold); }
+.status-pill.loading .dot { background:var(--gold); animation:blink 1s infinite; }
+.status-pill.err { background:var(--red2); border-color:#ffc9c9; color:var(--red); }
+.status-pill.err .dot { background:var(--red); }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ── LAYOUT ─────────────────────────── */
+.layout { display:grid; grid-template-columns:340px 1fr; gap:0; min-height:calc(100vh - 60px); }
+
+/* ── SIDEBAR ─────────────────────────── */
+.sidebar {
+  background:var(--surface); border-right:1px solid var(--border);
+  padding:24px 20px; display:flex; flex-direction:column; gap:20px;
+  overflow-y:auto; position:sticky; top:60px; height:calc(100vh - 60px);
+}
+.sidebar-section { display:flex; flex-direction:column; gap:10px; }
+.sidebar-label {
+  font-size:10px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text3); display:flex; align-items:center; gap:6px;
+}
+.sidebar-label .num {
+  width:18px; height:18px; background:var(--accent); color:white; border-radius:4px;
+  font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+
+/* Secteurs */
+.secteurs-list { display:flex; flex-direction:column; gap:3px; }
+.sect-btn {
+  background:none; border:1px solid var(--border); border-radius:6px; padding:9px 12px;
+  cursor:pointer; text-align:left; transition:all 0.12s;
+  display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center;
+}
+.sect-btn:hover { border-color:var(--accent); background:var(--blue2); }
+.sect-btn.active { background:var(--blue2); border-color:var(--accent); box-shadow:0 0 0 2px rgba(25,113,194,0.15); }
+.sect-nom { font-size:12px; font-weight:500; color:var(--text1); display:block; }
+.sect-meta { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; display:block; margin-top:1px; }
+.sect-id { font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text4); background:var(--surface2); padding:2px 6px; border-radius:4px; }
+
+/* ── FENÊTRE TEMPORELLE ──────────── */
+.fenetre-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.fen-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 4px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.fen-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--blue2); }
+.fen-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+
+/* Typologies */
+.typo-table { display:flex; flex-direction:column; gap:2px; }
+.typo-head { display:grid; grid-template-columns:44px 1fr 1fr 28px; gap:4px; padding:0 4px; margin-bottom:2px; }
+.typo-head span { font-size:9px; color:var(--text4); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:0.08em; text-align:center; }
+.typo-row { display:grid; grid-template-columns:44px 1fr 1fr 28px; gap:4px; align-items:center; padding:4px; border-radius:6px; transition:background 0.1s; }
+.typo-row:hover { background:var(--surface2); }
+.typo-badge { font-size:11px; font-weight:600; color:var(--accent); font-family:'JetBrains Mono',monospace; }
+.ti {
+  background:var(--surface2); border:1px solid var(--border); border-radius:5px;
+  color:var(--text1); font-family:'JetBrains Mono',monospace; font-size:11px;
+  padding:5px 7px; outline:none; width:100%; text-align:center; transition:border-color 0.12s;
+}
+.ti:focus { border-color:var(--accent); background:white; }
+.tt {
+  width:28px; height:28px; border-radius:6px; border:1px solid var(--border);
+  background:none; color:var(--text3); cursor:pointer; font-size:13px;
+  display:flex; align-items:center; justify-content:center; transition:all 0.12s; flex-shrink:0;
+}
+.tt.on { background:var(--accent); border-color:var(--accent); color:white; }
+
+/* Options */
+.options-list { display:flex; flex-direction:column; gap:8px; }
+.opt-row { display:flex; align-items:center; justify-content:space-between; }
+.opt-lbl { font-size:13px; color:var(--text2); }
+.opt-lbl small { display:block; font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; }
+.sw {
+  width:36px; height:20px; background:var(--surface3); border:1px solid var(--border2);
+  border-radius:10px; position:relative; cursor:pointer; transition:all 0.15s; flex-shrink:0;
+}
+.sw.on { background:var(--accent); border-color:var(--accent); }
+.sw::after {
+  content:''; position:absolute; width:14px; height:14px; background:white;
+  border-radius:50%; top:2px; left:2px; transition:all 0.15s; box-shadow:0 1px 3px rgba(0,0,0,0.15);
+}
+.sw.on::after { left:18px; }
+
+.btn-go {
+  background:var(--accent); color:white; border:none; border-radius:var(--radius);
+  font-family:'Sora',sans-serif; font-size:13px; font-weight:600; padding:11px 20px;
+  cursor:pointer; width:100%; transition:background 0.15s; letter-spacing:0.01em;
+}
+.btn-go:hover { background:var(--accent2); }
+.btn-go:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ── MAIN CONTENT ─────────────────────── */
+.content { padding:28px 32px; display:flex; flex-direction:column; gap:24px; overflow-y:auto; }
+
+.etude-hdr { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.etude-hdr-left h2 { font-size:20px; font-weight:600; letter-spacing:-0.3px; }
+.etude-hdr-left p { font-size:11px; color:var(--text3); font-family:'JetBrains Mono',monospace; margin-top:4px; }
+.etude-meta-chips { display:flex; gap:8px; flex-wrap:wrap; }
+.chip { font-size:10px; font-family:'JetBrains Mono',monospace; padding:3px 9px; border-radius:20px; border:1px solid var(--border); color:var(--text3); background:var(--surface2); }
+.chip.blue { background:var(--blue2); border-color:#74c0fc; color:var(--accent2); }
+.chip.gold { background:#fff9db; border-color:#ffe066; color:var(--gold); }
+
+/* Section card */
+.section-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.sc-header { padding:14px 20px; background:var(--surface2); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.sc-title { font-size:13px; font-weight:600; color:var(--text1); display:flex; align-items:center; gap:8px; }
+.sc-badge { font-size:10px; font-family:'JetBrains Mono',monospace; background:var(--blue2); border:1px solid #74c0fc; color:var(--accent2); padding:2px 8px; border-radius:20px; }
+.sc-badge.gold { background:#fff9db; border-color:#ffe066; color:var(--gold); }
+.sc-count { font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text3); margin-left:auto; }
+.sc-body { padding:18px 20px; display:flex; flex-direction:column; gap:16px; }
+
+/* KPI grid */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+.kpi { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:12px 14px; position:relative; }
+.kpi.hi { background:var(--blue2); border-color:#74c0fc; }
+.kpi.hi .kv { color:var(--accent2); }
+.kl { font-size:9px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+.kv { font-size:22px; font-weight:700; color:var(--text1); line-height:1; letter-spacing:-0.5px; }
+.ku { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; margin-top:3px; }
+
+/* ── ÉVOLUTIONS MULTI-HORIZON ── */
+.evo-section { display:flex; flex-direction:column; gap:8px; }
+.evo-section-title {
+  font-size:9px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text3); padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+.evo-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+.evo-cell { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 8px; text-align:center; }
+.evo-cell.active-fen { background:var(--blue2); border-color:#74c0fc; }
+.el { font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); margin-bottom:4px; }
+.ev { font-size:18px; font-weight:700; letter-spacing:-0.5px; color:var(--text2); }
+.ev.up { color:var(--green); }
+.ev.down { color:var(--red); }
+.es { font-size:9px; color:var(--text4); font-family:'JetBrains Mono',monospace; margin-top:3px; }
+
+/* Moy historique */
+.hist-banner {
+  background: linear-gradient(135deg, #1864ab 0%, #1971c2 100%);
+  border-radius: 6px; padding:12px 16px;
+  display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+}
+.hist-kpi { text-align:center; }
+.hist-kpi .hl { font-size:8px; letter-spacing:0.15em; text-transform:uppercase; color:rgba(255,255,255,0.65); margin-bottom:3px; }
+.hist-kpi .hv { font-size:18px; font-weight:700; color:white; letter-spacing:-0.3px; }
+.hist-kpi .hu { font-size:9px; color:rgba(255,255,255,0.55); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+.hist-sep { width:1px; height:32px; background:rgba(255,255,255,0.2); flex-shrink:0; }
+
+/* Charts */
+.charts-row { display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+.chart-box { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+.cb-title { font-size:10px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); margin-bottom:12px; }
+.cw { position:relative; height:200px; }
+
+.divider { height:1px; background:var(--border); margin:4px 0; }
+
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:300px; gap:12px; color:var(--text3); }
+.empty-icon { font-size:32px; opacity:0.4; }
+.empty h3 { font-size:16px; font-weight:600; color:var(--text2); }
+.empty p { font-size:12px; text-align:center; line-height:1.8; max-width:360px; }
+
+footer {
+  padding:16px 40px; border-top:1px solid var(--border);
+  font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text3); line-height:1.8; background:var(--surface);
+}
+footer a { color:var(--accent); text-decoration:none; }
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:static;height:auto;}
+  .charts-row{grid-template-columns:1fr;}
+  .evo-grid{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">PI</div>
+    <div>
+      <div class="topbar-title">Paris Immo · Étude de Marché</div>
+      <div class="topbar-sub" id="topSub">DVF · Secteurs encadrement des loyers · 2014–2025</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-pill loading" id="statusPill">
+      <span class="dot"></span>
+      <span id="statusTxt">Chargement…</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+
+    <!-- ① SECTEUR -->
+    <div class="sidebar-section">
+      <div class="sidebar-label"><span class="num">1</span> Secteur géographique</div>
+      <div class="secteurs-list" id="sectList"></div>
+    </div>
+
+    <!-- ② FENÊTRE TEMPORELLE -->
+    <div class="sidebar-section">
+      <div class="sidebar-label"><span class="num">2</span> Horizon d'analyse</div>
+      <div class="fenetre-grid" id="fenetreGrid">
+        <button class="fen-btn" data-fen="1" onclick="setFenetre(1)">1 an</button>
+        <button class="fen-btn" data-fen="3" onclick="setFenetre(3)">3 ans</button>
+        <button class="fen-btn" data-fen="5" onclick="setFenetre(5)">5 ans</button>
+        <button class="fen-btn" data-fen="10" onclick="setFenetre(10)">10 ans</button>
+        <button class="fen-btn active" data-fen="0" onclick="setFenetre(0)">Historique</button>
+        <button class="fen-btn" data-fen="-1" onclick="setFenetre(-1)">Annuel</button>
+      </div>
+    </div>
+
+    <!-- ③ TYPOLOGIES -->
+    <div class="sidebar-section">
+      <div class="sidebar-label"><span class="num">3</span> Typologies de lots</div>
+      <div class="typo-table">
+        <div class="typo-head"><span></span><span>min m²</span><span>max m²</span><span></span></div>
+        <div id="typoRows"></div>
+      </div>
+    </div>
+
+    <!-- ④ OPTIONS -->
+    <div class="sidebar-section">
+      <div class="sidebar-label"><span class="num">4</span> Options</div>
+      <div class="options-list">
+        <div class="opt-row">
+          <div class="opt-lbl">Appartements</div>
+          <div class="sw on" id="sw-appart" onclick="toggleOpt('appart')"></div>
+        </div>
+        <div class="opt-row">
+          <div class="opt-lbl">Maisons</div>
+          <div class="sw" id="sw-maison" onclick="toggleOpt('maison')"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="opt-row">
+          <div class="opt-lbl">Marché global<small>Vue synthétique toutes typologies</small></div>
+          <div class="sw on" id="sw-global" onclick="toggleOpt('global')"></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-go" id="btnGo" onclick="lancer()">Générer l'étude →</button>
+
+  </aside>
+
+  <main class="content" id="content">
+    <div class="empty">
+      <div class="empty-icon">📊</div>
+      <h3>Configurez votre étude</h3>
+      <p>① Sélectionnez un secteur<br>② Choisissez l'horizon d'analyse<br>③ Activez les typologies<br>④ Cliquez "Générer l'étude"</p>
+    </div>
+  </main>
+</div>
+
+<footer>
+  Sources : <a href="https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/" target="_blank">DVF — DGFiP</a> ·
+  <a href="https://data.cquest.org/dgfip_dvf/" target="_blank">Archives cquest.org (2014–2019)</a> ·
+  <a href="https://files.data.gouv.fr/geo-dvf/latest/" target="_blank">Geo-DVF Etalab (2020–2025)</a> ·
+  <a href="https://www.drihl.ile-de-france.developpement-durable.gouv.fr/" target="_blank">Encadrement loyers DRIHL</a> ·
+  Licence Ouverte Etalab 2.0
+</footer>
+
+<script>
+const SECTEURS = [
+  {id:1,  nom:"Louvre – Opéra",              arrLabel:"1er, 2e"},
+  {id:2,  nom:"Marais – Bastille",            arrLabel:"3e, 4e"},
+  {id:3,  nom:"Île de la Cité – Luxembourg",  arrLabel:"5e, 6e"},
+  {id:4,  nom:"Saint-Germain – Invalides",    arrLabel:"6e, 7e"},
+  {id:5,  nom:"Champs-Élysées – Trocadéro",  arrLabel:"8e, 16e"},
+  {id:6,  nom:"Opéra – Grands Boulevards",    arrLabel:"9e, 17e"},
+  {id:7,  nom:"Montmartre – Belleville",      arrLabel:"10e, 18e, 19e"},
+  {id:8,  nom:"Nation – Vincennes",           arrLabel:"12e"},
+  {id:9,  nom:"Grenelle – Convention",        arrLabel:"15e"},
+  {id:10, nom:"Montrouge – Alésia",           arrLabel:"13e, 14e"},
+  {id:11, nom:"Épinettes – Batignolles",      arrLabel:"17e"},
+  {id:12, nom:"Buttes-Chaumont",              arrLabel:"19e"},
+  {id:13, nom:"Ménilmontant – Oberkampf",     arrLabel:"11e, 20e"},
+  {id:14, nom:"Ivry – Tolbiac – Gobelins",    arrLabel:"13e"},
+];
+
+const TYPO_DEFS = [
+  {id:'T1', label:'T1 / Studio', surfMin:9,   surfMax:30,  active:false},
+  {id:'T2', label:'T2',          surfMin:30,  surfMax:50,  active:true},
+  {id:'T3', label:'T3',          surfMin:50,  surfMax:70,  active:true},
+  {id:'T4', label:'T4',          surfMin:70,  surfMax:100, active:true},
+  {id:'T5', label:'T5+',         surfMin:100, surfMax:400, active:false},
+];
+
+// fenetre : 0=historique complet, -1=annuel (toutes années), n=n dernières années
+let DB      = null;
+let sectSel = null;
+let fenetre = 0;   // 0 = historique complet par défaut
+let typos   = TYPO_DEFS.map(t=>({...t}));
+let opts    = {appart:true, maison:false, global:true};
+let CHARTS  = {};
+
+async function init() {
+  buildSidebar();
+  try {
+    const r = await fetch('./data/dvf_paris.json?t='+Date.now());
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    DB = await r.json();
+    const d = new Date(DB.meta.generated_at);
+    const dateStr = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+    setStatus('ok', `${(DB.meta.total_apparts||0).toLocaleString('fr-FR')} apparts · ${DB.meta.periode} · MàJ ${dateStr}`);
+    document.getElementById('topSub').textContent = `DVF · Secteurs encadrement des loyers · ${DB.meta.periode}`;
+  } catch(e) {
+    setStatus('err','Données non disponibles — relancez le workflow');
+  }
+}
+
+function buildSidebar() {
+  const sl = document.getElementById('sectList');
+  SECTEURS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'sect-btn'; b.id = `sb-${s.id}`;
+    b.innerHTML = `<div><span class="sect-nom">${s.nom}</span><span class="sect-meta">${s.arrLabel}</span></div><span class="sect-id">S${s.id}</span>`;
+    b.onclick = () => { sectSel = s.id; document.querySelectorAll('.sect-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    sl.appendChild(b);
+  });
+
+  const tr = document.getElementById('typoRows');
+  typos.forEach((t,i) => {
+    const row = document.createElement('div');
+    row.className = 'typo-row';
+    row.innerHTML = `
+      <span class="typo-badge">${t.id}</span>
+      <input class="ti" type="number" value="${t.surfMin}" min="1" max="500" onchange="typos[${i}].surfMin=+this.value">
+      <input class="ti" type="number" value="${t.surfMax}" min="1" max="500" onchange="typos[${i}].surfMax=+this.value">
+      <button class="tt ${t.active?'on':''}" id="tt-${i}" onclick="toggleTypo(${i})">${t.active?'✓':'+'}</button>`;
+    tr.appendChild(row);
+  });
+}
+
+function setFenetre(n) {
+  fenetre = n;
+  document.querySelectorAll('.fen-btn').forEach(b => b.classList.toggle('active', +b.dataset.fen === n));
+}
+
+function toggleTypo(i) {
+  typos[i].active = !typos[i].active;
+  const b = document.getElementById(`tt-${i}`);
+  b.classList.toggle('on', typos[i].active);
+  b.textContent = typos[i].active ? '✓' : '+';
+}
+
+function toggleOpt(k) {
+  opts[k] = !opts[k];
+  document.getElementById(`sw-${k}`).classList.toggle('on', opts[k]);
+}
+
+function lancer() {
+  if (!DB)      { setStatus('err','Données non disponibles'); return; }
+  if (!sectSel) { setStatus('err','Sélectionnez un secteur'); return; }
+  const actives = typos.filter(t=>t.active);
+  if (!actives.length && !opts.global) { setStatus('err','Activez au moins une typologie'); return; }
+  destroyCharts();
+  setStatus('loading','Calcul en cours…');
+  setTimeout(() => {
+    try { renderEtude(sectSel, actives); setStatus('ok','Étude générée'); }
+    catch(e) { console.error(e); setStatus('err','Erreur : '+e.message); }
+  }, 30);
+}
+
+// ── HELPERS DATA ──────────────────────────────
+function getSectData(sectId) { return DB?.secteurs?.[String(sectId)]; }
+function getTypeStats(sectId, typeBien) { return getSectData(sectId)?.by_type?.[typeBien] || null; }
+function getTypoStats(sectId, typeBien, typoId) { return getTypeStats(sectId, typeBien)?.by_typo?.[typoId] || null; }
+
+// Filtrer les années selon la fenêtre sélectionnée
+function filterYears(by_year) {
+  if (!by_year) return {};
+  const allYrs = Object.keys(by_year).sort();
+  if (fenetre === 0 || fenetre === -1) return by_year;  // tout
+  const cutoff = String(parseInt(allYrs[allYrs.length-1]) - fenetre + 1);
+  const result = {};
+  allYrs.filter(y => y >= cutoff).forEach(y => result[y] = by_year[y]);
+  return result;
+}
+
+// Recalculer stats sur une fenêtre de by_year filtrée
+function statsFromYears(fullStats, by_year_filtered) {
+  const yrs = Object.keys(by_year_filtered).sort();
+  if (!yrs.length) return null;
+  // Utiliser les stats globales si une seule année ou tout l'historique
+  // Pour les KPIs on recalcule la médiane comme moyenne pondérée des médianes annuelles
+  const vals = yrs.map(y => by_year_filtered[y]).filter(v => v && v.count > 0);
+  if (!vals.length) return null;
+  const totalCount = vals.reduce((a,v) => a + v.count, 0);
+  const wMedian = Math.round(vals.reduce((a,v) => a + v.median * v.count, 0) / totalCount);
+  const wMean   = Math.round(vals.reduce((a,v) => a + v.mean * v.count, 0) / totalCount);
+  const wQ1     = Math.round(vals.reduce((a,v) => a + v.q1 * v.count, 0) / totalCount);
+  const wQ3     = Math.round(vals.reduce((a,v) => a + v.q3 * v.count, 0) / totalCount);
+  const wSurf   = Math.round(vals.reduce((a,v) => a + (v.surf_mean||0) * v.count, 0) / totalCount * 10) / 10;
+  return { ...fullStats, median:wMedian, mean:wMean, q1:wQ1, q3:wQ3, surf_mean:wSurf, count:totalCount, by_year:by_year_filtered };
+}
+
+function applyCoeff(stats, surfMid) {
+  if (!stats) return null;
+  const k = surfMid<25?1.18:surfMid<40?1.08:surfMid<60?1.00:surfMid<80?0.96:surfMid<120?0.93:0.90;
+  const adj = v => v ? Math.round(v*k) : null;
+  const adjYear = by => { const r={}; Object.entries(by||{}).forEach(([y,v])=>{ r[y]={median:adj(v.median),mean:adj(v.mean),q1:adj(v.q1),q3:adj(v.q3),surf_mean:v.surf_mean,count:v.count}; }); return r; };
+  return {...stats, median:adj(stats.median), mean:adj(stats.mean), q1:adj(stats.q1), q3:adj(stats.q3), by_year:adjYear(stats.by_year)};
+}
+
+// Calcul évolution entre deux années
+function calcEvoN(by_year, n) {
+  const yrs = Object.keys(by_year||{}).sort();
+  if (yrs.length < 2) return null;
+  const last = by_year[yrs[yrs.length-1]]?.median;
+  const ref  = n >= yrs.length ? by_year[yrs[0]]?.median : by_year[yrs[yrs.length-1-n]]?.median;
+  if (!last || !ref) return null;
+  return ((last-ref)/ref*100).toFixed(1);
+}
+
+// Moyenne historique globale du secteur
+function calcHistMoy(by_year) {
+  const yrs = Object.keys(by_year||{}).sort();
+  if (!yrs.length) return null;
+  const vals = yrs.map(y => by_year[y]).filter(v => v?.median);
+  if (!vals.length) return null;
+  const total = vals.reduce((a,v) => a + v.count, 0);
+  return Math.round(vals.reduce((a,v) => a + v.median * v.count, 0) / total);
+}
+
+// ── RENDER ────────────────────────────────────
+function renderEtude(sectId, actives) {
+  const sect     = SECTEURS.find(s=>s.id===sectId);
+  const typeBien = opts.appart ? 'Appartement' : 'Maison';
+  const typeData = getTypeStats(sectId, typeBien);
+  const box      = document.getElementById('content');
+
+  let sections = [];
+
+  // ── VUE GLOBALE
+  if (opts.global && typeData) {
+    const byYearFull     = typeData.by_year || {};
+    const byYearFiltered = filterYears(byYearFull);
+    const sFiltered      = statsFromYears(typeData, byYearFiltered) || typeData;
+    const yrs = Object.keys(byYearFiltered).sort();
+
+    sections.push({
+      type:'global', badge:'Marché global', badgeClass:'gold',
+      title:`Secteur ${sectId} — ${sect.nom} · ${typeBien}s`,
+      count:null, stats:sFiltered, byYearFull, byYearFiltered, yrs, chartId:'gl',
+    });
+  }
+
+  // ── PAR TYPOLOGIE
+  actives.forEach((typo, idx) => {
+    const raw  = getTypoStats(sectId, typeBien, typo.id);
+    const mid  = (typo.surfMin + typo.surfMax) / 2;
+    let base   = raw ? raw : applyCoeff(typeData, mid);
+    if (!base || base.count < 5) return;
+
+    const byYearFull     = base.by_year || {};
+    const byYearFiltered = filterYears(byYearFull);
+    const sFiltered      = statsFromYears(base, byYearFiltered) || base;
+    const yrs = Object.keys(byYearFiltered).sort();
+
+    sections.push({
+      type:'typo', badge:`${typo.id} · ${typo.label}`, badgeClass:'blue',
+      title:`${typo.surfMin}–${typo.surfMax} m²`,
+      count:sFiltered.count, stats:sFiltered, byYearFull, byYearFiltered, yrs,
+      typo, mid, chartId:`t${idx}`,
+    });
+  });
+
+  if (!sections.length) {
+    box.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h3>Aucune donnée</h3><p>Aucune donnée disponible pour cette sélection.</p></div>`;
+    return;
+  }
+
+  // Libellé fenêtre
+  const fenLabel = fenetre===0?'Historique complet':fenetre===-1?'Vue annuelle':`${fenetre} dernière${fenetre>1?'s':''} année${fenetre>1?'s':''}`;
+
+  let html = `
+    <div class="etude-hdr">
+      <div class="etude-hdr-left">
+        <h2>${sect.nom}</h2>
+        <p>Secteur ${sectId} · ${sect.arrLabel} · ${typeBien} · DVF DGFiP · ${DB.meta.periode}</p>
+      </div>
+      <div class="etude-meta-chips">
+        <span class="chip blue">${(typeData?.count||0).toLocaleString('fr-FR')} transactions</span>
+        <span class="chip gold">${fenLabel}</span>
+        <span class="chip">MàJ ${new Date(DB.meta.generated_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}</span>
+      </div>
+    </div>
+  `;
+
+  sections.forEach(sec => {
+    const s    = sec.stats;
+    const yrs  = sec.yrs;
+    const byYF = sec.byYearFull;  // toutes les années pour les évolutions longues
+    const lastY = yrs[yrs.length-1]||'—';
+    const firstY = yrs[0]||'—';
+    const mid = sec.mid || null;
+
+    // Évolutions sur toutes les fenêtres possibles (utiliser byYearFull pour les horizons longs)
+    const allYrs = Object.keys(byYF||{}).sort();
+    const evo = (n) => {
+      const refYr = allYrs.length > n ? allYrs[allYrs.length-1-n] : null;
+      if (!refYr) return null;
+      const vLast = byYF[allYrs[allYrs.length-1]]?.median;
+      const vRef  = byYF[refYr]?.median;
+      if (!vLast || !vRef) return null;
+      return ((vLast-vRef)/vRef*100).toFixed(1);
+    };
+    const evoFull = () => calcEvoN(byYF, allYrs.length);
+    const histMoy = calcHistMoy(byYF);
+
+    const evoClass = v => v===null?'':parseFloat(v)>0?'up':'down';
+    const evoStr   = v => v===null?'N/D':`${parseFloat(v)>0?'+':''}${v}%`;
+    const yrRef    = n => allYrs.length>n ? allYrs[allYrs.length-1-n] : '—';
+
+    // Horizons disponibles
+    const horizons = [
+      {label:'1 an',   n:1,  fen:1},
+      {label:'3 ans',  n:3,  fen:3},
+      {label:'5 ans',  n:5,  fen:5},
+      {label:'10 ans', n:10, fen:10},
+      {label:'Période',n:allYrs.length-1, fen:0},
+    ];
+
+    const surfMeanHtml = s.surf_mean
+      ? `<div class="kpi"><div class="kl">Surface moyenne</div><div class="kv">${s.surf_mean}</div><div class="ku">m² · dans la fenêtre</div></div>` : '';
+    const prixTotalHtml = mid
+      ? `<div class="kpi"><div class="kl">Prix total médian</div><div class="kv" style="font-size:16px">${nK(s.median*mid)}</div><div class="ku">base ${mid}m² × médiane</div></div>` : '';
+    const countHtml = sec.count
+      ? `<span class="sc-count">${sec.count.toLocaleString('fr-FR')} transactions · ${firstY}–${lastY}</span>` : '';
+
+    // Bannière historique
+    const histBanner = histMoy ? `
+      <div class="hist-banner">
+        <div class="hist-kpi">
+          <div class="hl">Moy. historique ${allYrs[0]}–${allYrs[allYrs.length-1]}</div>
+          <div class="hv">${n0(histMoy)}</div>
+          <div class="hu">€ / m² · médiane pondérée</div>
+        </div>
+        <div class="hist-sep"></div>
+        <div class="hist-kpi">
+          <div class="hl">Écart vs historique</div>
+          <div class="hv" style="color:${s.median>histMoy?'#ffd43b':'#74c0fc'}">${s.median>histMoy?'+':''}${Math.round((s.median-histMoy)/histMoy*100)}%</div>
+          <div class="hu">${n0(s.median)} vs ${n0(histMoy)} €/m²</div>
+        </div>
+        <div class="hist-sep"></div>
+        <div class="hist-kpi">
+          <div class="hl">Plus haut · Plus bas</div>
+          <div class="hv">${n0(Math.max(...allYrs.map(y=>byYF[y]?.median||0)))}</div>
+          <div class="hu">/ ${n0(Math.min(...allYrs.map(y=>byYF[y]?.median||Infinity)))} €/m²</div>
+        </div>
+      </div>` : '';
+
+    html += `
+      <div class="section-card">
+        <div class="sc-header">
+          <div class="sc-title">
+            <span class="sc-badge ${sec.badgeClass}">${sec.badge}</span>
+            ${sec.title}
+          </div>
+          ${countHtml}
+        </div>
+        <div class="sc-body">
+
+          <div class="kpi-grid">
+            <div class="kpi hi">
+              <div class="kl">Prix médian</div>
+              <div class="kv">${n0(s.median)}</div>
+              <div class="ku">€ / m² · ${fenLabel}</div>
+            </div>
+            <div class="kpi">
+              <div class="kl">Prix moyen</div>
+              <div class="kv">${n0(s.mean)}</div>
+              <div class="ku">€ / m²</div>
+            </div>
+            <div class="kpi">
+              <div class="kl">Q1 — 25%</div>
+              <div class="kv">${n0(s.q1)}</div>
+              <div class="ku">€ / m²</div>
+            </div>
+            <div class="kpi">
+              <div class="kl">Q3 — 75%</div>
+              <div class="kv">${n0(s.q3)}</div>
+              <div class="ku">€ / m²</div>
+            </div>
+            ${surfMeanHtml}
+            ${prixTotalHtml}
+          </div>
+
+          <div class="evo-section">
+            <div class="evo-section-title">Évolutions par horizon · référence = dernière année disponible (${allYrs[allYrs.length-1]||'—'})</div>
+            <div class="evo-grid">
+              ${horizons.map(h => {
+                const v = evo(h.n);
+                const isCurrent = h.fen === fenetre;
+                return `<div class="evo-cell ${isCurrent?'active-fen':''}">
+                  <div class="el">${h.label}</div>
+                  <div class="ev ${evoClass(v)}">${evoStr(v)}</div>
+                  <div class="es">${yrRef(h.n)} → ${allYrs[allYrs.length-1]||'—'}</div>
+                </div>`;
+              }).join('')}
+              <div class="evo-cell">
+                <div class="el">Annuel moy.</div>
+                <div class="ev">${(() => { const v=evo(allYrs.length-1); if(!v||allYrs.length<2)return'N/D'; return (parseFloat(v)/(allYrs.length-1)).toFixed(1)+'%'; })()}</div>
+                <div class="es">par an · ${allYrs.length-1}y</div>
+              </div>
+            </div>
+          </div>
+
+          ${histBanner}
+
+          <div class="charts-row">
+            <div class="chart-box">
+              <div class="cb-title">Évolution prix médian au m² · ${fenLabel}</div>
+              <div class="cw"><canvas id="cline-${sec.chartId}"></canvas></div>
+            </div>
+            <div class="chart-box">
+              <div class="cb-title">Dispersion · Q1 / Médiane / Moy / Q3</div>
+              <div class="cw"><canvas id="cbar-${sec.chartId}"></canvas></div>
+            </div>
+          </div>
+
+        </div>
+      </div>`;
+  });
+
+  box.innerHTML = html;
+
+  // ── CHARTS
+  sections.forEach(sec => {
+    const s    = sec.stats;
+    const yrs  = sec.yrs;
+    const cLineEl = document.getElementById(`cline-${sec.chartId}`);
+    const cBarEl  = document.getElementById(`cbar-${sec.chartId}`);
+
+    if (cLineEl && yrs.length >= 2) {
+      CHARTS[`line-${sec.chartId}`] = new Chart(cLineEl, {
+        type:'line',
+        data:{
+          labels: yrs,
+          datasets:[
+            {label:'Q3', data:yrs.map(y=>s.by_year[y]?.q3), borderColor:'rgba(201,77,77,0.4)', backgroundColor:'rgba(201,77,77,0.05)', borderWidth:1, borderDash:[4,3], pointRadius:2, fill:'+1', tension:0.3},
+            {label:'Médiane', data:yrs.map(y=>s.by_year[y]?.median), borderColor:'#1971c2', backgroundColor:'rgba(25,113,194,0.08)', borderWidth:2.5, pointBackgroundColor:'#1971c2', pointRadius:4, fill:false, tension:0.3},
+            {label:'Q1', data:yrs.map(y=>s.by_year[y]?.q1), borderColor:'rgba(47,158,68,0.4)', backgroundColor:'rgba(47,158,68,0.05)', borderWidth:1, borderDash:[4,3], pointRadius:2, fill:false, tension:0.3},
+          ]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{
+            legend:{display:true,labels:{color:'#868e96',font:{family:'JetBrains Mono',size:9},boxWidth:10}},
+            tooltip:{callbacks:{label:c=>` ${c.dataset.label} : ${c.raw?.toLocaleString('fr-FR')} €/m²`}}
+          },
+          scales:{
+            x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9}}},
+            y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}
+          }
+        }
+      });
+    }
+
+    if (cBarEl) {
+      CHARTS[`bar-${sec.chartId}`] = new Chart(cBarEl, {
+        type:'bar',
+        data:{
+          labels:['Q1','Médiane','Moyenne','Q3'],
+          datasets:[{
+            data:[s.q1,s.median,s.mean,s.q3],
+            backgroundColor:['rgba(47,158,68,0.8)','rgba(25,113,194,0.85)','rgba(134,142,150,0.7)','rgba(201,77,77,0.8)'],
+            borderColor:['#2f9e44','#1971c2','#868e96','#c92a2a'],
+            borderWidth:1, borderRadius:4,
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw?.toLocaleString('fr-FR')} €/m²`}}},
+          scales:{
+            x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9}}},
+            y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}
+          }
+        }
+      });
+    }
+  });
+}
+
+// ── UTILS
+const n0 = v => v ? Math.round(v).toLocaleString('fr-FR') : '—';
+const nK = v => !v ? '—' : v>=1e6 ? (v/1e6).toFixed(3).replace('.',',').replace(/,?0+$/,'')+' M€' : Math.round(v/1000).toLocaleString('fr-FR')+' K€';
+
+function setStatus(type, txt) {
+  const p = document.getElementById('statusPill');
+  p.className = 'status-pill '+type;
+  document.getElementById('statusTxt').textContent = txt;
+}
+function destroyCharts() { Object.values(CHARTS).forEach(c=>{try{c.destroy();}catch(e){}}); CHARTS={}; }
+
+init();
+</script>
+</body>
+</html>
