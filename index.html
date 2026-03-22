@@ -92,6 +92,7 @@ body{background:var(--bg);color:var(--text1);font-family:'Sora',sans-serif;font-
 
 /* KPIs 3-stat (max/min/moy) */
 .tri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
 .tri-kpi{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;}
 .tri-kpi.hi-max{background:#fff5f5;border-color:#ffc9c9;}
 .tri-kpi.hi-max .tri-v{color:var(--red);}
@@ -334,11 +335,12 @@ function filterPeriods(byP) {
 function computeWindowStats(byP_filtered) {
   const vals = Object.values(byP_filtered||{}).filter(v=>v&&v.count>=3);
   if (!vals.length) return null;
-  const maxV = Math.max(...vals.map(v=>v.max||v.q3||v.mean));
-  const minV = Math.min(...vals.map(v=>v.min||v.q1||v.mean));
   const totalN = vals.reduce((a,v)=>a+v.count,0);
-  const moyV = Math.round(vals.reduce((a,v)=>a+v.mean*v.count,0)/totalN);
-  return { max:Math.round(maxV), min:Math.round(minV), moy:moyV, count:totalN };
+  const moyV   = Math.round(vals.reduce((a,v)=>a+v.mean*v.count,0)/totalN);
+  const medV   = Math.round(vals.reduce((a,v)=>a+(v.median||v.mean)*v.count,0)/totalN);
+  const maxV   = Math.max(...vals.map(v=>v.p90||v.q3||v.mean));
+  const minV   = Math.min(...vals.map(v=>v.p10||v.q1||v.mean));
+  return { max:Math.round(maxV), min:Math.round(minV), moy:moyV, med:medV, count:totalN };
 }
 
 // Évolution entre première et dernière période de la fenêtre filtrée
@@ -356,8 +358,8 @@ function calcEvoN(byYear, n) {
   const yrs = Object.keys(byYear||{}).sort();
   if (yrs.length < 2) return null;
   const lastIdx = yrs.length-1;
-  const refIdx  = Math.max(0, lastIdx-n);
-  if (refIdx===lastIdx) return null;
+  if (n >= yrs.length) return null;
+  const refIdx = lastIdx - n;
   const v1 = byYear[yrs[lastIdx]]?.mean;
   const v0 = byYear[yrs[refIdx]]?.mean;
   if (!v0||!v1) return null;
@@ -485,19 +487,24 @@ function renderEtude(sectId, actives) {
         </div>
         <div class="card-body">
 
-          <div class="tri-grid">
+          <div class="quad-grid">
             <div class="tri-kpi hi-max">
-              <div class="tri-l">Plus haut</div>
+              <div class="tri-l">P90 · Haut de marché</div>
               <div class="tri-v">${ws?n0(ws.max):'—'}</div>
               <div class="tri-u">€/m² · ${fenLabel()}</div>
             </div>
             <div class="tri-kpi hi-moy">
-              <div class="tri-l">Moyenne</div>
-              <div class="tri-v">${ws?n0(ws.moy):'—'}</div>
+              <div class="tri-l">Médiane</div>
+              <div class="tri-v">${ws?n0(ws.med):'—'}</div>
+              <div class="tri-u">€/m² · ${fenLabel()}</div>
+            </div>
+            <div class="tri-kpi" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;">
+              <div class="tri-l" style="font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;">Moyenne</div>
+              <div class="tri-v" style="font-size:20px;font-weight:700;line-height:1;letter-spacing:-.5px;color:var(--text2);">${ws?n0(ws.moy):'—'}</div>
               <div class="tri-u">€/m² · ${fenLabel()}</div>
             </div>
             <div class="tri-kpi hi-min">
-              <div class="tri-l">Plus bas</div>
+              <div class="tri-l">P10 · Bas de marché</div>
               <div class="tri-v">${ws?n0(ws.min):'—'}</div>
               <div class="tri-u">€/m² · ${fenLabel()}</div>
             </div>
@@ -569,11 +576,11 @@ function renderEtude(sectId, actives) {
         CHARTS[`bar-${sec.chartId}`] = new Chart(cBarEl, {
           type:'bar',
           data:{
-            labels:['Plus haut','Moyenne','Plus bas'],
+            labels:['P90','Médiane','Moy.','P10'],
             datasets:[{
-              data:[ws.max,ws.moy,ws.min],
-              backgroundColor:['rgba(201,77,77,0.8)','rgba(25,113,194,0.85)','rgba(47,158,68,0.8)'],
-              borderColor:['#c92a2a','#1971c2','#2f9e44'],
+              data:[ws.max,ws.med,ws.moy,ws.min],
+              backgroundColor:['rgba(201,77,77,0.8)','rgba(25,113,194,0.85)','rgba(134,142,150,0.7)','rgba(47,158,68,0.8)'],
+              borderColor:['#c92a2a','#1971c2','#868e96','#2f9e44'],
               borderWidth:1,borderRadius:4,
             }]
           },
