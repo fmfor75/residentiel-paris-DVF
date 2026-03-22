@@ -1,0 +1,53 @@
+name: Mise à jour DVF Paris
+
+on:
+  schedule:
+    - cron: '0 6 15 4 *'    # 15 avril
+    - cron: '0 6 15 10 *'   # 15 octobre
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer les dépendances
+        run: pip install requests pandas
+
+      - name: Télécharger et traiter les données DVF Paris
+        run: python scripts/process_dvf.py
+
+      - name: Vérifier les fichiers générés
+        run: |
+          ls -lh data/
+          python -c "
+          import json, os
+          d = json.load(open('data/dvf_paris.json'))
+          m = d['meta']
+          print(f'dvf_paris.json : {m[\"total_muts\"]:,} mutations | periode: {m[\"periode\"]}')
+          print(f'Cache historique utilisé : {m[\"cache_hist\"]}')
+          if os.path.exists('data/dvf_hist.json'):
+              h = json.load(open('data/dvf_hist.json'))
+              print(f'dvf_hist.json  : {len(h[\"mutations\"]):,} mutations | {h[\"annees\"]}')
+          "
+
+      - name: Commit et push
+        run: |
+          git config user.name "DVF Bot"
+          git config user.email "dvf-bot@github-actions"
+          # Commiter dvf_paris.json (toujours) + dvf_hist.json (seulement si nouveau)
+          git add data/dvf_paris.json
+          git add data/dvf_hist.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "DVF Paris mis à jour — $(date +'%Y-%m-%d')"
+          git push
