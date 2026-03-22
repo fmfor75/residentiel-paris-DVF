@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paris Immo · Analyse DVF</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg:#f7f4ef; --bg2:#eeebe4; --bg3:#e5e0d7;
+  --ink:#1a1714; --ink2:#5a5550; --ink3:#9a9590;
+  --gold:#b8860b; --gold2:#d4a017;
+  --red:#8b2020; --green:#2d6a4f;
+  --border:rgba(26,23,20,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+header{padding:32px 48px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-end;background:linear-gradient(180deg,#f0ece4 0%,var(--bg) 100%);}
+.brand h1{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:300;line-height:1;}
+.brand h1 em{font-style:normal;color:var(--gold);}
+.brand p{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--ink3);letter-spacing:0.18em;text-transform:uppercase;margin-top:6px;}
+.header-meta{font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--ink3);text-align:right;line-height:2;}
+.header-meta strong{color:var(--gold);display:block;}
+.update-badge{display:inline-block;background:rgba(45,106,79,0.1);color:var(--green);border:1px solid rgba(45,106,79,0.2);padding:3px 10px;font-size:0.56rem;letter-spacing:0.1em;margin-top:4px;}
+
+/* CONTROLS */
+.controls{padding:14px 48px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;}
+.cg{display:flex;flex-direction:column;gap:4px;}
+.cg label{font-family:'JetBrains Mono',monospace;font-size:0.56rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--ink3);}
+select,input[type="number"]{background:var(--bg);border:1px solid var(--border);color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:0.75rem;padding:6px 10px;outline:none;border-radius:0;appearance:none;}
+select:focus,input:focus{border-color:var(--gold);}
+select option{background:#f7f4ef;}
+input[type="number"]{width:84px;}
+
+/* TABS */
+.tabs{padding:0 48px;border-bottom:1px solid var(--border);display:flex;background:var(--bg);}
+.tab{font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;color:var(--ink3);background:none;border-top:none;border-left:none;border-right:none;transition:all 0.15s;}
+.tab:hover{color:var(--ink);}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* PILLS */
+.pills-panel{padding:12px 48px;background:var(--bg2);border-bottom:1px solid var(--border);display:none;flex-wrap:wrap;gap:6px;align-items:center;}
+.pills-panel.on{display:flex;}
+.pills-label{font-family:'JetBrains Mono',monospace;font-size:0.56rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-right:4px;flex-shrink:0;}
+.pill{font-family:'JetBrains Mono',monospace;font-size:0.6rem;padding:4px 10px;border:1px solid var(--border);cursor:pointer;background:var(--bg);color:var(--ink2);transition:all 0.12s;white-space:nowrap;}
+.pill:hover{border-color:var(--gold);color:var(--gold);}
+.pill.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+.pill-all{border-style:dashed;}
+
+/* STATUS */
+.status{padding:8px 48px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:0.64rem;color:var(--ink3);min-height:34px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ink3);flex-shrink:0;}
+.dot.loading{background:var(--gold);animation:blink 1s infinite;}
+.dot.done{background:var(--green);}
+.dot.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* MAIN */
+.main{padding:32px 48px;display:grid;gap:28px;}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);}
+.kpi{background:var(--bg);padding:18px 20px;position:relative;}
+.kpi::after{content:'';position:absolute;bottom:0;left:20px;right:20px;height:2px;background:var(--gold);opacity:0;transition:opacity 0.2s;}
+.kpi:hover::after{opacity:1;}
+.kpi-label{font-family:'JetBrains Mono',monospace;font-size:0.54rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;}
+.kpi-val{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;line-height:1;}
+.kpi-sub{font-family:'JetBrains Mono',monospace;font-size:0.56rem;color:var(--ink3);margin-top:5px;}
+.kpi-delta{font-family:'JetBrains Mono',monospace;font-size:0.6rem;margin-top:3px;}
+.kpi-delta.up{color:var(--green);} .kpi-delta.down{color:var(--red);}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:3fr 2fr;gap:18px;}
+@media(max-width:860px){.charts-row{grid-template-columns:1fr;}}
+.panel{background:var(--bg);border:1px solid var(--border);padding:24px;}
+.panel-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;margin-bottom:3px;}
+.panel-sub{font-family:'JetBrains Mono',monospace;font-size:0.54rem;color:var(--ink3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:18px;}
+.chart-wrap{position:relative;height:260px;}
+
+/* TABLE */
+.tpanel{background:var(--bg);border:1px solid var(--border);padding:24px;overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:0.68rem;}
+thead th{text-align:left;padding:7px 10px;font-size:0.54rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--ink3);border-bottom:2px solid var(--ink);}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--ink);vertical-align:middle;}
+tbody tr:hover td{background:var(--bg2);}
+.rk{width:22px;height:22px;line-height:22px;text-align:center;font-size:0.58rem;border:1px solid var(--border);color:var(--ink3);display:inline-block;}
+.rk.g{border-color:var(--gold);color:var(--gold);background:rgba(184,134,11,0.05);}
+.zone-label{font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;}
+.price-s{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;}
+.bar-c{display:flex;align-items:center;gap:7px;}
+.bar{height:3px;background:var(--gold);opacity:0.65;border-radius:2px;flex-shrink:0;}
+
+.empty{text-align:center;padding:60px 20px;border:1px dashed var(--border);}
+.empty p{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--ink3);line-height:1.9;}
+
+footer{padding:16px 48px;border-top:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:0.56rem;color:var(--ink3);line-height:1.9;}
+footer a{color:var(--gold);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Paris <em>·</em> Marché Résidentiel</h1>
+    <p>Analyse DVF · Prix au m² · Arrondissements &amp; Secteurs encadrement des loyers</p>
+  </div>
+  <div class="header-meta">
+    <strong>Données mises à jour automatiquement</strong>
+    Source · DGFiP / Etalab — Licence Ouverte 2.0<br>
+    Fréquence · 2× par an (avril &amp; octobre)<br>
+    <span class="update-badge" id="updateBadge">Chargement…</span>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="cg">
+    <label>Type de bien</label>
+    <select id="typeBien" onchange="render()">
+      <option value="Appartement">Appartement</option>
+      <option value="Maison">Maison</option>
+    </select>
+  </div>
+  <div class="cg">
+    <label>Prix min (€/m²)</label>
+    <input type="number" id="prixMin" value="2000" min="0" onchange="render()">
+  </div>
+  <div class="cg">
+    <label>Prix max (€/m²)</label>
+    <input type="number" id="prixMax" value="35000" min="0" onchange="render()">
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tab-arr"  onclick="switchTab('arr')">Par arrondissement</button>
+  <button class="tab"        id="tab-sect" onclick="switchTab('sect')">Par secteur encadrement loyers</button>
+</div>
+
+<div class="pills-panel on" id="pp-arr">
+  <span class="pills-label">Filtrer :</span>
+  <button class="pill pill-all on" id="pa-all" onclick="toggleAll('arr')">Tous (20)</button>
+  <div id="pills-arr" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+</div>
+
+<div class="pills-panel" id="pp-sect">
+  <span class="pills-label">Filtrer :</span>
+  <button class="pill pill-all on" id="ps-all" onclick="toggleAll('sect')">Tous (14)</button>
+  <div id="pills-sect" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+</div>
+
+<div class="status">
+  <div class="dot loading" id="dot"></div>
+  <span id="stxt">Chargement des données DVF Paris…</span>
+</div>
+
+<div class="main" id="main">
+  <div class="empty"><p>Chargement en cours…</p></div>
+</div>
+
+<footer>
+  Sources : <a href="https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/" target="_blank">DVF — DGFiP</a> ·
+  <a href="https://files.data.gouv.fr/geo-dvf/latest/" target="_blank">Fichiers géolocalisés Etalab</a> ·
+  <a href="https://www.drihl.ile-de-france.developpement-durable.gouv.fr/le-dispositif-d-encadrement-des-loyers-a-paris-a292.html" target="_blank">Encadrement loyers — DRIHL</a> ·
+  Licence Ouverte Etalab 2.0
+</footer>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+// Le JSON est généré par le script Python et hébergé sur GitHub Pages
+// En local : charger depuis ./data/dvf_paris.json
+// Sur GitHub Pages : charger depuis la même URL relative
+const DATA_URL = './data/dvf_paris.json';
+
+let DB = null;
+let currentTab = 'arr';
+let selArr  = new Set(Array.from({length:20},(_,i)=>i+1));
+let selSect = new Set(Array.from({length:14},(_,i)=>i+1));
+let CHARTS  = {};
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+async function init() {
+  try {
+    const r = await fetch(DATA_URL + '?t=' + Date.now());
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    DB = await r.json();
+
+    // Badge date MAJ
+    const d = new Date(DB.meta.generated_at);
+    document.getElementById('updateBadge').textContent =
+      `Mis à jour le ${d.toLocaleDateString('fr-FR', {day:'2-digit',month:'long',year:'numeric'})}`;
+
+    setS('done', `${DB.meta.total_mutations.toLocaleString('fr-FR')} mutations · ${DB.meta.periode} · ${Object.keys(DB.arrondissements).length} arrondissements`);
+    buildPills();
+    render();
+  } catch(e) {
+    console.error(e);
+    setS('err', 'Impossible de charger dvf_paris.json — vérifiez que le workflow GitHub a bien tourné.');
+    document.getElementById('main').innerHTML = `<div class="empty"><p>⚠ Données non disponibles.<br>Lancez le workflow GitHub Actions une première fois manuellement.</p></div>`;
+  }
+}
+
+// ── PILLS ────────────────────────────────────────────────────────────────────
+
+function buildPills() {
+  // Arrondissements
+  const pa = document.getElementById('pills-arr');
+  for (let i=1; i<=20; i++) {
+    const b = document.createElement('button');
+    b.className = 'pill on'; b.id = `pa-${i}`;
+    b.textContent = i===1?'1er':`${i}e`;
+    b.title = DB.arrondissements[i]?.label || `Paris ${i}e`;
+    b.onclick = () => togglePill('arr', i, b);
+    pa.appendChild(b);
+  }
+
+  // Secteurs
+  const ps = document.getElementById('pills-sect');
+  for (let i=1; i<=14; i++) {
+    const b = document.createElement('button');
+    b.className = 'pill on'; b.id = `ps-${i}`;
+    b.textContent = `S${i}`;
+    b.title = DB.secteurs_ref?.[i] || `Secteur ${i}`;
+    b.onclick = () => togglePill('sect', i, b);
+    ps.appendChild(b);
+  }
+}
+
+function togglePill(type, id, btn) {
+  const set = type==='arr' ? selArr : selSect;
+  if (set.has(id)) { set.delete(id); btn.classList.remove('on'); }
+  else { set.add(id); btn.classList.add('on'); }
+  updateAllBtn(type);
+  render();
+}
+
+function toggleAll(type) {
+  const set = type==='arr' ? selArr : selSect;
+  const n   = type==='arr' ? 20 : 14;
+  const allBtn = document.getElementById(type==='arr'?'pa-all':'ps-all');
+  if (set.size === n) {
+    for (let i=1;i<=n;i++) { set.delete(i); document.getElementById(`p${type==='arr'?'a':'s'}-${i}`)?.classList.remove('on'); }
+    allBtn.classList.remove('on');
+  } else {
+    for (let i=1;i<=n;i++) { set.add(i); document.getElementById(`p${type==='arr'?'a':'s'}-${i}`)?.classList.add('on'); }
+    allBtn.classList.add('on');
+  }
+  render();
+}
+
+function updateAllBtn(type) {
+  const set = type==='arr'?selArr:selSect;
+  const n   = type==='arr'?20:14;
+  const b   = document.getElementById(type==='arr'?'pa-all':'ps-all');
+  if (set.size===n) b.classList.add('on'); else b.classList.remove('on');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['arr','sect'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t===tab);
+    document.getElementById(`pp-${t}`).classList.toggle('on', t===tab);
+  });
+  render();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+
+function render() {
+  if (!DB) return;
+  destroyCharts();
+
+  const typeBien = document.getElementById('typeBien').value;
+  const prixMin  = +document.getElementById('prixMin').value || 0;
+  const prixMax  = +document.getElementById('prixMax').value || 99999;
+
+  // Construire les groupes selon l'onglet actif
+  let groups = [];
+  const source = currentTab === 'arr' ? DB.arrondissements : DB.secteurs;
+  const sel    = currentTab === 'arr' ? selArr : selSect;
+
+  for (const [key, data] of Object.entries(source)) {
+    const numKey = +key;
+    if (!sel.has(numKey)) continue;
+    const stats = data.by_type?.[typeBien];
+    if (!stats) continue;
+    // Appliquer le filtre de prix sur la médiane
+    if (stats.median < prixMin || stats.median > prixMax) continue;
+    groups.push({
+      key: numKey,
+      label: data.label,
+      shortLabel: currentTab==='arr' ? (numKey===1?'1er':`${numKey}e`) : `S${numKey}`,
+      stats,
+      by_year: data.by_year || {},
+    });
+  }
+
+  if (!groups.length) {
+    document.getElementById('main').innerHTML = `<div class="empty"><p>Aucune donnée pour la sélection.<br>Ajustez les filtres ou sélectionnez plus de zones.</p></div>`;
+    return;
+  }
+
+  const ranked = [...groups].sort((a,b) => b.stats.median - a.stats.median);
+  const meds   = ranked.map(g => g.stats.median);
+  const maxM   = Math.max(...meds), minM = Math.min(...meds);
+  const globalM = meds[Math.floor(meds.length/2)]; // médiane des médianes
+  const totalTx = groups.reduce((s,g)=>s+g.stats.count,0);
+
+  // Évolution globale Paris (depuis DB.global)
+  const globalByYear = DB.global?.by_year || {};
+  const years = Object.keys(globalByYear).sort();
+  let evo = null;
+  if (years.length >= 2) {
+    evo = ((globalByYear[years[years.length-1]] - globalByYear[years[0]]) / globalByYear[years[0]] * 100).toFixed(1);
+  }
+
+  const modeLabel = currentTab==='arr' ? 'Arrondissement' : 'Secteur encadrement loyers';
+
+  document.getElementById('main').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Médiane Paris</div>
+        <div class="kpi-val">${n0(globalM)}</div>
+        <div class="kpi-sub">€/m² · ${typeBien}</div>
+        ${evo!==null?`<div class="kpi-delta ${evo>0?'up':'down'}">${evo>0?'▲':'▼'} ${Math.abs(evo)}% sur ${years[0]}–${years[years.length-1]}</div>`:''}
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Zone la + chère</div>
+        <div class="kpi-val">${n0(ranked[0].stats.median)}</div>
+        <div class="kpi-sub">${ranked[0].label}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Zone la - chère</div>
+        <div class="kpi-val">${n0(ranked[ranked.length-1].stats.median)}</div>
+        <div class="kpi-sub">${ranked[ranked.length-1].label}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Écart max / min</div>
+        <div class="kpi-val">${((maxM/minM-1)*100).toFixed(0)}%</div>
+        <div class="kpi-sub">Dispersion entre zones</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Transactions</div>
+        <div class="kpi-val">${totalTx.toLocaleString('fr-FR')}</div>
+        <div class="kpi-sub">${DB.meta.periode} · ${ranked.length} zones</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="panel">
+        <div class="panel-title">Prix médian par ${modeLabel.toLowerCase()}</div>
+        <div class="panel-sub">€/m² · médiane · ${DB.meta.periode}</div>
+        <div class="chart-wrap"><canvas id="cBar"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Évolution annuelle Paris</div>
+        <div class="panel-sub">Prix médian global · ${typeBien}</div>
+        <div class="chart-wrap"><canvas id="cLine"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tpanel">
+      <div class="panel-title" style="margin-bottom:4px">Classement — ${modeLabel}</div>
+      <div class="panel-sub">${typeBien} · médiane décroissante · source ${DB.meta.generated_at?.slice(0,10)}</div>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Zone</th><th>Médiane €/m²</th>
+          <th>Q1</th><th>Q3</th><th>Transactions</th><th>Indice</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  `;
+
+  // Table
+  ranked.forEach((g,i) => {
+    const pct = ((g.stats.median - minM) / (maxM - minM) * 100).toFixed(0);
+    const tr  = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="rk ${i<3?'g':''}">${i+1}</span></td>
+      <td class="zone-label">${g.label}</td>
+      <td class="price-s">${n0(g.stats.median)}</td>
+      <td style="color:var(--ink3)">${n0(g.stats.q1)}</td>
+      <td style="color:var(--ink3)">${n0(g.stats.q3)}</td>
+      <td>${g.stats.count.toLocaleString('fr-FR')}</td>
+      <td><div class="bar-c"><div class="bar" style="width:${Math.max(+pct*1.2,4)}px"></div><span style="font-size:0.58rem;color:var(--ink3)">${pct}</span></div></td>
+    `;
+    document.getElementById('tbody').appendChild(tr);
+  });
+
+  // Bar chart
+  const bVals   = ranked.map(g => g.stats.median);
+  const bColors = bVals.map(v => {
+    const r = (v-minM)/(maxM-minM);
+    return `rgba(${Math.round(90+66*r)},${Math.round(110-60*r)},${Math.round(11+20*r)},0.82)`;
+  });
+  CHARTS.bar = new Chart(document.getElementById('cBar'), {
+    type: 'bar',
+    data: {
+      labels: ranked.map(g=>g.shortLabel),
+      datasets: [{ data: bVals, backgroundColor: bColors, borderRadius: 1 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw?.toLocaleString('fr-FR')} €/m²`}}},
+      scales:{
+        x:{grid:{color:'rgba(26,23,20,0.05)'},ticks:{color:'#9a9590',font:{family:'JetBrains Mono',size:9}}},
+        y:{grid:{color:'rgba(26,23,20,0.05)'},ticks:{color:'#9a9590',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}
+      }
+    }
+  });
+
+  // Line chart (évolution globale Paris)
+  CHARTS.line = new Chart(document.getElementById('cLine'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [{ data: years.map(y=>globalByYear[y]), borderColor:'#b8860b', backgroundColor:'rgba(184,134,11,0.07)', borderWidth:2, pointBackgroundColor:'#b8860b', pointRadius:4, fill:true, tension:0.3 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw?.toLocaleString('fr-FR')} €/m²`}}},
+      scales:{
+        x:{grid:{color:'rgba(26,23,20,0.05)'},ticks:{color:'#9a9590',font:{family:'JetBrains Mono',size:9}}},
+        y:{grid:{color:'rgba(26,23,20,0.05)'},ticks:{color:'#9a9590',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}
+      }
+    }
+  });
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const n0 = v => v ? Math.round(v).toLocaleString('fr-FR') : '—';
+function setS(t,txt){document.getElementById('dot').className='dot '+t;document.getElementById('stxt').textContent=txt;}
+function destroyCharts(){for(const c of Object.values(CHARTS))try{c.destroy();}catch(e){}CHARTS={};}
+
+init();
+</script>
+</body>
+</html>
