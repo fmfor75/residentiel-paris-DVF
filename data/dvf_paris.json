@@ -1,9 +1,11 @@
 {
   "meta": {
-    "generated_at": "2026-03-22T17:32:13.627600Z",
+    "generated_at": "2026-03-22T17:39:27.039682Z",
     "source": "DGFiP / Etalab — Licence Ouverte 2.0",
-    "source_a": "cadastre.data.gouv.fr (2014–2019)",
-    "source_b": "files.data.gouv.fr/geo-dvf (2020–2025)",
+    "sources": {
+      "historique": "cadastre.data.gouv.fr (2014–2019)",
+      "recentes": "files.data.gouv.fr/geo-dvf (2020–2025)"
+    },
     "annees": [
       2020,
       2021,
