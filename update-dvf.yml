@@ -1,0 +1,42 @@
+name: Mise à jour DVF Paris
+
+on:
+  schedule:
+    - cron: '0 6 15 4 *'
+    - cron: '0 6 15 10 *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer les dépendances
+        run: pip install requests pandas
+
+      - name: Télécharger et traiter les données DVF Paris 2014-2025
+        run: python scripts/process_dvf.py
+
+      - name: Vérifier le JSON
+        run: |
+          ls -lh data/
+          python -c "import json; d=json.load(open('data/dvf_paris.json')); m=d['meta']; print(f'OK — {m[\"total_mutations\"]:,} mutations | periode: {m[\"periode\"]} | annees: {m[\"annees\"]}')"
+
+      - name: Commit et push
+        run: |
+          git config user.name "DVF Bot"
+          git config user.email "dvf-bot@github-actions"
+          git add data/dvf_paris.json
+          git diff --staged --quiet || git commit -m "DVF Paris 2014-2025 — $(date +'%Y-%m-%d')"
+          git push
