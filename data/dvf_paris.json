@@ -1,11 +1,8 @@
 {
   "meta": {
-    "generated_at": "2026-03-22T17:39:27.039682Z",
-    "source": "DGFiP / Etalab — Licence Ouverte 2.0",
-    "sources": {
-      "historique": "cadastre.data.gouv.fr (2014–2019)",
-      "recentes": "files.data.gouv.fr/geo-dvf (2020–2025)"
-    },
+    "generated_at": "2026-03-22T18:21:50.159730Z",
+    "source_hist": "data.cquest.org/dgfip_dvf (2014–2019, cache)",
+    "source_recent": "files.data.gouv.fr/geo-dvf (2020–2025)",
     "annees": [
       2020,
       2021,
@@ -17,7 +14,8 @@
     "total_mutations": 119860,
     "total_apparts": 119072,
     "total_maisons": 788,
-    "periode": "2020–2025"
+    "periode": "2020–2025",
+    "cache_hist": false
   },
   "global": {
     "stats": {
@@ -4145,110 +4143,58 @@
   "secteurs_ref": {
     "1": {
       "nom": "Louvre – Opéra",
-      "arr": [
-        1,
-        2
-      ],
       "arrLabel": "1er, 2e"
     },
     "2": {
       "nom": "Marais – Bastille",
-      "arr": [
-        3,
-        4
-      ],
       "arrLabel": "3e, 4e"
     },
     "3": {
       "nom": "Île de la Cité – Luxembourg",
-      "arr": [
-        5,
-        6
-      ],
       "arrLabel": "5e, 6e"
     },
     "4": {
       "nom": "Saint-Germain – Invalides",
-      "arr": [
-        6,
-        7
-      ],
       "arrLabel": "6e, 7e"
     },
     "5": {
       "nom": "Champs-Élysées – Trocadéro",
-      "arr": [
-        8,
-        16
-      ],
       "arrLabel": "8e, 16e"
     },
     "6": {
       "nom": "Opéra – Grands Boulevards",
-      "arr": [
-        9,
-        17
-      ],
       "arrLabel": "9e, 17e"
     },
     "7": {
       "nom": "Montmartre – Belleville",
-      "arr": [
-        10,
-        18,
-        19
-      ],
       "arrLabel": "10e, 18e, 19e"
     },
     "8": {
       "nom": "Nation – Vincennes",
-      "arr": [
-        12
-      ],
       "arrLabel": "12e"
     },
     "9": {
       "nom": "Grenelle – Convention",
-      "arr": [
-        15
-      ],
       "arrLabel": "15e"
     },
     "10": {
       "nom": "Montrouge – Alésia",
-      "arr": [
-        13,
-        14
-      ],
       "arrLabel": "13e, 14e"
     },
     "11": {
       "nom": "Épinettes – Batignolles",
-      "arr": [
-        17
-      ],
       "arrLabel": "17e"
     },
     "12": {
       "nom": "Buttes-Chaumont",
-      "arr": [
-        19
-      ],
       "arrLabel": "19e"
     },
     "13": {
       "nom": "Ménilmontant – Oberkampf",
-      "arr": [
-        11,
-        20
-      ],
       "arrLabel": "11e, 20e"
     },
     "14": {
       "nom": "Ivry – Tolbiac – Gobelins",
-      "arr": [
-        13
-      ],
       "arrLabel": "13e"
     }
   },
