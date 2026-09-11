@@ -160,7 +160,11 @@ footer a{color:var(--accent);text-decoration:none;}
 <aside class="sidebar">
 
   <div class="sidebar-section">
-    <div class="sidebar-label"><span class="num">1</span> Secteur géographique</div>
+    <div class="sidebar-label"><span class="num">1</span> Zone géographique</div>
+    <div style="display:flex;gap:3px;margin-bottom:6px;">
+      <button class="fen-btn active" id="mode-sect" style="flex:1" onclick="setMode('secteur')">Secteurs DRIHL</button>
+      <button class="fen-btn" id="mode-arr" style="flex:1" onclick="setMode('arrondissement')">Arrondissements</button>
+    </div>
     <div class="secteurs-list" id="sectList"></div>
   </div>
 
@@ -246,14 +250,98 @@ const TYPO_DEFS = [
 ];
 const TYPO_LABELS = {T1:'T1/Studio (9–30m²)',T2:'T2 (30–50m²)',T3:'T3 (50–70m²)',T4:'T4 (70–100m²)',T5:'T5+ (>100m²)'};
 
+const QUARTIERS_BOULOGNE = [
+  {id:'B0', nom:'Commune entière',                    arrLabel:'Boulogne-Billancourt · 92100'},
+  {id:'B1', nom:'Billancourt – Île Seguin',           arrLabel:'Sud-Est · bords de Seine'},
+  {id:'B2', nom:'Pont de Sèvres – Rives de Seine',   arrLabel:'Sud-Ouest · M9 Pont de Sèvres'},
+  {id:'B3', nom:'Centre-ville – République',          arrLabel:'Centre · M10 Boulogne Pt de St-Cloud'},
+  {id:'B4', nom:'Silly – Gallieni – Droits de l’Homme', arrLabel:'Nord-Ouest'},
+  {id:'B5', nom:'Boulogne Nord – Parchamp',           arrLabel:'Nord · Bois de Boulogne'},
+  {id:'B6', nom:'Marcel Sembat – Aguesseau',          arrLabel:'Est · M9 Marcel Sembat'},
+];
+
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
 let DB=null, sectSel=null, fenetre='0', typos=TYPO_DEFS.map(t=>({...t})), opts={appart:true,maison:false,global:true}, CHARTS={};
+let geoMode = 'secteur'; // 'secteur' ou 'arrondissement'
+
+const ARRONDISSEMENTS = [
+  {id:1, nom:"Paris 1er",  arrLabel:"Louvre · Palais-Royal",       note:null},
+  {id:2, nom:"Paris 2e",   arrLabel:"Bourse · Sentier",             note:null},
+  {id:3, nom:"Paris 3e",   arrLabel:"Marais Nord",                  note:null},
+  {id:4, nom:"Paris 4e",   arrLabel:"Marais Sud · Île Saint-Louis", note:null},
+  {id:5, nom:"Paris 5e",   arrLabel:"Latin · Panthéon",             note:null},
+  {id:6, nom:"Paris 6e",   arrLabel:"Saint-Germain",                note:null},
+  {id:7, nom:"Paris 7e",   arrLabel:"Invalides · Tour Eiffel",      note:null},
+  {id:8, nom:"Paris 8e",   arrLabel:"Champs-Élysées · Madeleine",   note:null},
+  {id:9, nom:"Paris 9e",   arrLabel:"Opéra · Pigalle",              note:null},
+  {id:10,nom:"Paris 10e",  arrLabel:"Canal Saint-Martin · Gare Est",note:null},
+  {id:11,nom:"Paris 11e",  arrLabel:"Bastille · Oberkampf",         note:null},
+  {id:12,nom:"Paris 12e",  arrLabel:"Nation · Bercy",               note:null},
+  {id:13,nom:"Paris 13e",  arrLabel:"Gobelins · Ivry",              note:null},
+  {id:14,nom:"Paris 14e",  arrLabel:"Montparnasse · Alésia",        note:null},
+  {id:15,nom:"Paris 15e",  arrLabel:"Grenelle · Vaugirard",         note:null},
+  {id:16,nom:"Paris 16e",  arrLabel:"Trocadéro · Passy",            note:null},
+  {id:17,nom:"Paris 17e",  arrLabel:"Batignolles · Épinettes",      note:"⚠ Couvre S6+S11"},
+  {id:18,nom:"Paris 18e",  arrLabel:"Montmartre · Clignancourt",    note:null},
+  {id:19,nom:"Paris 19e",  arrLabel:"Buttes-Chaumont · Belleville", note:"⚠ Couvre S7+S12"},
+  {id:20,nom:"Paris 20e",  arrLabel:"Ménilmontant · Père-Lachaise", note:null},
+];
+
+const SECTEURS_NOTES = {
+  6:  "⚠ 9e arr. + partie nord du 17e (les deux zones sont agrégées)",
+  11: "⚠ Partie sud du 17e — données du 17e entier faute de géoloc au quartier",
+  12: "⚠ Partie nord du 19e — données du 19e entier faute de géoloc au quartier",
+  14: "⚠ Partie sud du 13e — données du 13e entier faute de géoloc au quartier",
+  7:  "⚠ 10e, 18e + partie du 19e (le 19e est partagé avec S12)",
+  10: "⚠ 14e + partie du 13e (le 13e est partagé avec S14)",
+};
 
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
+function setMode(mode) {
+  geoMode = mode;
+  sectSel = null;
+  document.getElementById('mode-sect').classList.toggle('active', mode==='secteur');
+  document.getElementById('mode-arr').classList.toggle('active', mode==='arrondissement');
+  rebuildList();
+}
+
+function rebuildList() {
+  const sl = document.getElementById('sectList');
+  sl.innerHTML = '';
+
+  function addGroup(label, items, idFn, idLabelFn, noteFn) {
+    const grp = document.createElement('div');
+    grp.style.cssText = 'font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:8px 4px 4px;';
+    grp.textContent = label;
+    sl.appendChild(grp);
+    items.forEach(s => {
+      const b = document.createElement('button');
+      b.className='sect-btn'; b.id=`sb-${idFn(s)}`;
+      const note = noteFn ? noteFn(s) : null;
+      const noteHtml = note ? `<span style="font-size:9px;color:var(--gold);display:block;margin-top:2px;">${note}</span>` : '';
+      b.innerHTML = `<div><span class="sect-nom">${s.nom}</span><span class="sect-meta">${s.arrLabel}</span>${noteHtml}</div><span class="sect-id">${idLabelFn(s)}</span>`;
+      b.onclick = () => {
+        sectSel = idFn(s);
+        document.querySelectorAll('.sect-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+      };
+      sl.appendChild(b);
+    });
+  }
+
+  if (geoMode === 'secteur') {
+    addGroup('Paris — Secteurs DRIHL', SECTEURS, s=>s.id, s=>`S${s.id}`, s=>SECTEURS_NOTES[s.id]||null);
+    addGroup('Boulogne-Billancourt', QUARTIERS_BOULOGNE, s=>s.id, s=>s.id, null);
+  } else {
+    addGroup('Paris — Arrondissements', ARRONDISSEMENTS, s=>s.id, s=>`${s.id}e`, s=>s.note||null);
+    addGroup('Boulogne-Billancourt', QUARTIERS_BOULOGNE, s=>s.id, s=>s.id, null);
+  }
+}
+
 async function init() {
   buildSidebar();
   try {
@@ -267,13 +355,7 @@ async function init() {
 }
 
 function buildSidebar() {
-  const sl = document.getElementById('sectList');
-  SECTEURS.forEach(s => {
-    const b = document.createElement('button'); b.className='sect-btn'; b.id=`sb-${s.id}`;
-    b.innerHTML = `<div><span class="sect-nom">${s.nom}</span><span class="sect-meta">${s.arrLabel}</span></div><span class="sect-id">S${s.id}</span>`;
-    b.onclick = () => { sectSel=s.id; document.querySelectorAll('.sect-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
-    sl.appendChild(b);
-  });
+  rebuildList();
   const tr = document.getElementById('typoRows');
   typos.forEach((t,i) => {
     const row = document.createElement('div'); row.className='typo-row';
@@ -303,7 +385,13 @@ function lancer() {
 // ═══════════════════════════════════════════════════
 // DATA HELPERS
 // ═══════════════════════════════════════════════════
-function getTypeStats(sectId, typeBien) { return DB?.secteurs?.[String(sectId)]?.by_type?.[typeBien]||null; }
+function getTypeStats(sectId, typeBien) {
+  // Les IDs Boulogne sont des strings "B0"-"B6", les IDs Paris sont des numbers
+  if (geoMode==='arrondissement' && typeof sectId === 'number') {
+    return DB?.arrondissements?.[String(sectId)]?.by_type?.[typeBien]||null;
+  }
+  return DB?.secteurs?.[String(sectId)]?.by_type?.[typeBien]||null;
+}
 function getTypoStats(sectId, typeBien, typoId) { return getTypeStats(sectId,typeBien)?.by_typo?.[typoId]||null; }
 
 // Récupérer le bon dictionnaire de périodes selon la fenêtre
@@ -376,7 +464,11 @@ function fenLabel() {
 // RENDER
 // ═══════════════════════════════════════════════════
 function renderEtude(sectId, actives) {
-  const sect     = SECTEURS.find(s=>s.id===sectId);
+  // Chercher dans toutes les listes possibles
+  const isBoulogne = typeof sectId === 'string' && sectId.startsWith('B');
+  const sect = isBoulogne
+    ? QUARTIERS_BOULOGNE.find(s=>s.id===sectId)
+    : (geoMode==='secteur' ? SECTEURS : ARRONDISSEMENTS).find(s=>s.id===sectId);
   const typeBien = opts.appart?'Appartement':'Maison';
   const typeData = getTypeStats(sectId, typeBien);
   const box      = document.getElementById('content');
@@ -418,7 +510,7 @@ function renderEtude(sectId, actives) {
     <div class="etude-hdr">
       <div class="etude-hdr-left">
         <h2>${sect.nom}</h2>
-        <p>Secteur ${sectId} · ${sect.arrLabel} · ${typeBien} · DVF DGFiP · ${DB.meta.periode}</p>
+        <p>${isBoulogne?sectId:'Secteur '+sectId} · ${sect?.arrLabel||''} · ${typeBien} · DVF DGFiP · ${DB.meta.periode}</p>
       </div>
       <div class="chips">
         <span class="chip blue">${(typeData?.count||0).toLocaleString('fr-FR')} transactions</span>
