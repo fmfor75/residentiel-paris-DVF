@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 process_dvf.py v12 — Paris + Boulogne-Billancourt
 
-P�rimètre :
+P©rimÃ¨tre :
   - Paris (75) : 20 arrondissements → 14 secteurs DRIHL
   - Boulogne-Billancourt (92012) : 6 quartiers par bbox GPS
 
