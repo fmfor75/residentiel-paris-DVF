@@ -342,24 +342,34 @@ def download_hist(annee):
 
     return r75 + r92
 
+def try_geodvf(annee, dep):
+    """Tente latest puis des archives millésimées si l'année est sortie du glissant."""
+    urls = [
+        f"https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{dep}.csv.gz",
+        f"https://files.data.gouv.fr/geo-dvf/2020-10/csv/{annee}/departements/{dep}.csv.gz",
+        f"https://files.data.gouv.fr/geo-dvf/2021-04/csv/{annee}/departements/{dep}.csv.gz",
+    ]
+    for url in urls:
+        lines, mb = try_dl(url, timeout=120)
+        if lines and len(lines) > 100:
+            tag = 'latest' if 'latest' in url else url.split('geo-dvf/')[1].split('/')[0]
+            return lines, mb, tag
+    return None, 0, None
+
 def download_recent(annee):
-    print(f"  ↓ {annee} [récent]")
-    result=[]
-
-    # Paris
-    lines,mb=try_dl(GEODVF_URL.format(annee=annee,dep='75'))
+    print(f'  ↓ {annee} [récent]')
+    result = []
+    lines, mb, tag = try_geodvf(annee, '75')
     if lines:
-        print(f"    75: {mb:.1f}Mo")
-        result.extend(parse_csv_geo(lines,annee,'75'))
-
-    # Boulogne (dept 92)
-    lines,mb=try_dl(GEODVF_URL.format(annee=annee,dep='92'))
+        print(f'    75: {mb:.1f}Mo [{tag}]')
+        result.extend(parse_csv_geo(lines, annee, '75'))
+    else:
+        print(f'    ⚠ 75: aucune source pour {annee}')
+    lines, mb, tag = try_geodvf(annee, '92')
     if lines:
-        print(f"    92: {mb:.1f}Mo")
-        result.extend(parse_csv_geo(lines,annee,'92'))
+        print(f'    92: {mb:.1f}Mo [{tag}]')
+        result.extend(parse_csv_geo(lines, annee, '92'))
     return result
-
-# ── CACHE ─────────────────────────────────────────────────────────
 
 def load_cache():
     if not os.path.exists(HIST_CACHE): return None
