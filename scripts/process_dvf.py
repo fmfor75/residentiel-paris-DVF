@@ -1,48 +1,103 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-process_dvf.py v12 — Paris + Boulogne-Billancourt
+process_dvf.py v13 — pipeline DVF → dvf_paris.json
 
-P©rimÃ¨tre :
-  - Paris (75) : 20 arrondissements → 14 secteurs DRIHL
-  - Boulogne-Billancourt (92012) : 6 quartiers par bbox GPS
+Périmètre (lot 1) : Paris (75101–75120 → 14 secteurs) + Boulogne-Billancourt (92012 → quartiers).
+Le référentiel ZONES est prêt à recevoir d'autres communes (lot 4).
 
-Sources :
-  A1 : files.opendatarchives.fr (CSV géolocalisé 2014–2019)
-  A2 : data.cquest.org (TXT brut fallback 2014–2019)
-  B  : files.data.gouv.fr/geo-dvf (CSV géolocalisé 2020–2025)
-  B2 : files.data.gouv.fr/geo-dvf dept 92 (Boulogne 2020–2025)
+Historique des incidents qui ont façonné ce fichier (v12 → v13) :
+  - v12 définissait `download_recent` deux fois ; la seconde déballait 3 valeurs
+    d'une fonction qui en renvoie 4 → ValueError à chaque run. Une seule définition ici.
+  - 2019 Paris ne contenait que 11 224 mutations (source cquest « 201910 », TXT non
+    géolocalisé, semestre 1 seulement) et Boulogne 2019 : 0. Les sources non
+    géolocalisées / partielles sont abandonnées : on ne prend que les CSV
+    géolocalisés Etalab, et un millésime qui couvre l'année entière.
+  - 2020 absent : `geo-dvf/latest` est une archive glissante 5 ans. Chaque année
+    est désormais rattachée au millésime le plus récent qui la contient
+    (sondage HEAD des URLs candidates, résultat consigné dans meta.sources_used).
+  - Rien n'était compté : une année vide avait l'air d'un succès. Chaque exclusion
+    est comptée par motif ; une année anormalement creuse fait échouer le run.
+  - Une vente d'immeuble entier (10 appartements) était comptée comme UN appartement
+    au prix total / surface du plus grand lot. Règle explicite : exactement un
+    logement (Appartement ou Maison) par mutation, dépendances tolérées.
 """
 
-import os, json, gzip, io, time, requests, re
-from datetime import datetime
+import os, sys, io, csv, gzip, json, time, argparse, statistics
+from datetime import datetime, date
+from collections import Counter, defaultdict
+import requests
 
-# ── CONFIG ────────────────────────────────────────────────────────
+PARSER_VERSION = 13   # incrémenter à chaque changement de règle → invalide le cache
 
-OPENDATARCHIVES_URL = "https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/2019-04/csv/{annee}/departements/{dep}.csv.gz"
-CQUEST_MILLESIMES   = ["202004", "201910", "201904"]
-CQUEST_NOMS         = ["valeursfoncieres-{annee}.txt.gz", "ValeursFoncieres-{annee}.txt.gz"]
-GEODVF_URL          = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{dep}.csv.gz"
+# ══════════════════════════════════════════════════════════════════
+# CONFIG SOURCES
+# ══════════════════════════════════════════════════════════════════
 
-ANNEES_HIST    = list(range(2014, 2020))
-ANNEES_RECENTS = list(range(2020, 2026))
-HIST_CACHE = "data/dvf_hist.json"
+GEODVF_LATEST = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{dep}.csv.gz"
+ODA_DEP       = "https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/{mil}/csv/{annee}/departements/{dep}.csv.gz"
+ODA_FULL      = "https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/{mil}/csv/{annee}/full.csv.gz"
+
+FIRST_YEAR = 2014
+TODAY      = date.today()
+YEARS      = list(range(FIRST_YEAR, TODAY.year + 1))
+
+# Millésimes DGFiP : publication en avril (données au 31/12 N-1) et octobre (au 30/06 N).
+# Un millésime AAAA-MM couvre entièrement l'année Y si AAAA >= Y+1.
+def millesimes_candidats():
+    out = []
+    for y in range(TODAY.year, 2018, -1):
+        for m in ("10", "04"):
+            out.append(f"{y}-{m}")
+    return out
+
+CACHE_FILE = "data/dvf_hist.json"
 OUTPUT     = "data/dvf_paris.json"
 
-# ── RÉFÉRENTIELS PARIS ────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+# CONFIG MÉTIER — une seule source de vérité, recopiée dans le JSON
+# ══════════════════════════════════════════════════════════════════
 
+# Bornes de plausibilité. C'est LE seul endroit de prudence du pipeline (§4.2 méthode) :
+# les percentiles P10/P90 n'y sont pas sensibles, seule la moyenne l'est.
+# Mesuré sur 161 053 appartements Paris 2014–2019 : p1 ≈ 2 300 €/m², p99 ≈ 19–23 000 €/m².
+PPM2_MIN, PPM2_MAX = 1_000, 40_000
+SURF_MIN, SURF_MAX = 9, 400          # m² — alignées sur les typologies T1..T5
+
+# Natures de mutation retenues. « Vente en l'état futur d'achèvement » (VEFA) = neuf,
+# marché distinct de l'ancien : exclue et comptée. « Vente terrain à bâtir » : exclue.
+NATURES_RETENUES = {"vente"}
+
+TYPES_LOGEMENT = {"Appartement", "Maison"}
+TYPES_ANNEXE   = {"Dépendance"}
+
+TYPOLOGIES = [
+    {"id": "T1", "surfMin": 9,   "surfMax": 30},
+    {"id": "T2", "surfMin": 30,  "surfMax": 50},
+    {"id": "T3", "surfMin": 50,  "surfMax": 70},
+    {"id": "T4", "surfMin": 70,  "surfMax": 100},
+    {"id": "T5", "surfMin": 100, "surfMax": 400},
+]
+
+# Fenêtres précalculées (années civiles, depuis la dernière année présente). "all" = tout.
+FENETRES = [1, 3, 5, 10]
+
+# Garde : une année complète dont le volume d'appartements est inférieur à cette fraction
+# de la médiane des autres années complètes est considérée creuse → erreur.
+# Incident : 2019 à 11 224 (≈ 37 % des autres années) publié sans alerte.
+SEUIL_ANNEE_CREUSE = 0.6
+MIN_KEPT_RATIO     = 0.25   # mutations retenues / ventes candidates — en dessous, quelque chose est cassé
+PAUSE_ENTRE_FICHIERS = 1.0  # secondes, courtoisie envers les serveurs (0 dans les tests)
+
+# ── Zones ────────────────────────────────────────────────────────
 CODE_TO_ARR = {f"751{str(i).zfill(2)}": i for i in range(1, 21)}
 ARR_LABELS  = {i: ("1er" if i == 1 else f"{i}e") for i in range(1, 21)}
-
-ARR_TO_SECT = {
-    1:1,2:1,3:2,4:2,5:3,6:4,7:4,8:5,9:6,10:7,
-    11:13,12:8,13:10,14:10,15:9,16:5,17:6,18:7,19:7,20:13
-}
+ARR_TO_SECT = {1:1,2:1,3:2,4:2,5:3,6:4,7:4,8:5,9:6,10:7,11:13,12:8,13:10,14:10,15:9,16:5,17:6,18:7,19:7,20:13}
 
 SECTEURS_PARIS = {
     1: {"nom":"Louvre – Opéra","arrLabel":"1er, 2e","ville":"Paris"},
     2: {"nom":"Marais – Bastille","arrLabel":"3e, 4e","ville":"Paris"},
-    3: {"nom":"Île de la Cité – Luxembourg","arrLabel":"5e, 6e","ville":"Paris"},
+    3: {"nom":"Île de la Cité – Luxembourg","arrLabel":"5e","ville":"Paris"},
     4: {"nom":"Saint-Germain – Invalides","arrLabel":"6e, 7e","ville":"Paris"},
     5: {"nom":"Champs-Élysées – Trocadéro","arrLabel":"8e, 16e","ville":"Paris"},
     6: {"nom":"Opéra – Grands Boulevards","arrLabel":"9e, 17e nord","ville":"Paris"},
@@ -55,528 +110,464 @@ SECTEURS_PARIS = {
     13:{"nom":"Ménilmontant – Oberkampf","arrLabel":"11e, 20e","ville":"Paris"},
     14:{"nom":"Ivry – Tolbiac – Gobelins","arrLabel":"13e nord","ville":"Paris"},
 }
+# Frontières provisoires par latitude (lot 2 : polygones des quartiers administratifs).
+LAT_17, LAT_19, LAT_13 = 48.884, 48.880, 48.826
 
-# Frontières pour arrondissements partagés
-LAT_17_FRONTIERE = 48.884  # S6 au nord, S11 au sud
-LAT_19_FRONTIERE = 48.880  # S7 au nord, S12 au sud
-LAT_13_FRONTIERE = 48.826  # S14 au nord, S10 au sud
-
-def arr_to_sect_geo(arr_num, lat, lon):
-    if arr_num == 17: return 6 if lat >= LAT_17_FRONTIERE else 11
-    elif arr_num == 19: return 7 if lat >= LAT_19_FRONTIERE else 12
-    elif arr_num == 13: return 14 if lat >= LAT_13_FRONTIERE else 10
-    else: return ARR_TO_SECT.get(arr_num)
-
-# ── RÉFÉRENTIELS BOULOGNE ─────────────────────────────────────────
+def arr_to_sect_geo(arr, lat, lon):
+    if not lat: return ARR_TO_SECT.get(arr)
+    if arr == 17: return 6  if lat >= LAT_17 else 11
+    if arr == 19: return 7  if lat >= LAT_19 else 12
+    if arr == 13: return 14 if lat >= LAT_13 else 10
+    return ARR_TO_SECT.get(arr)
 
 CODE_BOULOGNE = "92012"
-
-# 6 quartiers définis par boîtes englobantes (lat_min, lat_max, lon_min, lon_max)
-# IDs : B1–B6 (préfixe B pour distinguer des secteurs Paris)
 QUARTIERS_BOULOGNE = {
-    "B1": {"nom":"Billancourt – Île Seguin",         "arrLabel":"Sud-Est · Seine",
-           "lat_min":48.820,"lat_max":48.836,"lon_min":2.225,"lon_max":2.252,"ville":"Boulogne"},
-    "B2": {"nom":"Pont de Sèvres – Rives de Seine",  "arrLabel":"Sud-Ouest · Pont de Sèvres",
-           "lat_min":48.820,"lat_max":48.836,"lon_min":2.210,"lon_max":2.226,"ville":"Boulogne"},
-    "B3": {"nom":"Centre-ville – République",         "arrLabel":"Centre",
-           "lat_min":48.836,"lat_max":48.848,"lon_min":2.228,"lon_max":2.252,"ville":"Boulogne"},
-    "B4": {"nom":"Silly – Gallieni – Droits de l'Homme","arrLabel":"Nord-Ouest",
-           "lat_min":48.836,"lat_max":48.852,"lon_min":2.210,"lon_max":2.232,"ville":"Boulogne"},
-    "B5": {"nom":"Boulogne Nord – Parchamp",          "arrLabel":"Nord · Bois de Boulogne",
-           "lat_min":48.843,"lat_max":48.855,"lon_min":2.232,"lon_max":2.260,"ville":"Boulogne"},
-    "B6": {"nom":"Marcel Sembat – Aguesseau",         "arrLabel":"Est · Métro ligne 9",
-           "lat_min":48.831,"lat_max":48.845,"lon_min":2.245,"lon_max":2.265,"ville":"Boulogne"},
+    "B1": {"nom":"Billancourt – Île Seguin","arrLabel":"Sud-Est · Seine","lat_min":48.820,"lat_max":48.836,"lon_min":2.225,"lon_max":2.252,"ville":"Boulogne"},
+    "B2": {"nom":"Pont de Sèvres – Rives de Seine","arrLabel":"Sud-Ouest","lat_min":48.820,"lat_max":48.836,"lon_min":2.210,"lon_max":2.226,"ville":"Boulogne"},
+    "B3": {"nom":"Centre-ville – République","arrLabel":"Centre","lat_min":48.836,"lat_max":48.848,"lon_min":2.228,"lon_max":2.252,"ville":"Boulogne"},
+    "B4": {"nom":"Silly – Gallieni – Droits de l'Homme","arrLabel":"Nord-Ouest","lat_min":48.836,"lat_max":48.852,"lon_min":2.210,"lon_max":2.232,"ville":"Boulogne"},
+    "B5": {"nom":"Boulogne Nord – Parchamp","arrLabel":"Nord","lat_min":48.843,"lat_max":48.855,"lon_min":2.232,"lon_max":2.260,"ville":"Boulogne"},
+    "B6": {"nom":"Marcel Sembat – Aguesseau","arrLabel":"Est","lat_min":48.831,"lat_max":48.845,"lon_min":2.245,"lon_max":2.265,"ville":"Boulogne"},
 }
-
-def latlon_to_boulogne_quartier(lat, lon):
-    """Retourne l'ID du quartier Boulogne correspondant aux coordonnées GPS."""
-    if not lat or not lon: return "B0"  # Sans géoloc → commune entière
+def boulogne_quartier(lat, lon):
+    if not lat or not lon: return "B0"
     for qid, q in QUARTIERS_BOULOGNE.items():
-        if q["lat_min"] <= lat < q["lat_max"] and q["lon_min"] <= lon < q["lon_max"]:
-            return qid
-    return "B0"  # Hors bbox (rare) → commune entière
+        if q["lat_min"] <= lat < q["lat_max"] and q["lon_min"] <= lon < q["lon_max"]: return qid
+    return "B0"
 
-# Fusionner les référentiels pour le JSON final
 ALL_SECTEURS = {
     **{str(k): v for k, v in SECTEURS_PARIS.items()},
     **QUARTIERS_BOULOGNE,
     "B0": {"nom":"Boulogne-Billancourt (commune entière)","arrLabel":"92100","ville":"Boulogne"},
 }
 
-TYPOLOGIES = [
-    {"id":"T1","surfMin":9,  "surfMax":30},
-    {"id":"T2","surfMin":30, "surfMax":50},
-    {"id":"T3","surfMin":50, "surfMax":70},
-    {"id":"T4","surfMin":70, "surfMax":100},
-    {"id":"T5","surfMin":100,"surfMax":400},
-]
+# Départements à télécharger et communes retenues dans chacun.
+DEPS = {
+    "75": set(CODE_TO_ARR.keys()),
+    "92": {CODE_BOULOGNE},
+}
 
-# ── HELPERS ───────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+# COMPTEURS
+# ══════════════════════════════════════════════════════════════════
+
+class Compteurs:
+    """Tout ce qui est écarté est compté, par (dep, année, motif)."""
+    def __init__(self): self.c = Counter()
+    def add(self, dep, annee, motif, n=1): self.c[(dep, annee, motif)] += n
+    def par_motif(self, dep=None, annee=None):
+        out = Counter()
+        for (d, a, m), n in self.c.items():
+            if (dep is None or d == dep) and (annee is None or a == annee): out[m] += n
+        return out
+    def export(self):
+        out = defaultdict(lambda: defaultdict(dict))
+        for (d, a, m), n in sorted(self.c.items()): out[d][str(a)][m] = n
+        return {d: dict(v) for d, v in out.items()}
+
+CPT = Compteurs()
+
+# ══════════════════════════════════════════════════════════════════
+# RÉSEAU
+# ══════════════════════════════════════════════════════════════════
+
+HEAD_CACHE = {}
+def url_existe(url, timeout=20):
+    """HEAD → (existe, taille_Mo). Mémoïsé : une URL n'est sondée qu'une fois par run."""
+    if url in HEAD_CACHE: return HEAD_CACHE[url]
+    try:
+        r = requests.head(url, timeout=timeout, allow_redirects=True)
+        ok = r.status_code == 200
+        mb = int(r.headers.get("content-length", 0)) / 1e6
+        # Un fichier « existant » de moins de 10 Ko est une page d'erreur déguisée
+        if ok and 0 < mb < 0.01: ok = False
+        HEAD_CACHE[url] = (ok, mb)
+    except requests.RequestException:
+        HEAD_CACHE[url] = (False, 0)
+    return HEAD_CACHE[url]
+
+def choisir_source(annee, dep):
+    """Retourne (url, tag, complet) : le millésime le plus récent qui contient l'année.
+    Ordre : geo-dvf/latest (rafraîchi, 5 ans glissants) puis opendatarchives du plus récent au plus ancien.
+    `complet` = False si le millésime ne couvre pas l'année entière (publication d'avril de l'année même
+    ou d'octobre : semestre 1 seulement)."""
+    url = GEODVF_LATEST.format(annee=annee, dep=dep)
+    ok, mb = url_existe(url)
+    if ok: return url, "geo-dvf/latest", annee < TODAY.year   # l'année en cours est partielle par nature
+    for mil in millesimes_candidats():
+        my, mm = int(mil[:4]), int(mil[5:])
+        if my < annee: break                   # un millésime antérieur à l'année ne peut pas la contenir
+        for tpl in (ODA_DEP, ODA_FULL):
+            u = tpl.format(mil=mil, annee=annee, dep=dep)
+            ok, mb = url_existe(u)
+            if ok:
+                complet = my > annee            # publié l'année suivante ou plus tard → année entière
+                return u, f"opendatarchives/{mil}", complet
+    return None, None, False
+
+def stream_csv(url, timeout=600):
+    """Itère les lignes décodées d'un CSV gzip distant sans le charger en mémoire."""
+    r = requests.get(url, stream=True, timeout=timeout); r.raise_for_status()
+    r.raw.decode_content = False
+    gz = gzip.GzipFile(fileobj=r.raw)
+    return io.TextIOWrapper(gz, encoding="utf-8", errors="replace", newline="")
+
+# ══════════════════════════════════════════════════════════════════
+# PARSEUR (format CSV géolocalisé Etalab, une ligne par local/parcelle)
+# ══════════════════════════════════════════════════════════════════
+
+COLS_REQUISES = ["id_mutation","date_mutation","nature_mutation","valeur_fonciere","code_commune",
+                 "id_parcelle","type_local","surface_reelle_bati","nombre_pieces_principales",
+                 "longitude","latitude"]
+COLS_CARREZ = ["lot1_surface_carrez","lot2_surface_carrez","lot3_surface_carrez","lot4_surface_carrez","lot5_surface_carrez"]
 
 def to_f(s):
-    try: return float(str(s).replace(',','.').replace(' ','')) if s else 0.0
-    except: return 0.0
+    if not s: return 0.0
+    try: return float(str(s).replace(",", ".").replace(" ", ""))
+    except ValueError: return 0.0
 
-def get_quarter(date_str):
-    try:
-        d = datetime.strptime(date_str[:10], '%Y-%m-%d')
-        return f'{d.year}-Q{(d.month-1)//3+1}'
-    except: return None
+def parse_csv(fh, annee, dep, communes, journal=None):
+    """Lit le flux CSV, regroupe par mutation, applique les règles, renvoie la liste des mutations retenues.
+    `journal` (dict) reçoit le relevé : colonnes réelles, échantillon, compteurs."""
+    reader = csv.DictReader(fh)
+    cols = reader.fieldnames or []
+    manquantes = [c for c in COLS_REQUISES if c not in cols]
+    if manquantes:
+        raise RuntimeError(f"{dep}/{annee}: colonnes manquantes {manquantes} — colonnes lues : {cols}")
+    carrez_cols = [c for c in COLS_CARREZ if c in cols]
+    if journal is not None:
+        journal["colonnes"] = cols
+        journal["echantillon"] = []
 
-def consolidate(mutations, annee, dep='75'):
-    result = []; counts = {'Appartement':0,'Maison':0,'Autre':0,'sans_surf':0}
-    for m in mutations.values():
-        if m['val'] <= 0: continue
-        if not m['locaux']: counts['sans_surf'] += 1; continue
-        p = max(m['locaux'], key=lambda l: l['surf'])
-        surf = p['surf']
-        if surf <= 0: continue
-        ppm2 = m['val'] / surf
-        if ppm2 < 500 or ppm2 > 60000: continue
-        tl = p['type']; ct = p.get('code_type', 0)
-        if 'appartement' in tl.lower() or ct == 2: tl = 'Appartement'; counts['Appartement'] += 1
-        elif 'maison' in tl.lower() or ct == 1: tl = 'Maison'; counts['Maison'] += 1
-        else: counts['Autre'] += 1; continue
-
-        lat = m.get('lat', 0.0); lon = m.get('lon', 0.0)
-        arr = m.get('arr'); code_comm = m.get('code_comm','')
-
-        if dep == '75':
-            sect = arr_to_sect_geo(arr, lat, lon) if (lat and lon) else ARR_TO_SECT.get(arr)
-        else:
-            # Boulogne
-            arr = None
-            sect = latlon_to_boulogne_quartier(lat, lon)
-
-        result.append({
-            'arr': arr, 'sect': sect, 'val': m['val'], 'surf': surf,
-            'type': tl, 'nbpp': p.get('nbpp',0), 'date': m['date'],
-            'annee': annee, 'lat': lat, 'lon': lon, 'dep': dep,
+    muts = {}     # id_mutation → {val, date, code, rows:[...]}
+    n_lignes = 0; n_perimetre = 0
+    natures = Counter()
+    for row in reader:
+        n_lignes += 1
+        code = row["code_commune"]
+        if code not in communes: continue
+        n_perimetre += 1
+        if journal is not None and len(journal["echantillon"]) < 3: journal["echantillon"].append(row)
+        nat = row["nature_mutation"].strip()
+        natures[nat] += 1
+        mid = f"{dep}_{row['id_mutation']}"
+        m = muts.get(mid)
+        if m is None:
+            m = muts[mid] = {"id": mid, "nature": nat.lower(), "val": to_f(row["valeur_fonciere"]),
+                             "date": row["date_mutation"][:10], "code": code, "rows": []}
+        tl = row["type_local"].strip()
+        carrez = max((to_f(row[c]) for c in carrez_cols), default=0.0)
+        m["rows"].append({
+            "parcelle": row["id_parcelle"], "type": tl,
+            "surf": to_f(row["surface_reelle_bati"]), "carrez": carrez,
+            "nbpp": int(to_f(row["nombre_pieces_principales"])),
+            "lat": to_f(row["latitude"]), "lon": to_f(row["longitude"]),
         })
-    has_geo = sum(1 for r in result if r['lat'])
-    print(f"    → {len(result)} | Appart:{counts['Appartement']} Maison:{counts['Maison']} "
-          f"SansSurf:{counts['sans_surf']} Géo:{has_geo}")
-    return result
 
-# ── PARSERS ───────────────────────────────────────────────────────
+    CPT.add(dep, annee, "lignes_lues", n_lignes)
+    CPT.add(dep, annee, "lignes_perimetre", n_perimetre)
+    for nat, n in natures.items(): CPT.add(dep, annee, f"nature:{nat}", n)
+    retenues = [r for r in (consolider(m, annee, dep) for m in muts.values()) if r]
+    CPT.add(dep, annee, "mutations_perimetre", len(muts))
+    CPT.add(dep, annee, "mutations_retenues", len(retenues))
+    if journal is not None: journal["compteurs"] = dict(CPT.par_motif(dep, annee))
+    return retenues
 
-def parse_csv_geo(lines, annee, dep='75'):
-    H = [h.strip().lower() for h in lines[0].split(',')]
-    def gi(n): return next((i for i,h in enumerate(H) if n in h), -1)
-    iMut=gi('id_mutation'); iDate=gi('date_mutation'); iNat=gi('nature_mutation')
-    iVal=gi('valeur_fonciere'); iCode=gi('code_commune')
-    iC1=gi('lot1_surface_carrez'); iC2=gi('lot2_surface_carrez')
-    iCodeT=gi('code_type_local'); iType=gi('type_local')
-    iSurf=gi('surface_reelle_bati'); iNbPP=gi('nombre_pieces_principales')
-    iLat=gi('latitude'); iLon=gi('longitude')
-    has_geo = iLat>=0 and iLon>=0
-    print(f"    Colonnes: val={iVal} code={iCode} surf={iSurf} lat={iLat} lon={iLon} {'✓géo' if has_geo else '✗géo'}")
-
-    # Pour Paris : filtrer uniquement les arrondissements
-    # Pour Boulogne : filtrer uniquement 92012
-    if dep == '75':
-        valid_codes = set(CODE_TO_ARR.keys())
+def consolider(m, annee, dep):
+    """Applique les règles à une mutation. Renvoie un dict ou None (motif compté)."""
+    if m["nature"] not in NATURES_RETENUES:
+        CPT.add(dep, annee, "excl_nature_non_vente"); return None
+    if m["val"] <= 0:
+        CPT.add(dep, annee, "excl_valeur_nulle"); return None
+    # Dédoublonnage des lignes strictement identiques (DVF en produit)
+    vus = set(); rows = []
+    for r in m["rows"]:
+        k = (r["parcelle"], r["type"], r["surf"], r["nbpp"], r["carrez"])
+        if k in vus: continue
+        vus.add(k); rows.append(r)
+    logements = [r for r in rows if r["type"] in TYPES_LOGEMENT]
+    autres    = [r for r in rows if r["type"] and r["type"] not in TYPES_LOGEMENT and r["type"] not in TYPES_ANNEXE]
+    if not logements:
+        CPT.add(dep, annee, "excl_sans_logement"); return None
+    if len(logements) > 1:
+        CPT.add(dep, annee, "excl_plusieurs_logements"); return None
+    if autres:
+        CPT.add(dep, annee, "excl_local_pro_dans_la_vente"); return None
+    lg = logements[0]
+    # Surface : Carrez si présente et cohérente avec la surface bâtie (±30 %), sinon surface réelle bâtie.
+    # Une Carrez très différente signale un lot annexe (cave, parking) porté sur la ligne du logement.
+    surf = lg["surf"]; source_surf = "bati"
+    if lg["carrez"] > 0 and (surf <= 0 or 0.7 <= lg["carrez"] / surf <= 1.3):
+        surf = lg["carrez"]; source_surf = "carrez"
+    if surf <= 0:
+        CPT.add(dep, annee, "excl_surface_nulle"); return None
+    if not (SURF_MIN <= surf < SURF_MAX):
+        CPT.add(dep, annee, "excl_surface_hors_bornes"); return None
+    ppm2 = m["val"] / surf
+    if not (PPM2_MIN <= ppm2 <= PPM2_MAX):
+        CPT.add(dep, annee, "excl_ppm2_hors_bornes"); return None
+    CPT.add(dep, annee, f"surface_source:{source_surf}")
+    lat, lon = lg["lat"], lg["lon"]
+    if not (lat and lon): CPT.add(dep, annee, "sans_geoloc")
+    if dep == "75":
+        arr = CODE_TO_ARR.get(m["code"]); sect = arr_to_sect_geo(arr, lat, lon)
     else:
-        valid_codes = {CODE_BOULOGNE}
+        arr = None; sect = boulogne_quartier(lat, lon)
+    return {"arr": arr, "sect": sect, "val": m["val"], "surf": surf, "type": lg["type"],
+            "nbpp": lg["nbpp"], "date": m["date"], "annee": annee, "lat": lat, "lon": lon,
+            "dep": dep, "code": m["code"]}
 
-    mutations = {}
-    for line in lines[1:]:
-        if not line.strip(): continue
-        c = line.split(',')
-        if len(c) < 20: continue
-        def g(i): return c[i].strip().strip('"') if 0<=i<len(c) else ''
-
-        code = g(iCode)
-        if dep == '75':
-            arr = CODE_TO_ARR.get(code)
-            if not arr: continue
-        else:
-            if code != CODE_BOULOGNE: continue
-            arr = None
-
-        if 'vente' not in g(iNat).lower(): continue
-        val  = to_f(g(iVal))
-        surf = to_f(g(iSurf))
-        c1   = to_f(g(iC1)) if iC1>=0 else 0
-        c2   = to_f(g(iC2)) if iC2>=0 else 0
-        surf = c1 if c1>0 else (c2 if c2>0 else surf)
-        tl=g(iType)
-        try: ct=int(float(g(iCodeT) or '0'))
-        except: ct=0
-        try: nbpp=int(float(g(iNbPP) or '0'))
-        except: nbpp=0
-        lat = to_f(g(iLat)) if has_geo else 0.0
-        lon = to_f(g(iLon)) if has_geo else 0.0
-        mut_id = g(iMut) or f"{g(iDate)}_{val}_{code}"
-        key = f"{code}_{mut_id}"
-        if key not in mutations:
-            mutations[key]={'arr':arr,'code_comm':code,'val':val,'date':g(iDate)[:10],
-                            'lat':lat,'lon':lon,'locaux':[]}
-        if val>0: mutations[key]['val']=val
-        if lat and not mutations[key]['lat']: mutations[key]['lat']=lat; mutations[key]['lon']=lon
-        if surf>0: mutations[key]['locaux'].append({'surf':surf,'type':tl,'code_type':ct,'nbpp':nbpp})
-    return consolidate(mutations, annee, dep)
-
-HEADER_KEYS = ['date mutation','nature mutation','valeur fonciere']
-
-def detect_cols(header_line):
-    cols=[h.strip().strip('"').lower() for h in header_line.split('|')]
-    def find(kws):
-        for kw in kws:
-            for i,c in enumerate(cols):
-                if kw in c: return i
-        return -1
-    return {'date':find(['date mutation']),'nature':find(['nature mutation']),
-            'val':find(['valeur fonciere']),'dep':find(['code departement']),
-            'comm':find(['code commune']),'cp':find(['code postal']),
-            'plan':find(['no plan']),'type':find(['type local']),
-            'surf':find(['surface reelle bati']),'nbpp':find(['nombre pieces'])}
-
-def parse_txt_pipe(lines, annee):
-    if not lines: return []
-    hi = next((i for i,l in enumerate(lines[:10]) if any(k in l.lower() for k in HEADER_KEYS)), -1)
-    idx = detect_cols(lines[hi]) if hi>=0 else {'date':8,'nature':9,'val':10,'dep':18,'comm':19,'cp':16,'plan':21,'type':35,'surf':37,'nbpp':38}
-    start = hi+1 if hi>=0 else 0
-    mutations={}; skipped=0
-    for line in lines[start:]:
-        if not line.strip(): continue
-        c=line.split('|')
-        if len(c)<15: continue
-        def g(i): return c[i].strip().strip('"') if 0<=i<len(c) else ''
-        dep=g(idx['dep']).zfill(2) if idx['dep']>=0 else '??'
-        if dep!='75': skipped+=1; continue
-        comm=g(idx['comm']).zfill(3) if idx['comm']>=0 else ''
-        code_5=f"75{comm}"; arr=CODE_TO_ARR.get(code_5)
-        if arr is None:
-            cp=g(idx['cp']) if idx['cp']>=0 else ''
-            if cp.startswith('750') and len(cp)==5:
-                try:
-                    n=int(cp[3:])
-                    if 1<=n<=20: arr=n
-                except: pass
-        if arr is None: continue
-        if 'vente' not in (g(idx['nature']).lower() if idx['nature']>=0 else ''): continue
-        val=to_f(g(idx['val'])) if idx['val']>=0 else 0
-        surf=0.0
-        for ci in range(24,min(33,len(c))):
-            v=c[ci].strip()
-            if ','in v or('.'in v and v.replace('.','').isdigit()):
-                try:
-                    f=float(v.replace(',','.'))
-                    if f>5: surf=f; break
-                except: pass
-        if surf==0.0: surf=to_f(g(idx['surf'])) if idx['surf']>=0 else 0
-        tl_idx=idx['type']; tl=g(tl_idx) if tl_idx>=0 else ''
-        if tl.isdigit() and tl_idx+1<len(c): tl=g(tl_idx+1)
-        try: nbpp=int(float(g(idx['nbpp']))) if idx['nbpp']>=0 and g(idx['nbpp']) else 0
-        except: nbpp=0
-        date=g(idx['date'])[:10] if idx['date']>=0 else ''
-        if '/'in date:
-            p=date.split('/')
-            if len(p)==3: date=f"{p[2]}-{p[1].zfill(2)}-{p[0].zfill(2)}"
-        plan=g(idx['plan']) if idx['plan']>=0 else ''
-        mut_id=f"{date}_{int(val) if val else 0}_{code_5}_{plan}"
-        key=f"{arr}_{mut_id}"
-        if key not in mutations:
-            mutations[key]={'arr':arr,'code_comm':code_5,'val':val,'date':date,'lat':0.0,'lon':0.0,'locaux':[]}
-        if val>0: mutations[key]['val']=val
-        if surf>0 or tl: mutations[key]['locaux'].append({'surf':surf,'type':tl,'nbpp':nbpp})
-    print(f"    {len(mutations)} mutations Paris | {skipped} hors Paris")
-    return consolidate(mutations, annee, '75')
-
-# ── TÉLÉCHARGEMENTS ───────────────────────────────────────────────
-
-def try_dl(url, timeout=300, enc='utf-8'):
-    try:
-        r=requests.get(url,timeout=timeout); r.raise_for_status()
-        mb=len(r.content)/1024/1024
-        for e in [enc,'latin-1']:
-            try:
-                with gzip.open(io.BytesIO(r.content),'rt',encoding=e,errors='replace') as f:
-                    return f.read().split('\n'), mb
-            except: pass
-        return None,0
-    except: return None,0
-
-def find_cquest_url(annee):
-    for mil in CQUEST_MILLESIMES:
-        for tpl in CQUEST_NOMS:
-            url=f"https://data.cquest.org/dgfip_dvf/{mil}/{tpl.format(annee=annee)}"
-            try:
-                r=requests.head(url,timeout=15,allow_redirects=True)
-                if r.status_code==200 and int(r.headers.get('content-length',0))>100000:
-                    return url
-            except: pass
-    return None
-
-def download_hist(annee):
-    """2014-2019 : opendatarchives (géoloc) → cquest (fallback)"""
-    print(f"  ↓ {annee} [hist]")
-
-    # A1 : opendatarchives Paris (géolocalisé)
-    url_a1=OPENDATARCHIVES_URL.format(annee=annee, dep='75')
-    print(f"    A1: {url_a1}")
-    lines,mb=try_dl(url_a1,timeout=120)
-    if lines and len(lines)>100:
-        print(f"    ✓ {mb:.1f}Mo géolocalisé (Paris)")
-        r75 = parse_csv_geo(lines, annee, '75')
-    else:
-        print(f"    ✗ A1 indisponible → A2 cquest")
-        url_a2=find_cquest_url(annee)
-        if url_a2:
-            print(f"    A2: {url_a2}")
-            lines,mb=try_dl(url_a2,timeout=300,enc='latin-1')
-            r75 = parse_txt_pipe(lines, annee) if lines else []
-        else:
-            print(f"    ⚠ Aucune source disponible"); r75=[]
-
-    # A1 Boulogne : même archive opendatarchives, dept 92
-    url_b1=OPENDATARCHIVES_URL.format(annee=annee, dep='92')
-    print(f"    Boulogne A1: {url_b1}")
-    lines,mb=try_dl(url_b1,timeout=180)
-    if lines and len(lines)>100:
-        print(f"    ✓ {mb:.1f}Mo (dept 92)")
-        r92 = parse_csv_geo(lines, annee, '92')
-    else:
-        print(f"    ✗ Boulogne indisponible pour {annee}"); r92=[]
-
-    return r75 + r92
-
-def try_geodvf(annee, dep):
-    """Tente latest puis archives opendatarchives si l'année est absente du glissant."""
-    urls = [
-        # Source A : geo-dvf latest (glissant 5 ans, 2021-2025 en 2026)
-        f"https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{dep}.csv.gz",
-        # Source B : opendatarchives — fichier France entière, filtre par dep dans le parseur
-        f"https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/2021-04/csv/{annee}/full.csv.gz",
-        f"https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/2020-10/csv/{annee}/full.csv.gz",
-    ]
-    for url in urls:
-        lines, mb = try_dl(url, timeout=180)
-        if lines and len(lines) > 100:
-            tag = 'latest' if 'latest/csv' in url else url.split('/etalab-dvf/')[1].split('/')[0]
-            return lines, mb, tag, ('full' in url)
-    return None, 0, None, False
-
-def download_recent(annee):
-    print(f'  ↓ {annee} [récent]')
-    result = []
-    lines, mb, tag, is_full = try_geodvf(annee, '75')
-    if lines:
-        print(f'    75: {mb:.1f}Mo [{tag}{"·full" if is_full else ""}]')
-        result.extend(parse_csv_geo(lines, annee, '75'))
-    else:
-        print(f'    ⚠ 75: aucune source pour {annee}')
-    # Pour Boulogne (92) : si on a déjà téléchargé le full, on le réutilise
-    if is_full:
-        print(f'    92: [{tag}·full — même fichier]')
-        result.extend(parse_csv_geo(lines, annee, '92'))
-    else:
-        lines2, mb2, tag2, _ = try_geodvf(annee, '92')
-        if lines2:
-            print(f'    92: {mb2:.1f}Mo [{tag2}]')
-            result.extend(parse_csv_geo(lines2, annee, '92'))
-    return result
-
-def download_recent(annee):
-    print(f'  ↓ {annee} [récent]')
-    result = []
-    lines, mb, tag = try_geodvf(annee, '75')
-    if lines:
-        print(f'    75: {mb:.1f}Mo [{tag}]')
-        result.extend(parse_csv_geo(lines, annee, '75'))
-    else:
-        print(f'    ⚠ 75: aucune source pour {annee}')
-    lines, mb, tag = try_geodvf(annee, '92')
-    if lines:
-        print(f'    92: {mb:.1f}Mo [{tag}]')
-        result.extend(parse_csv_geo(lines, annee, '92'))
-    return result
+# ══════════════════════════════════════════════════════════════════
+# CACHE — mutations consolidées par (dep, année), avec la source et la version du parseur
+# ══════════════════════════════════════════════════════════════════
 
 def load_cache():
-    if not os.path.exists(HIST_CACHE): return None
+    if not os.path.exists(CACHE_FILE): return {}
     try:
-        with open(HIST_CACHE,'r',encoding='utf-8') as f: data=json.load(f)
-        muts=data.get('mutations',[]); annees=data.get('annees',[])
-        has_geo=sum(1 for m in muts if m.get('lat'))
-        has_boulogne=sum(1 for m in muts if m.get('dep')=='92')
-        print(f"  ✓ Cache: {len(muts):,} mutations ({annees}) — {has_geo:,} géo, {has_boulogne:,} Boulogne")
-        if has_boulogne==0:
-            print("  ↻ Cache sans Boulogne — re-téléchargement")
-            return None
-        return muts
-    except Exception as e:
-        print(f"  ⚠ Cache invalide ({e})"); return None
+        with open(CACHE_FILE, encoding="utf-8") as f: d = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"  ⚠ cache illisible ({e}) — ignoré"); return {}
+    if d.get("parser_version") != PARSER_VERSION:
+        print(f"  ↻ cache parser v{d.get('parser_version')} ≠ v{PARSER_VERSION} — reconstruit"); return {}
+    entries = d.get("entries", {})
+    print(f"  ✓ cache v{PARSER_VERSION} : {len(entries)} entrées (dep_année)")
+    return entries
 
-def save_cache(muts):
-    annees=sorted(set(m['annee'] for m in muts))
-    with open(HIST_CACHE,'w',encoding='utf-8') as f:
-        json.dump({'annees':annees,'generated_at':datetime.utcnow().isoformat()+'Z','mutations':muts},
-                  f,ensure_ascii=False,separators=(',',':'))
-    print(f"  ✓ Cache: {os.path.getsize(HIST_CACHE)/1024/1024:.1f}Mo, {len(muts):,} mutations")
+def save_cache(entries):
+    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump({"parser_version": PARSER_VERSION, "generated_at": datetime.utcnow().isoformat()+"Z",
+                   "entries": entries}, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"  ✓ cache écrit : {os.path.getsize(CACHE_FILE)/1e6:.1f} Mo, {len(entries)} entrées")
 
-# ── STATS ─────────────────────────────────────────────────────────
+def annee_cacheable(annee):
+    """Les années couvertes par geo-dvf/latest sont rafraîchies à chaque run (enregistrements tardifs) ;
+    les autres proviennent d'un millésime figé et peuvent être cachées définitivement."""
+    return annee < TODAY.year - 5
 
-def ppm2(m): return m['val']/m['surf']
+# ══════════════════════════════════════════════════════════════════
+# STATS
+# ══════════════════════════════════════════════════════════════════
 
-def compute_stats(muts):
-    if len(muts)<3: return None
-    p=sorted([ppm2(m) for m in muts]); s=sorted([m['surf'] for m in muts]); n=len(p)
-    return {'count':n,'mean':round(sum(p)/n),'median':round(p[n//2]),
-            'min':round(p[0]),'max':round(p[-1]),
-            'q1':round(p[n//4]),'q3':round(p[3*n//4]),
-            'p10':round(p[max(0,n//10)]),'p90':round(p[min(n-1,9*n//10)]),
-            'surf_mean':round(sum(m['surf'] for m in muts)/n,1),
-            'surf_median':round(s[n//2],1)}
+def percentile(sorted_vals, q):
+    n = len(sorted_vals)
+    if n == 0: return None
+    pos = q * (n - 1); lo = int(pos); hi = min(lo + 1, n - 1)
+    return sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * (pos - lo)
 
-def compute_by_period(muts, key_fn):
-    groups={}
+def stats(muts, min_n=3):
+    if len(muts) < min_n: return None
+    p = sorted(m["val"] / m["surf"] for m in muts); s = sorted(m["surf"] for m in muts); n = len(p)
+    return {"count": n, "mean": round(sum(p) / n), "median": round(percentile(p, .5)),
+            "min": round(p[0]), "max": round(p[-1]),
+            "q1": round(percentile(p, .25)), "q3": round(percentile(p, .75)),
+            "p10": round(percentile(p, .10)), "p90": round(percentile(p, .90)),
+            "surf_mean": round(sum(s) / n, 1), "surf_median": round(percentile(s, .5), 1)}
+
+def by_period(muts, key_fn):
+    g = defaultdict(list)
     for m in muts:
-        k=key_fn(m)
-        if k: groups.setdefault(k,[]).append(m)
-    result={}
-    for k,ms in sorted(groups.items()):
-        if len(ms)<3: continue
-        p=sorted([ppm2(m) for m in ms]); s=[m['surf'] for m in ms]; n=len(p)
-        result[k]={'count':n,'mean':round(sum(p)/n),'median':round(p[n//2]),
-                   'min':round(p[0]),'max':round(p[-1]),
-                   'q1':round(p[n//4]),'q3':round(p[3*n//4]),
-                   'p10':round(p[max(0,n//10)]),'p90':round(p[min(n-1,9*n//10)]),
-                   'surf_mean':round(sum(s)/n,1)}
-    return result
+        k = key_fn(m)
+        if k: g[k].append(m)
+    return {k: v for k in sorted(g) if (v := stats(g[k]))}
 
-def compute_by_year(muts):
-    return compute_by_period(muts, lambda m: str(m['annee']) if m.get('annee') else None)
+by_year    = lambda muts: by_period(muts, lambda m: str(m["annee"]))
+by_quarter = lambda muts: by_period(muts, lambda m: f"{m['date'][:4]}-Q{(int(m['date'][5:7]) - 1) // 3 + 1}" if len(m["date"]) >= 7 else None)
+by_month   = lambda muts: by_period(muts, lambda m: m["date"][:7] if len(m["date"]) >= 7 else None)
 
-def compute_by_quarter(muts):
-    return compute_by_period(muts, lambda m: get_quarter(m.get('date','')))
+def windows(muts, last_year):
+    """Percentiles calculés sur les mutations elles-mêmes pour chaque fenêtre d'années civiles.
+    Incident v12 : le « P90 sur 10 ans » affiché était le max des P90 annuels."""
+    out = {}
+    for n in FENETRES:
+        sel = [m for m in muts if m["annee"] > last_year - n]
+        s = stats(sel)
+        if s: out[str(n)] = {**s, "from": last_year - n + 1, "to": last_year}
+    s = stats(muts)
+    if s: out["all"] = {**s, "from": min(m["annee"] for m in muts), "to": last_year}
+    return out
 
-def get_typo(surf):
+def typo_of(surf):
     for t in TYPOLOGIES:
-        if t['surfMin']<=surf<t['surfMax']: return t['id']
+        if t["surfMin"] <= surf < t["surfMax"]: return t["id"]
     return None
 
-def build_typo_stats(muts):
-    by={}
+def typo_stats(muts, last_year):
+    g = defaultdict(list)
     for m in muts:
-        t=get_typo(m['surf'])
-        if t: by.setdefault(t,[]).append(m)
-    total=sum(len(v) for v in by.values()); result={}
-    for t_id,ms in by.items():
-        s=compute_stats(ms)
-        if s:
-            result[t_id]={**s,'share':round(len(ms)/total*100,1) if total>0 else 0,
-                          'by_year':compute_by_year(ms),'by_quarter':compute_by_quarter(ms)}
-    if result:
-        result['_top_typo']=max((k for k in result if not k.startswith('_')),key=lambda k:result[k]['count'])
-    return result
+        t = typo_of(m["surf"])
+        if t: g[t].append(m)
+    total = sum(len(v) for v in g.values()); out = {}
+    for t, ms in g.items():
+        s = stats(ms)
+        if s: out[t] = {**s, "share": round(len(ms) / total * 100, 1) if total else 0,
+                        "by_year": by_year(ms), "by_quarter": by_quarter(ms), "windows": windows(ms, last_year)}
+    if out: out["_top_typo"] = max((k for k in out if not k.startswith("_")), key=lambda k: out[k]["count"])
+    return out
 
-def build_group_stats(all_muts, key_fn, labels):
-    groups={}
-    for m in all_muts:
-        k=key_fn(m)
-        if k is not None: groups.setdefault(k,[]).append(m)
-    result={}
-    for k,muts in groups.items():
-        by_type={}
-        for tb in ['Appartement','Maison']:
-            f=[m for m in muts if m['type']==tb]
-            s=compute_stats(f)
-            if s:
-                by_type[tb]={**s,'by_year':compute_by_year(f),
-                             'by_quarter':compute_by_quarter(f),'by_typo':build_typo_stats(f)}
-        result[str(k)]={'label':labels.get(k,str(k)),'by_type':by_type,'total':len(muts)}
-    return result
+def group_stats(muts, key_fn, labels, last_year):
+    g = defaultdict(list)
+    for m in muts:
+        k = key_fn(m)
+        if k is not None: g[k].append(m)
+    out = {}
+    for k, ms in g.items():
+        by_type = {}
+        for tb in sorted(TYPES_LOGEMENT):
+            f = [m for m in ms if m["type"] == tb]
+            s = stats(f)
+            if s: by_type[tb] = {**s, "by_year": by_year(f), "by_quarter": by_quarter(f), "by_month": by_month(f),
+                                 "by_typo": typo_stats(f, last_year), "windows": windows(f, last_year)}
+        out[str(k)] = {"label": labels.get(k, str(k)), "by_type": by_type, "total": len(ms)}
+    return out
 
-# ── MAIN ──────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+# GARDES
+# ══════════════════════════════════════════════════════════════════
+
+def verifier(all_muts, sources_used, allow_partial, years):
+    """Fait échouer le run plutôt que publier un JSON creux. Renvoie la liste des anomalies bloquantes."""
+    erreurs = []
+    apparts_75 = Counter(m["annee"] for m in all_muts if m["dep"] == "75" and m["type"] == "Appartement")
+    completes = [a for a in apparts_75 if sources_used.get(f"75_{a}", {}).get("complet") and a < TODAY.year]
+    if len(completes) >= 3:
+        med = statistics.median(apparts_75[a] for a in completes)
+        for a in completes:
+            if apparts_75[a] < SEUIL_ANNEE_CREUSE * med and a not in allow_partial:
+                erreurs.append(f"année {a} creuse : {apparts_75[a]:,} appartements Paris contre médiane {med:,.0f} "
+                               f"(source {sources_used[f'75_{a}']['url']}). DVF_ALLOW_PARTIAL={a} pour publier quand même.")
+    for a in years:
+        if a >= TODAY.year or a in allow_partial: continue
+        for dep in DEPS:
+            src = sources_used.get(f"{dep}_{a}")
+            if not src:
+                erreurs.append(f"{dep}/{a} : aucune source trouvée")
+            elif not src["complet"]:
+                erreurs.append(f"{dep}/{a} : seule une source PARTIELLE existe ({src['url']}). DVF_ALLOW_PARTIAL={a} pour publier quand même.")
+    for (dep, a) in {(m["dep"], m["annee"]) for m in all_muts}:
+        c = CPT.par_motif(dep, a)
+        cand = c.get("mutations_perimetre", 0); kept = c.get("mutations_retenues", 0)
+        if cand and kept / cand < MIN_KEPT_RATIO:
+            erreurs.append(f"{dep}/{a} : {kept:,} retenues sur {cand:,} mutations ({kept/cand:.0%}) — parseur ou règles à revoir")
+    return erreurs
+
+# ══════════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════════
 
 def main():
-    os.makedirs('data',exist_ok=True)
-    all_muts=[]
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--probe", action="store_true", help="sonde les sources et affiche le relevé, n'écrit rien")
+    ap.add_argument("--years", type=str, default="", help="limiter aux années, ex. 2024,2025")
+    ap.add_argument("--no-cache", action="store_true")
+    ap.add_argument("--allow-partial", type=str, default=os.environ.get("DVF_ALLOW_PARTIAL", ""))
+    args = ap.parse_args()
+    years = [int(y) for y in args.years.split(",") if y] or YEARS
+    allow_partial = {int(y) for y in args.allow_partial.split(",") if y}
 
-    print('=== Historique 2014–2019 ===')
-    hist=load_cache()
-    if hist is None:
-        hist=[]
-        for annee in ANNEES_HIST:
-            hist.extend(download_hist(annee))
-            time.sleep(2)
-        if hist: save_cache(hist)
-        else: print('  ⚠ Historique indisponible')
-    else:
-        print('  Cache utilisé ✓')
-    all_muts.extend(hist)
+    print(f"=== process_dvf v{PARSER_VERSION} — {TODAY} — années {years[0]}–{years[-1]} ===")
+    print("\n=== Sondage des sources ===")
+    sources = {}
+    for annee in years:
+        for dep in DEPS:
+            url, tag, complet = choisir_source(annee, dep)
+            sources[f"{dep}_{annee}"] = {"url": url, "tag": tag, "complet": complet, "mb": HEAD_CACHE.get(url, (0, 0))[1] if url else 0}
+            print(f"  {dep}/{annee}: {tag or '— AUCUNE —'}{'' if complet else ' (PARTIEL)'} {url or ''}")
+    if args.probe:
+        # Relevé détaillé sur la dernière année trouvée pour chaque dep : colonnes réelles + échantillon + compteurs
+        for dep in DEPS:
+            key = next((f"{dep}_{a}" for a in reversed(years) if sources[f"{dep}_{a}"]["url"]), None)
+            if not key: continue
+            annee = int(key.split("_")[1]); journal = {}
+            print(f"\n=== Relevé {dep}/{annee} ({sources[key]['url']}) ===")
+            parse_csv(stream_csv(sources[key]["url"]), annee, dep, DEPS[dep], journal)
+            print("  colonnes :", journal["colonnes"])
+            for r in journal["echantillon"]: print("  ligne :", json.dumps(r, ensure_ascii=False)[:600])
+            print("  compteurs :", json.dumps(journal["compteurs"], ensure_ascii=False, indent=1))
+        return 0
 
-    print('\n=== Récent 2020–2025 ===')
-    for annee in ANNEES_RECENTS:
-        all_muts.extend(download_recent(annee))
-        time.sleep(1)
+    print("\n=== Téléchargement / cache ===")
+    cache = {} if args.no_cache else load_cache()
+    all_muts = []; sources_used = {}
+    for annee in years:
+        for dep in DEPS:
+            key = f"{dep}_{annee}"; src = sources[key]
+            if not src["url"]:
+                print(f"  ✗ {key}: aucune source"); continue
+            ent = cache.get(key)
+            if ent and annee_cacheable(annee) and ent.get("url") == src["url"]:
+                print(f"  ✓ {key}: cache ({len(ent['mutations']):,} mutations)")
+                for motif, n in ent.get("compteurs", {}).items(): CPT.add(dep, annee, motif, n)  # les exclusions cachées restent comptées
+            else:
+                t0 = time.time()
+                muts = parse_csv(stream_csv(src["url"]), annee, dep, DEPS[dep])
+                c = CPT.par_motif(dep, annee)
+                print(f"  ↓ {key}: {src['tag']} {src['mb']:.0f} Mo → {len(muts):,} retenues / {c['mutations_perimetre']:,} mutations "
+                      f"({time.time()-t0:.0f}s) | excl. plusieurs logements {c.get('excl_plusieurs_logements',0):,}, "
+                      f"non-vente {c.get('excl_nature_non_vente',0):,}, ppm2 hors bornes {c.get('excl_ppm2_hors_bornes',0):,}")
+                ent = {"url": src["url"], "tag": src["tag"], "complet": src["complet"], "mutations": muts, "compteurs": dict(c)}
+                if annee_cacheable(annee): cache[key] = ent
+                time.sleep(PAUSE_ENTRE_FICHIERS)
+            sources_used[key] = {"url": ent["url"], "tag": ent["tag"], "complet": src["complet"], "count": len(ent["mutations"])}
+            all_muts.extend(ent["mutations"])
+    if not args.no_cache: save_cache(cache)
 
-    paris75   = [m for m in all_muts if m.get('dep')=='75']
-    boulogne92= [m for m in all_muts if m.get('dep')=='92']
-    apparts75 = [m for m in paris75   if m['type']=='Appartement']
-    apparts92 = [m for m in boulogne92 if m['type']=='Appartement']
-    annees_ok = sorted(set(m['annee'] for m in all_muts))
-    periode   = f"{min(annees_ok)}–{max(annees_ok)}" if annees_ok else "N/A"
+    print("\n=== Volumes retenus (appartements) ===")
+    for dep in DEPS:
+        row = {a: sum(1 for m in all_muts if m["dep"] == dep and m["annee"] == a and m["type"] == "Appartement") for a in years}
+        print(f"  {dep}: " + " ".join(f"{a}:{n:,}" for a, n in row.items()))
 
-    print(f'\n=== Total : {len(all_muts):,} mutations ===')
-    print(f'  Paris 75    : {len(paris75):,} ({len(apparts75):,} apparts)')
-    print(f'  Boulogne 92 : {len(boulogne92):,} ({len(apparts92):,} apparts)')
-    print(f'  Années : {annees_ok}')
+    erreurs = verifier(all_muts, sources_used, allow_partial, years)
+    if erreurs:
+        print("\n✗ RUN REFUSÉ — anomalies bloquantes :")
+        for e in erreurs: print("   -", e)
+        return 2
 
-    print('\n=== Calcul statistiques ===')
+    print("\n=== Calcul des statistiques ===")
+    annees_ok = sorted({m["annee"] for m in all_muts}); last_year = annees_ok[-1]
+    last_date = max(m["date"] for m in all_muts)
+    paris = [m for m in all_muts if m["dep"] == "75"]; boul = [m for m in all_muts if m["dep"] == "92"]
+    apparts75 = [m for m in paris if m["type"] == "Appartement"]; apparts92 = [m for m in boul if m["type"] == "Appartement"]
 
-    # Paris : arrondissements + secteurs DRIHL
-    arr_s   = build_group_stats(paris75, lambda m:m['arr'],
-                                {i:f"Paris {ARR_LABELS[i]} arr." for i in range(1,21)})
-    sect_s  = build_group_stats(paris75, lambda m:m['sect'],
-                                {k:v['nom'] for k,v in SECTEURS_PARIS.items()})
+    arr_s  = group_stats(paris, lambda m: m["arr"], {i: f"Paris {ARR_LABELS[i]} arr." for i in ARR_LABELS}, last_year)
+    sect_s = group_stats(paris, lambda m: m["sect"], {k: v["nom"] for k, v in SECTEURS_PARIS.items()}, last_year)
+    boul_s = group_stats(boul, lambda m: m["sect"], {k: v["nom"] for k, v in QUARTIERS_BOULOGNE.items()}, last_year)
+    boul_s["B0"] = group_stats(boul, lambda m: "B0", {"B0": ALL_SECTEURS["B0"]["nom"]}, last_year).get("B0", {})
 
-    # Boulogne : quartiers
-    boulog_s = build_group_stats(boulogne92, lambda m:m['sect'],
-                                 {k:v['nom'] for k,v in QUARTIERS_BOULOGNE.items()})
-    # Boulogne commune entière
-    boulog_s["B0"] = build_group_stats(boulogne92, lambda m:'B0',
-                                       {'B0':'Boulogne-Billancourt (commune entière)'}).get('B0',{})
-
-    # Fusionner secteurs Paris + quartiers Boulogne
-    all_zones = {**sect_s, **boulog_s}
-
-    gs=compute_stats(apparts75); gby=compute_by_year(apparts75)
-    gbyq=compute_by_quarter(apparts75); gtypo=build_typo_stats(apparts75)
-
-    output={
-        'meta':{
-            'generated_at':datetime.utcnow().isoformat()+'Z',
-            'source_hist':'opendatarchives/cquest (2014–2019)',
-            'source_recent':'files.data.gouv.fr/geo-dvf (2020–2025)',
-            'annees':annees_ok,'total_mutations':len(all_muts),
-            'total_apparts':len(apparts75)+len(apparts92),
-            'total_apparts_paris':len(apparts75),
-            'total_apparts_boulogne':len(apparts92),
-            'periode':periode,'cache_hist':os.path.exists(HIST_CACHE),
+    output = {
+        "meta": {
+            "generated_at": datetime.utcnow().isoformat() + "Z", "parser_version": PARSER_VERSION,
+            "annees": annees_ok, "periode": f"{annees_ok[0]}–{last_year}",
+            "last_year": last_year, "last_date": last_date,
+            "last_year_complete": last_date >= f"{last_year}-12-15",
+            "total_mutations": len(all_muts), "total_apparts": len(apparts75) + len(apparts92),
+            "total_apparts_paris": len(apparts75), "total_apparts_boulogne": len(apparts92),
+            "sources_used": sources_used, "exclusions": CPT.export(),
+            "regles": {"ppm2": [PPM2_MIN, PPM2_MAX], "surface": [SURF_MIN, SURF_MAX],
+                       "natures": sorted(NATURES_RETENUES), "un_logement_par_mutation": True},
+            "cache_hist": os.path.exists(CACHE_FILE),
         },
-        'global':{'stats':gs,'by_year':gby,'by_quarter':gbyq,'by_typo':gtypo},
-        'arrondissements': arr_s,
-        'secteurs':        all_zones,   # Paris DRIHL + Boulogne quartiers
-        'secteurs_ref':    ALL_SECTEURS,
-        'arr_to_sect':     {str(k):v for k,v in ARR_TO_SECT.items()},
-        'typologies_ref':  TYPOLOGIES,
-        'boulogne': {
-            'total_mutations': len(boulogne92),
-            'total_apparts':   len(apparts92),
-            'by_year':         compute_by_year(apparts92),
-            'by_quarter':      compute_by_quarter(apparts92),
-        },
+        "global": {"stats": stats(apparts75), "by_year": by_year(apparts75), "by_quarter": by_quarter(apparts75),
+                   "by_typo": typo_stats(apparts75, last_year), "windows": windows(apparts75, last_year)},
+        "arrondissements": arr_s,
+        "secteurs": {**sect_s, **boul_s},
+        "secteurs_ref": ALL_SECTEURS,
+        "arr_to_sect": {str(k): v for k, v in ARR_TO_SECT.items()},
+        "typologies_ref": TYPOLOGIES,
+        "fenetres_ref": FENETRES,
+        "boulogne": {"total_mutations": len(boul), "total_apparts": len(apparts92),
+                     "by_year": by_year(apparts92), "by_quarter": by_quarter(apparts92)},
     }
+    os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
+    with open(OUTPUT, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"\n✓ {OUTPUT} ({os.path.getsize(OUTPUT)/1e6:.1f} Mo) — {output['meta']['periode']} — dernière mutation {last_date}")
+    gby = output["global"]["by_year"]
+    if len(gby) >= 2:
+        y0, y1 = list(gby)[0], list(gby)[-1]
+        print(f"  Paris médiane {y0}→{y1} : {gby[y0]['median']:,}→{gby[y1]['median']:,} €/m² "
+              f"({(gby[y1]['median']-gby[y0]['median'])/gby[y0]['median']*100:+.1f} %)")
+    return 0
 
-    with open(OUTPUT,'w',encoding='utf-8') as f:
-        json.dump(output,f,ensure_ascii=False,indent=2)
-
-    kb=os.path.getsize(OUTPUT)/1024
-    print(f'\n✓ {OUTPUT} ({kb:.0f} Ko) — {periode}')
-    if gby:
-        yrs=list(gby.keys()); v0=gby[yrs[0]]['median']; v1=gby[yrs[-1]]['median']
-        print(f'  Paris évolution {yrs[0]}→{yrs[-1]} : {(v1-v0)/v0*100:+.1f}% ({v0:,}→{v1:,} €/m²)')
-
-if __name__=='__main__': main()
+if __name__ == "__main__":
+    sys.exit(main())
