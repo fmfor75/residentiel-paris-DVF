@@ -343,18 +343,40 @@ def download_hist(annee):
     return r75 + r92
 
 def try_geodvf(annee, dep):
-    """Tente latest puis des archives millésimées si l'année est sortie du glissant."""
+    """Tente latest puis archives opendatarchives si l'année est absente du glissant."""
     urls = [
+        # Source A : geo-dvf latest (glissant 5 ans, 2021-2025 en 2026)
         f"https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{dep}.csv.gz",
-        f"https://files.data.gouv.fr/geo-dvf/2020-10/csv/{annee}/departements/{dep}.csv.gz",
-        f"https://files.data.gouv.fr/geo-dvf/2021-04/csv/{annee}/departements/{dep}.csv.gz",
+        # Source B : opendatarchives — fichier France entière, filtre par dep dans le parseur
+        f"https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/2021-04/csv/{annee}/full.csv.gz",
+        f"https://files.opendatarchives.fr/cadastre.data.gouv.fr/data/etalab-dvf/2020-10/csv/{annee}/full.csv.gz",
     ]
     for url in urls:
-        lines, mb = try_dl(url, timeout=120)
+        lines, mb = try_dl(url, timeout=180)
         if lines and len(lines) > 100:
-            tag = 'latest' if 'latest' in url else url.split('geo-dvf/')[1].split('/')[0]
-            return lines, mb, tag
-    return None, 0, None
+            tag = 'latest' if 'latest/csv' in url else url.split('/etalab-dvf/')[1].split('/')[0]
+            return lines, mb, tag, ('full' in url)
+    return None, 0, None, False
+
+def download_recent(annee):
+    print(f'  ↓ {annee} [récent]')
+    result = []
+    lines, mb, tag, is_full = try_geodvf(annee, '75')
+    if lines:
+        print(f'    75: {mb:.1f}Mo [{tag}{"·full" if is_full else ""}]')
+        result.extend(parse_csv_geo(lines, annee, '75'))
+    else:
+        print(f'    ⚠ 75: aucune source pour {annee}')
+    # Pour Boulogne (92) : si on a déjà téléchargé le full, on le réutilise
+    if is_full:
+        print(f'    92: [{tag}·full — même fichier]')
+        result.extend(parse_csv_geo(lines, annee, '92'))
+    else:
+        lines2, mb2, tag2, _ = try_geodvf(annee, '92')
+        if lines2:
+            print(f'    92: {mb2:.1f}Mo [{tag2}]')
+            result.extend(parse_csv_geo(lines2, annee, '92'))
+    return result
 
 def download_recent(annee):
     print(f'  ↓ {annee} [récent]')
