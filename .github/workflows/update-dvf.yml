@@ -9,6 +9,7 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
       contents: write
 
@@ -27,15 +28,25 @@ jobs:
       - name: Télécharger et traiter les données DVF Paris
         run: python scripts/process_dvf.py
 
-      - name: Vérifier que le fichier JSON a été généré
+      - name: Vérifier les fichiers générés
         run: |
           ls -lh data/
-          python -c "import json; d=json.load(open('data/dvf_paris.json')); print(f'OK — {d[\"meta\"][\"total_mutations\"]} transactions')"
+          python -c "
+          import json, os
+          d = json.load(open('data/dvf_paris.json'))
+          m = d['meta']
+          print(f'OK — {m[\"total_mutations\"]:,} mutations | {m[\"periode\"]} | cache hist: {m[\"cache_hist\"]}')
+          if os.path.exists('data/dvf_hist.json'):
+              h = json.load(open('data/dvf_hist.json'))
+              print(f'Cache hist : {len(h[\"mutations\"]):,} mutations | {h[\"annees\"]}')
+          "
 
       - name: Commit et push
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
           git add data/dvf_paris.json
-          git diff --staged --quiet || git commit -m "DVF Paris mis à jour — $(date +'%Y-%m-%d')"
+          git add data/dvf_hist.json 2>/dev/null || true
+          git status --short data/
+          git diff --staged --quiet || git commit -m "DVF Paris+Boulogne $(date +'%Y-%m-%d') — $(python -c \"import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])\")"
           git push
