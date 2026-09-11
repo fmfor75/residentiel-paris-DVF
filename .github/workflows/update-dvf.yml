@@ -48,5 +48,6 @@ jobs:
           git add data/dvf_paris.json
           git add data/dvf_hist.json 2>/dev/null || true
           git status --short data/
-          git diff --staged --quiet || git commit -m "DVF Paris+Boulogne $(date +'%Y-%m-%d') — $(python -c \"import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])\")"
+          PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
+          git diff --staged --quiet || git commit -m "DVF Paris+Boulogne $(date +'%Y-%m-%d') — ${PERIODE}"
           git push
