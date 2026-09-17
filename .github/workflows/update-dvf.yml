@@ -1,15 +1,33 @@
-name: Mise à jour DVF Paris
+name: Mise à jour DVF
 
 on:
   schedule:
-    - cron: '0 6 15 4 *'
-    - cron: '0 6 15 10 *'
+    - cron: '0 6 20 4 *'    # après la publication DGFiP d'avril (données au 31/12 N-1)
+    - cron: '0 6 20 10 *'   # après la publication d'octobre (données au 30/06 N)
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe = sonder les sources et relever colonnes/volumes sans rien écrire · full = run complet"
+        type: choice
+        options: [full, probe]
+        default: full
+      allow_partial:
+        description: "Années à publier malgré une source partielle/creuse, ex. 2019,2020 (vide = aucune)"
+        type: string
+        default: ""
+      no_cache:
+        description: "Ignorer le cache dvf_hist.json (retélécharge tout, ~30–60 min)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: dvf-update
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: write
 
@@ -17,37 +35,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Installer les dépendances
-        run: pip install requests pandas
+      - name: Dépendances
+        run: pip install requests
 
-      - name: Télécharger et traiter les données DVF Paris
-        run: python scripts/process_dvf.py
+      # La suite de tests tourne sur un jeu de données jetable : elle prouve que le code est correct,
+      # pas que les sources réelles ont le format attendu — c'est le run réel qui le prouve.
+      - name: Tests bout en bout (fixtures)
+        run: python -m unittest tests.test_pipeline -v
 
-      - name: Vérifier les fichiers générés
+      - name: Sondage des sources (probe)
+        if: ${{ github.event.inputs.mode == 'probe' }}
+        run: python scripts/process_dvf.py --probe
+
+      - name: Traitement DVF
+        if: ${{ github.event.inputs.mode != 'probe' }}
+        env:
+          DVF_ALLOW_PARTIAL: ${{ github.event.inputs.allow_partial }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.no_cache }}" = "true" ]; then ARGS="--no-cache"; fi
+          python scripts/process_dvf.py $ARGS
+
+      - name: Vérification du JSON produit
+        if: ${{ github.event.inputs.mode != 'probe' }}
         run: |
           ls -lh data/
-          python -c "
-          import json, os
-          d = json.load(open('data/dvf_paris.json'))
-          m = d['meta']
-          print(f'OK — {m[\"total_mutations\"]:,} mutations | {m[\"periode\"]} | cache hist: {m[\"cache_hist\"]}')
-          if os.path.exists('data/dvf_hist.json'):
-              h = json.load(open('data/dvf_hist.json'))
-              print(f'Cache hist : {len(h[\"mutations\"]):,} mutations | {h[\"annees\"]}')
-          "
+          python - <<'EOF'
+          import json
+          d = json.load(open('data/dvf_paris.json', encoding='utf-8')); m = d['meta']
+          print(f"OK — {m['total_mutations']:,} mutations | {m['periode']} | dernière mutation {m['last_date']} | parser v{m['parser_version']}")
+          for k, s in sorted(m['sources_used'].items()):
+              print(f"  {k}: {s['count']:>7,}  {s['tag']}{'' if s['complet'] else '  (PARTIEL)'}")
+          EOF
 
       - name: Commit et push
+        if: ${{ github.event.inputs.mode != 'probe' }}
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
-          git add data/dvf_paris.json
-          git add data/dvf_hist.json 2>/dev/null || true
+          git add data/dvf_paris.json data/dvf_hist.json
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
-          git diff --staged --quiet || git commit -m "DVF Paris+Boulogne $(date +'%Y-%m-%d') — ${PERIODE}"
+          git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"
           git push
