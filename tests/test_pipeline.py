@@ -22,7 +22,7 @@ class Pipeline(unittest.TestCase):
         os.makedirs(self.work); self.cwd = os.getcwd(); os.chdir(self.work)
         importlib.reload(P)
         P.TODAY = date(2026, 9, 11); P.YEARS = list(range(2014, 2027))
-        P.HEAD_CACHE.clear(); P.CPT = P.Compteurs(); P.PAUSE_ENTRE_FICHIERS = 0
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); P.PAUSE_ENTRE_FICHIERS = 0
 
     def tearDown(self):
         os.chdir(self.cwd); shutil.rmtree(self.tmp, ignore_errors=True)
@@ -66,27 +66,38 @@ class Pipeline(unittest.TestCase):
         self.assertIn("8", d["arrondissements"]); self.assertEqual(d["typologies_ref"], P.TYPOLOGIES)
         # Le P90 de fenêtre est bien un percentile sur les mutations, pas un max de P90 annuels
         self.assertLessEqual(s5["windows"]["all"]["p90"], max(v["p90"] for v in s5["by_year"].values()))
-        # Cache : années ≤ 2020 uniquement, avec compteurs
-        cache = json.load(open("data/dvf_hist.json", encoding="utf-8"))
+        # Cache : toutes les années, chacune avec l'empreinte de sa source et ses compteurs
+        import gzip
+        cache = json.load(gzip.open("data/dvf_cache.json.gz", "rt", encoding="utf-8"))
         self.assertEqual(cache["parser_version"], P.PARSER_VERSION)
-        self.assertTrue(all(int(k.split("_")[1]) <= 2020 for k in cache["entries"]))
-        self.assertIn("compteurs", cache["entries"]["75_2020"])
+        self.assertEqual(len(cache["entries"]), 13 * 2)
+        self.assertIn("compteurs", cache["entries"]["75_2020"]); self.assertTrue(cache["entries"]["75_2025"]["empreinte"])
+        self.assertEqual(m["fichiers_telecharges"], 26)
 
     def test_cache_reutilise_et_compteurs_conserves(self):
         code, _ = self.run_pipeline(); self.assertEqual(code, 0)
-        d1 = json.load(open("data/dvf_paris.json", encoding="utf-8"))
-        # Second run : les années cachées ne sont pas retéléchargées mais leurs exclusions restent comptées
-        P.HEAD_CACHE.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py"]
+        d1 = json.load(open("data/dvf_paris.json", encoding="utf-8")); mtime1 = os.path.getmtime("data/dvf_paris.json")
+        # Second run, sources inchangées : rien n'est téléchargé, rien n'est réécrit
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py"]
+        self.assertEqual(P.main(), 0)
+        self.assertEqual(os.path.getmtime("data/dvf_paris.json"), mtime1)
+        # Troisième run : un seul fichier source modifié (2025/75) → un seul téléchargement, exclusions cachées conservées
+        f = os.path.join(self.src, "geo-dvf/latest/csv/2025/departements/75.csv.gz"); os.utime(f, (os.path.getmtime(f) + 100,) * 2)
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py"]
         self.assertEqual(P.main(), 0)
         d2 = json.load(open("data/dvf_paris.json", encoding="utf-8"))
+        self.assertEqual(d2["meta"]["fichiers_telecharges"], 1)
         self.assertEqual(d1["meta"]["exclusions"]["75"]["2018"], d2["meta"]["exclusions"]["75"]["2018"])
         self.assertEqual(d1["secteurs"]["5"]["by_type"]["Appartement"]["count"], d2["secteurs"]["5"]["by_type"]["Appartement"]["count"])
+        # --force recalcule même sans changement
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py", "--force"]
+        self.assertEqual(P.main(), 0); self.assertEqual(json.load(open("data/dvf_paris.json", encoding="utf-8"))["meta"]["fichiers_telecharges"], 0)
 
     def test_garde_annee_creuse(self):
         code, _ = self.run_pipeline("annee_creuse")
         self.assertEqual(code, 2); self.assertFalse(os.path.exists("data/dvf_paris.json"))
         # Autorisation explicite → publie
-        P.HEAD_CACHE.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py", "--allow-partial", "2018"]
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py", "--allow-partial", "2018"]
         self.assertEqual(P.main(), 0)
 
     def test_garde_source_partielle(self):

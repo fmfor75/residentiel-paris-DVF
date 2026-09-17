@@ -28,7 +28,7 @@ from datetime import datetime, date
 from collections import Counter, defaultdict
 import requests
 
-PARSER_VERSION = 13   # incrémenter à chaque changement de règle → invalide le cache
+PARSER_VERSION = 13   # incrémenter à chaque changement de RÈGLE (pas de format de cache) → invalide le cache
 
 # ══════════════════════════════════════════════════════════════════
 # CONFIG SOURCES
@@ -51,7 +51,7 @@ def millesimes_candidats():
             out.append(f"{y}-{m}")
     return out
 
-CACHE_FILE = "data/dvf_hist.json"
+CACHE_FILE = "data/dvf_cache.json.gz"   # v13.1 : toutes les années, gzip (36 Mo → ~8 Mo), empreinte de source par entrée
 OUTPUT     = "data/dvf_paris.json"
 
 # ══════════════════════════════════════════════════════════════════
@@ -173,7 +173,10 @@ CPT = Compteurs()
 
 HEAD_CACHE = {}
 def url_existe(url, timeout=20):
-    """HEAD → (existe, taille_Mo). Mémoïsé : une URL n'est sondée qu'une fois par run."""
+    """HEAD → (existe, taille_Mo). Mémoïsé : une URL n'est sondée qu'une fois par run.
+    HEAD_INFO[url] garde l'empreinte (Last-Modified + Content-Length) : c'est elle qui décide
+    si un fichier déjà traité doit être retéléchargé (run mensuel, incident : le calendrier
+    semestriel ratait la régénération de geo-dvf, un mois après la publication DGFiP)."""
     if url in HEAD_CACHE: return HEAD_CACHE[url]
     try:
         r = requests.head(url, timeout=timeout, allow_redirects=True)
@@ -182,9 +185,11 @@ def url_existe(url, timeout=20):
         # Un fichier « existant » de moins de 10 Ko est une page d'erreur déguisée
         if ok and 0 < mb < 0.01: ok = False
         HEAD_CACHE[url] = (ok, mb)
+        HEAD_INFO[url] = f"{r.headers.get('last-modified','')}|{r.headers.get('content-length','')}" if ok else ""
     except requests.RequestException:
-        HEAD_CACHE[url] = (False, 0)
+        HEAD_CACHE[url] = (False, 0); HEAD_INFO[url] = ""
     return HEAD_CACHE[url]
+HEAD_INFO = {}
 
 def choisir_source(annee, dep):
     """Retourne (url, tag, complet) : le millésime le plus récent qui contient l'année.
@@ -324,7 +329,7 @@ def consolider(m, annee, dep):
 def load_cache():
     if not os.path.exists(CACHE_FILE): return {}
     try:
-        with open(CACHE_FILE, encoding="utf-8") as f: d = json.load(f)
+        with gzip.open(CACHE_FILE, "rt", encoding="utf-8") as f: d = json.load(f)
     except (OSError, ValueError) as e:
         print(f"  ⚠ cache illisible ({e}) — ignoré"); return {}
     if d.get("parser_version") != PARSER_VERSION:
@@ -335,15 +340,18 @@ def load_cache():
 
 def save_cache(entries):
     os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+    with gzip.open(CACHE_FILE, "wt", encoding="utf-8", compresslevel=6) as f:
         json.dump({"parser_version": PARSER_VERSION, "generated_at": datetime.utcnow().isoformat()+"Z",
                    "entries": entries}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  ✓ cache écrit : {os.path.getsize(CACHE_FILE)/1e6:.1f} Mo, {len(entries)} entrées")
 
-def annee_cacheable(annee):
-    """Les années couvertes par geo-dvf/latest sont rafraîchies à chaque run (enregistrements tardifs) ;
-    les autres proviennent d'un millésime figé et peuvent être cachées définitivement."""
-    return annee < TODAY.year - 5
+def cache_valide(ent, src):
+    """Une entrée de cache est réutilisable si elle vient de la même URL et que l'empreinte du fichier
+    distant (Last-Modified + taille) n'a pas bougé. Sans empreinte côté serveur, on ne cache que les
+    millésimes figés (opendatarchives), jamais geo-dvf/latest qui est régénéré."""
+    if not ent or ent.get("url") != src["url"]: return False
+    if src["empreinte"]: return ent.get("empreinte") == src["empreinte"]
+    return "opendatarchives" in (src["tag"] or "")
 
 # ══════════════════════════════════════════════════════════════════
 # STATS
@@ -460,6 +468,7 @@ def main():
     ap.add_argument("--probe", action="store_true", help="sonde les sources et affiche le relevé, n'écrit rien")
     ap.add_argument("--years", type=str, default="", help="limiter aux années, ex. 2024,2025")
     ap.add_argument("--no-cache", action="store_true")
+    ap.add_argument("--force", action="store_true", help="recalculer et réécrire même si aucune source n'a changé")
     ap.add_argument("--allow-partial", type=str, default=os.environ.get("DVF_ALLOW_PARTIAL", ""))
     args = ap.parse_args()
     years = [int(y) for y in args.years.split(",") if y] or YEARS
@@ -471,7 +480,8 @@ def main():
     for annee in years:
         for dep in DEPS:
             url, tag, complet = choisir_source(annee, dep)
-            sources[f"{dep}_{annee}"] = {"url": url, "tag": tag, "complet": complet, "mb": HEAD_CACHE.get(url, (0, 0))[1] if url else 0}
+            sources[f"{dep}_{annee}"] = {"url": url, "tag": tag, "complet": complet, "mb": HEAD_CACHE.get(url, (0, 0))[1] if url else 0,
+                                         "empreinte": HEAD_INFO.get(url, "") if url else ""}
             print(f"  {dep}/{annee}: {tag or '— AUCUNE —'}{'' if complet else ' (PARTIEL)'} {url or ''}")
     if args.probe:
         # Relevé détaillé sur la dernière année trouvée pour chaque dep : colonnes réelles + échantillon + compteurs
@@ -488,15 +498,15 @@ def main():
 
     print("\n=== Téléchargement / cache ===")
     cache = {} if args.no_cache else load_cache()
-    all_muts = []; sources_used = {}
+    all_muts = []; sources_used = {}; telecharges = 0
     for annee in years:
         for dep in DEPS:
             key = f"{dep}_{annee}"; src = sources[key]
             if not src["url"]:
                 print(f"  ✗ {key}: aucune source"); continue
             ent = cache.get(key)
-            if ent and annee_cacheable(annee) and ent.get("url") == src["url"]:
-                print(f"  ✓ {key}: cache ({len(ent['mutations']):,} mutations)")
+            if cache_valide(ent, src):
+                print(f"  ✓ {key}: cache ({len(ent['mutations']):,} mutations, source inchangée)")
                 for motif, n in ent.get("compteurs", {}).items(): CPT.add(dep, annee, motif, n)  # les exclusions cachées restent comptées
             else:
                 t0 = time.time()
@@ -505,11 +515,24 @@ def main():
                 print(f"  ↓ {key}: {src['tag']} {src['mb']:.0f} Mo → {len(muts):,} retenues / {c['mutations_perimetre']:,} mutations "
                       f"({time.time()-t0:.0f}s) | excl. plusieurs logements {c.get('excl_plusieurs_logements',0):,}, "
                       f"non-vente {c.get('excl_nature_non_vente',0):,}, ppm2 hors bornes {c.get('excl_ppm2_hors_bornes',0):,}")
-                ent = {"url": src["url"], "tag": src["tag"], "complet": src["complet"], "mutations": muts, "compteurs": dict(c)}
-                if annee_cacheable(annee): cache[key] = ent
+                ent = {"url": src["url"], "tag": src["tag"], "complet": src["complet"], "empreinte": src["empreinte"],
+                       "mutations": muts, "compteurs": dict(c)}
+                cache[key] = ent; telecharges += 1
                 time.sleep(PAUSE_ENTRE_FICHIERS)
-            sources_used[key] = {"url": ent["url"], "tag": ent["tag"], "complet": src["complet"], "count": len(ent["mutations"])}
+            sources_used[key] = {"url": ent["url"], "tag": ent["tag"], "complet": src["complet"], "count": len(ent["mutations"]),
+                                 "empreinte": ent.get("empreinte", "")}
             all_muts.extend(ent["mutations"])
+    # Entrées de cache orphelines (année/dep qui n'a plus de source) : conservées mais non utilisées.
+    if telecharges == 0 and os.path.exists(OUTPUT) and not args.force:
+        try:
+            prev = json.load(open(OUTPUT, encoding="utf-8"))["meta"]
+            meme_parser = prev.get("parser_version") == PARSER_VERSION
+            memes_sources = {k: v.get("url") for k, v in prev.get("sources_used", {}).items()} == {k: v["url"] for k, v in sources.items() if v["url"]}
+        except (OSError, ValueError, KeyError):
+            meme_parser = memes_sources = False
+        if meme_parser and memes_sources:
+            print("\n= Aucune source modifiée depuis le dernier run, JSON inchangé — rien à écrire (--force pour recalculer).")
+            return 0
     if not args.no_cache: save_cache(cache)
 
     print("\n=== Volumes retenus (appartements) ===")
@@ -542,7 +565,7 @@ def main():
             "last_year_complete": last_date >= f"{last_year}-12-15",
             "total_mutations": len(all_muts), "total_apparts": len(apparts75) + len(apparts92),
             "total_apparts_paris": len(apparts75), "total_apparts_boulogne": len(apparts92),
-            "sources_used": sources_used, "exclusions": CPT.export(),
+            "sources_used": sources_used, "exclusions": CPT.export(), "fichiers_telecharges": telecharges,
             "regles": {"ppm2": [PPM2_MIN, PPM2_MAX], "surface": [SURF_MIN, SURF_MAX],
                        "natures": sorted(NATURES_RETENUES), "un_logement_par_mutation": True},
             "cache_hist": os.path.exists(CACHE_FILE),

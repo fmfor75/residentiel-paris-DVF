@@ -2,8 +2,12 @@ name: Mise à jour DVF
 
 on:
   schedule:
-    - cron: '0 6 20 4 *'    # après la publication DGFiP d'avril (données au 31/12 N-1)
-    - cron: '0 6 20 10 *'   # après la publication d'octobre (données au 30/06 N)
+    # Mensuel : DGFiP publie en avril (données au 31/12 N-1) et en octobre (au 30/06 N), puis Etalab
+    # régénère geo-dvf quelques semaines plus tard (18 mai en 2026). Un calendrier semestriel fixe
+    # ratait cette régénération. Le script compare l'empreinte de chaque source (Last-Modified + taille)
+    # à celle du run précédent et s'arrête sans rien écrire si rien n'a changé : un run à vide coûte
+    # ~2 min et ne produit aucun commit.
+    - cron: '0 6 1 * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -16,7 +20,11 @@ on:
         type: string
         default: ""
       no_cache:
-        description: "Ignorer le cache dvf_hist.json (retélécharge tout, ~30–60 min)"
+        description: "Ignorer le cache dvf_cache.json.gz (retélécharge tout, ~30–60 min)"
+        type: boolean
+        default: false
+      force:
+        description: "Recalculer et réécrire le JSON même si aucune source n'a changé"
         type: boolean
         default: false
 
@@ -58,7 +66,8 @@ jobs:
           DVF_ALLOW_PARTIAL: ${{ github.event.inputs.allow_partial }}
         run: |
           ARGS=""
-          if [ "${{ github.event.inputs.no_cache }}" = "true" ]; then ARGS="--no-cache"; fi
+          if [ "${{ github.event.inputs.no_cache }}" = "true" ]; then ARGS="$ARGS --no-cache"; fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
           python scripts/process_dvf.py $ARGS
 
       - name: Vérification du JSON produit
@@ -68,7 +77,7 @@ jobs:
           python - <<'EOF'
           import json
           d = json.load(open('data/dvf_paris.json', encoding='utf-8')); m = d['meta']
-          print(f"OK — {m['total_mutations']:,} mutations | {m['periode']} | dernière mutation {m['last_date']} | parser v{m['parser_version']}")
+          print(f"OK — {m['total_mutations']:,} mutations | {m['periode']} | dernière mutation {m['last_date']} | parser v{m['parser_version']} | fichiers téléchargés ce run : {m.get('fichiers_telecharges')}")
           for k, s in sorted(m['sources_used'].items()):
               print(f"  {k}: {s['count']:>7,}  {s['tag']}{'' if s['complet'] else '  (PARTIEL)'}")
           EOF
@@ -78,7 +87,7 @@ jobs:
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
-          git add data/dvf_paris.json data/dvf_hist.json
+          git add data/dvf_paris.json data/dvf_cache.json.gz
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
           git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"
