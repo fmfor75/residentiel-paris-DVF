@@ -289,14 +289,9 @@ const ARRONDISSEMENTS = [
   {id:20,nom:"Paris 20e",  arrLabel:"Ménilmontant · Père-Lachaise", note:null},
 ];
 
-const SECTEURS_NOTES = {
-  6:  "⚠ 9e arr. + partie nord du 17e (les deux zones sont agrégées)",
-  11: "⚠ Partie sud du 17e — données du 17e entier faute de géoloc au quartier",
-  12: "⚠ Partie nord du 19e — données du 19e entier faute de géoloc au quartier",
-  14: "⚠ Partie sud du 13e — données du 13e entier faute de géoloc au quartier",
-  7:  "⚠ 10e, 18e + partie du 19e (le 19e est partagé avec S12)",
-  10: "⚠ 14e + partie du 13e (le 13e est partagé avec S14)",
-};
+// Lot 2 : les secteurs sont désormais des listes de quartiers entiers (polygones officiels) ;
+// plus aucun arrondissement n'est « agrégé faute de géoloc ». Les notes d'avertissement ont été retirées.
+const SECTEURS_NOTES = {};
 
 // ═══════════════════════════════════════════════════
 // INIT
@@ -348,6 +343,17 @@ async function init() {
     const r = await fetch('./data/dvf_paris.json?t='+Date.now());
     if (!r.ok) throw new Error('HTTP '+r.status);
     DB = await r.json();
+    // Lot 2 : le référentiel des secteurs vient du JSON (data/geo/referentiel.json), plus du HTML.
+    if (DB.secteurs_ref) {
+      SECTEURS.length = 0; QUARTIERS_BOULOGNE.length = 0;
+      Object.entries(DB.secteurs_ref).forEach(([id, s]) => {
+        if (s.ville === 'Boulogne') QUARTIERS_BOULOGNE.push({id, nom: s.nom, arrLabel: s.arrLabel || ''});
+        else SECTEURS.push({id: +id, nom: s.nom, arrLabel: s.arrLabel || ''});
+      });
+      SECTEURS.sort((a, b) => a.id - b.id);
+      QUARTIERS_BOULOGNE.sort((a, b) => parseInt(a.id.slice(1)) - parseInt(b.id.slice(1)));
+      rebuildList();
+    }
     const d = new Date(DB.meta.generated_at);
     setStatus('ok', `${(DB.meta.total_apparts||0).toLocaleString('fr-FR')} apparts · ${DB.meta.periode} · MàJ ${d.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`);
     document.getElementById('topSub').textContent = `DVF · Secteurs encadrement des loyers · ${DB.meta.periode}`;

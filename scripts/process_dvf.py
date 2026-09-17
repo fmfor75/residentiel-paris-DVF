@@ -89,57 +89,60 @@ SEUIL_ANNEE_CREUSE = 0.6
 MIN_KEPT_RATIO     = 0.25   # mutations retenues / ventes candidates — en dessous, quelque chose est cassé
 PAUSE_ENTRE_FICHIERS = 1.0  # secondes, courtoisie envers les serveurs (0 dans les tests)
 
-# ── Zones ────────────────────────────────────────────────────────
+# ── Géographie ───────────────────────────────────────────────────
+# Une seule source de vérité : data/geo/ (construit par scripts/build_geo.py, commité).
+# Incident v12–v13 : secteurs par arrondissement + seuils de latitude qui coupaient des quartiers en
+# deux et inversaient les étiquettes (Épinettes dans « Opéra – Grands Boulevards ») ; quartiers de
+# Boulogne par bbox dont un restait vide. Désormais : point-dans-polygone sur les quartiers officiels.
 CODE_TO_ARR = {f"751{str(i).zfill(2)}": i for i in range(1, 21)}
 ARR_LABELS  = {i: ("1er" if i == 1 else f"{i}e") for i in range(1, 21)}
-ARR_TO_SECT = {1:1,2:1,3:2,4:2,5:3,6:4,7:4,8:5,9:6,10:7,11:13,12:8,13:10,14:10,15:9,16:5,17:6,18:7,19:7,20:13}
-
-SECTEURS_PARIS = {
-    1: {"nom":"Louvre – Opéra","arrLabel":"1er, 2e","ville":"Paris"},
-    2: {"nom":"Marais – Bastille","arrLabel":"3e, 4e","ville":"Paris"},
-    3: {"nom":"Île de la Cité – Luxembourg","arrLabel":"5e","ville":"Paris"},
-    4: {"nom":"Saint-Germain – Invalides","arrLabel":"6e, 7e","ville":"Paris"},
-    5: {"nom":"Champs-Élysées – Trocadéro","arrLabel":"8e, 16e","ville":"Paris"},
-    6: {"nom":"Opéra – Grands Boulevards","arrLabel":"9e, 17e nord","ville":"Paris"},
-    7: {"nom":"Montmartre – Belleville","arrLabel":"10e, 18e, 19e nord","ville":"Paris"},
-    8: {"nom":"Nation – Vincennes","arrLabel":"12e","ville":"Paris"},
-    9: {"nom":"Grenelle – Convention","arrLabel":"15e","ville":"Paris"},
-    10:{"nom":"Montrouge – Alésia","arrLabel":"13e sud, 14e","ville":"Paris"},
-    11:{"nom":"Épinettes – Batignolles","arrLabel":"17e sud","ville":"Paris"},
-    12:{"nom":"Buttes-Chaumont","arrLabel":"19e sud","ville":"Paris"},
-    13:{"nom":"Ménilmontant – Oberkampf","arrLabel":"11e, 20e","ville":"Paris"},
-    14:{"nom":"Ivry – Tolbiac – Gobelins","arrLabel":"13e nord","ville":"Paris"},
-}
-# Frontières provisoires par latitude (lot 2 : polygones des quartiers administratifs).
-LAT_17, LAT_19, LAT_13 = 48.884, 48.880, 48.826
-
-def arr_to_sect_geo(arr, lat, lon):
-    if not lat: return ARR_TO_SECT.get(arr)
-    if arr == 17: return 6  if lat >= LAT_17 else 11
-    if arr == 19: return 7  if lat >= LAT_19 else 12
-    if arr == 13: return 14 if lat >= LAT_13 else 10
-    return ARR_TO_SECT.get(arr)
-
 CODE_BOULOGNE = "92012"
-QUARTIERS_BOULOGNE = {
-    "B1": {"nom":"Billancourt – Île Seguin","arrLabel":"Sud-Est · Seine","lat_min":48.820,"lat_max":48.836,"lon_min":2.225,"lon_max":2.252,"ville":"Boulogne"},
-    "B2": {"nom":"Pont de Sèvres – Rives de Seine","arrLabel":"Sud-Ouest","lat_min":48.820,"lat_max":48.836,"lon_min":2.210,"lon_max":2.226,"ville":"Boulogne"},
-    "B3": {"nom":"Centre-ville – République","arrLabel":"Centre","lat_min":48.836,"lat_max":48.848,"lon_min":2.228,"lon_max":2.252,"ville":"Boulogne"},
-    "B4": {"nom":"Silly – Gallieni – Droits de l'Homme","arrLabel":"Nord-Ouest","lat_min":48.836,"lat_max":48.852,"lon_min":2.210,"lon_max":2.232,"ville":"Boulogne"},
-    "B5": {"nom":"Boulogne Nord – Parchamp","arrLabel":"Nord","lat_min":48.843,"lat_max":48.855,"lon_min":2.232,"lon_max":2.260,"ville":"Boulogne"},
-    "B6": {"nom":"Marcel Sembat – Aguesseau","arrLabel":"Est","lat_min":48.831,"lat_max":48.845,"lon_min":2.245,"lon_max":2.265,"ville":"Boulogne"},
-}
-def boulogne_quartier(lat, lon):
-    if not lat or not lon: return "B0"
-    for qid, q in QUARTIERS_BOULOGNE.items():
-        if q["lat_min"] <= lat < q["lat_max"] and q["lon_min"] <= lon < q["lon_max"]: return qid
-    return "B0"
+GEO_FILE = "data/geo/quartiers.geojson"
+REF_FILE = "data/geo/referentiel.json"
+DEP_TO_COMMUNE = {"75": "75056", "92": "92012"}   # lot 4 : une commune par code, plusieurs communes par dep
 
-ALL_SECTEURS = {
-    **{str(k): v for k, v in SECTEURS_PARIS.items()},
-    **QUARTIERS_BOULOGNE,
-    "B0": {"nom":"Boulogne-Billancourt (commune entière)","arrLabel":"92100","ville":"Boulogne"},
-}
+class Geo:
+    """Index des polygones de quartiers, affectation d'un point à son quartier."""
+    def __init__(self, geo_path=None, ref_path=None):
+        with open(geo_path or GEO_FILE, encoding="utf-8") as f: feats = json.load(f)["features"]
+        with open(ref_path or REF_FILE, encoding="utf-8") as f: self.ref = json.load(f)
+        self.quartiers = {}   # id → propriétés
+        self.index = defaultdict(list)   # commune → [(id, bbox, [rings extérieurs+trous par polygone])]
+        for ft in feats:
+            pr = ft["properties"]; g = ft["geometry"]
+            polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+            xs = [pt[0] for poly in polys for pt in poly[0]]; ys = [pt[1] for poly in polys for pt in poly[0]]
+            self.quartiers[pr["id"]] = pr
+            self.index[pr["commune"]].append((pr["id"], (min(xs), min(ys), max(xs), max(ys)), polys))
+
+    @staticmethod
+    def _pip(x, y, ring):
+        inside = False; j = len(ring) - 1
+        for i in range(len(ring)):
+            xi, yi = ring[i]; xj, yj = ring[j]
+            if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi: inside = not inside
+            j = i
+        return inside
+
+    def quartier(self, commune, lon, lat):
+        if not lon or not lat: return None
+        for qid, (x0, y0, x1, y1), polys in self.index.get(commune, ()):
+            if x0 <= lon <= x1 and y0 <= lat <= y1:
+                for poly in polys:
+                    if self._pip(lon, lat, poly[0]) and not any(self._pip(lon, lat, h) for h in poly[1:]): return qid
+        return None
+
+def affecter_quartiers(muts, geo):
+    """Pose m['q'] (id quartier), m['zone'], m['sect'] sur chaque mutation. Compte les échecs."""
+    for m in muts:
+        q = geo.quartier(DEP_TO_COMMUNE.get(m["dep"], m.get("code")), m.get("lon"), m.get("lat"))
+        m["q"] = q
+        if q:
+            pr = geo.quartiers[q]; m["zone"] = pr.get("zone"); m["sect"] = pr.get("secteur")
+            if m["dep"] == "75" and pr.get("arr") != m.get("arr"): CPT.add(m["dep"], m["annee"], "arr_dvf_differe_du_polygone")
+        else:
+            m["zone"] = None; m["sect"] = None
+            CPT.add(m["dep"], m["annee"], "sans_quartier")
 
 # Départements à télécharger et communes retenues dans chacun.
 DEPS = {
@@ -314,11 +317,8 @@ def consolider(m, annee, dep):
     CPT.add(dep, annee, f"surface_source:{source_surf}")
     lat, lon = lg["lat"], lg["lon"]
     if not (lat and lon): CPT.add(dep, annee, "sans_geoloc")
-    if dep == "75":
-        arr = CODE_TO_ARR.get(m["code"]); sect = arr_to_sect_geo(arr, lat, lon)
-    else:
-        arr = None; sect = boulogne_quartier(lat, lon)
-    return {"arr": arr, "sect": sect, "val": m["val"], "surf": surf, "type": lg["type"],
+    arr = CODE_TO_ARR.get(m["code"]) if dep == "75" else None
+    return {"arr": arr, "val": m["val"], "surf": surf, "type": lg["type"],
             "nbpp": lg["nbpp"], "date": m["date"], "annee": annee, "lat": lat, "lon": lon,
             "dep": dep, "code": m["code"]}
 
@@ -400,7 +400,7 @@ def typo_of(surf):
         if t["surfMin"] <= surf < t["surfMax"]: return t["id"]
     return None
 
-def typo_stats(muts, last_year):
+def typo_stats(muts, last_year, leger=False):
     g = defaultdict(list)
     for m in muts:
         t = typo_of(m["surf"])
@@ -409,11 +409,15 @@ def typo_stats(muts, last_year):
     for t, ms in g.items():
         s = stats(ms)
         if s: out[t] = {**s, "share": round(len(ms) / total * 100, 1) if total else 0,
-                        "by_year": by_year(ms), "by_quarter": by_quarter(ms), "windows": windows(ms, last_year)}
+                        "by_year": by_year(ms), "windows": windows(ms, last_year),
+                        **({} if leger else {"by_quarter": by_quarter(ms)})}
     if out: out["_top_typo"] = max((k for k in out if not k.startswith("_")), key=lambda k: out[k]["count"])
     return out
 
-def group_stats(muts, key_fn, labels, last_year):
+def group_stats(muts, key_fn, labels, last_year, detail="complet"):
+    """detail='complet' : by_year, by_quarter, by_month, by_typo (avec trimestres), windows.
+       detail='leger'   : by_year, by_typo (années + fenêtres), windows — pour les 90 quartiers, sinon le JSON
+       doublerait de taille pour des séries mensuelles que personne ne lit à cette maille."""
     g = defaultdict(list)
     for m in muts:
         k = key_fn(m)
@@ -424,8 +428,12 @@ def group_stats(muts, key_fn, labels, last_year):
         for tb in sorted(TYPES_LOGEMENT):
             f = [m for m in ms if m["type"] == tb]
             s = stats(f)
-            if s: by_type[tb] = {**s, "by_year": by_year(f), "by_quarter": by_quarter(f), "by_month": by_month(f),
-                                 "by_typo": typo_stats(f, last_year), "windows": windows(f, last_year)}
+            if not s: continue
+            if detail == "complet":
+                by_type[tb] = {**s, "by_year": by_year(f), "by_quarter": by_quarter(f), "by_month": by_month(f),
+                               "by_typo": typo_stats(f, last_year), "windows": windows(f, last_year)}
+            else:
+                by_type[tb] = {**s, "by_year": by_year(f), "by_typo": typo_stats(f, last_year, leger=True), "windows": windows(f, last_year)}
         out[str(k)] = {"label": labels.get(k, str(k)), "by_type": by_type, "total": len(ms)}
     return out
 
@@ -533,7 +541,7 @@ def main():
         if meme_parser and memes_sources:
             print("\n= Aucune source modifiée depuis le dernier run, JSON inchangé — rien à écrire (--force pour recalculer).")
             return 0
-    if not args.no_cache: save_cache(cache)
+    if not args.no_cache and telecharges: save_cache(cache)   # sans téléchargement, le cache est inchangé : ne pas le réécrire (l'en-tête gzip changerait, git verrait un diff de 7 Mo)
 
     print("\n=== Volumes retenus (appartements) ===")
     for dep in DEPS:
@@ -546,16 +554,34 @@ def main():
         for e in erreurs: print("   -", e)
         return 2
 
+    print("\n=== Affectation géographique ===")
+    geo = Geo(); affecter_quartiers(all_muts, geo)
+    sans_q = Counter((m["dep"]) for m in all_muts if not m["q"])
+    print(f"  {len(geo.quartiers)} quartiers · sans quartier : " + ", ".join(f"{d}: {n:,}" for d, n in sans_q.items()) if sans_q else f"  {len(geo.quartiers)} quartiers · toutes les mutations affectées")
+    part_sans_q = sum(sans_q.values()) / max(1, len(all_muts))
+    if part_sans_q > 0.02:
+        print(f"\n✗ RUN REFUSÉ — {part_sans_q:.1%} des mutations sans quartier (référentiel ou géolocalisation cassés)"); return 2
+
     print("\n=== Calcul des statistiques ===")
     annees_ok = sorted({m["annee"] for m in all_muts}); last_year = annees_ok[-1]
     last_date = max(m["date"] for m in all_muts)
     paris = [m for m in all_muts if m["dep"] == "75"]; boul = [m for m in all_muts if m["dep"] == "92"]
     apparts75 = [m for m in paris if m["type"] == "Appartement"]; apparts92 = [m for m in boul if m["type"] == "Appartement"]
+    ref = geo.ref
+    lab = lambda d: {k: v["nom"] for k, v in d.items()}
 
-    arr_s  = group_stats(paris, lambda m: m["arr"], {i: f"Paris {ARR_LABELS[i]} arr." for i in ARR_LABELS}, last_year)
-    sect_s = group_stats(paris, lambda m: m["sect"], {k: v["nom"] for k, v in SECTEURS_PARIS.items()}, last_year)
-    boul_s = group_stats(boul, lambda m: m["sect"], {k: v["nom"] for k, v in QUARTIERS_BOULOGNE.items()}, last_year)
-    boul_s["B0"] = group_stats(boul, lambda m: "B0", {"B0": ALL_SECTEURS["B0"]["nom"]}, last_year).get("B0", {})
+    arr_s   = group_stats(paris, lambda m: m["arr"], {int(k): v["nom"] for k, v in ref["arrondissements"].items()}, last_year)
+    sect_s  = group_stats(all_muts, lambda m: m["sect"], lab(ref["secteurs"]), last_year)
+    sect_s["B0"] = group_stats(boul, lambda m: "B0", lab(ref["secteurs"]), last_year).get("B0", {})
+    zone_s  = group_stats(paris, lambda m: m["zone"], lab(ref["zones"]), last_year)
+    quart_s = group_stats(all_muts, lambda m: m["q"], {k: v["nom"] for k, v in geo.quartiers.items()}, last_year, detail="leger")
+    for qid, pr in geo.quartiers.items():
+        if qid in quart_s: quart_s[qid].update({"commune": pr["commune"], "arr": pr["arr"], "zone": pr["zone"], "secteur": pr["secteur"]})
+
+    # Référentiels exposés au dashboard (une seule source : data/geo/referentiel.json)
+    ville = lambda c: ref["communes"].get(c, c)
+    secteurs_ref = {k: {"nom": v["nom"], "arrLabel": v.get("arrLabel", ""), "ville": "Boulogne" if v["commune"] == "92012" else ville(v["commune"]),
+                        "quartiers": v["quartiers"]} for k, v in ref["secteurs"].items()}
 
     output = {
         "meta": {
@@ -566,6 +592,7 @@ def main():
             "total_mutations": len(all_muts), "total_apparts": len(apparts75) + len(apparts92),
             "total_apparts_paris": len(apparts75), "total_apparts_boulogne": len(apparts92),
             "sources_used": sources_used, "exclusions": CPT.export(), "fichiers_telecharges": telecharges,
+            "geo": {"quartiers": len(geo.quartiers), "sans_quartier": dict(sans_q), "releve": ref.get("releve", {})},
             "regles": {"ppm2": [PPM2_MIN, PPM2_MAX], "surface": [SURF_MIN, SURF_MAX],
                        "natures": sorted(NATURES_RETENUES), "un_logement_par_mutation": True},
             "cache_hist": os.path.exists(CACHE_FILE),
@@ -573,11 +600,14 @@ def main():
         "global": {"stats": stats(apparts75), "by_year": by_year(apparts75), "by_quarter": by_quarter(apparts75),
                    "by_typo": typo_stats(apparts75, last_year), "windows": windows(apparts75, last_year)},
         "arrondissements": arr_s,
-        "secteurs": {**sect_s, **boul_s},
-        "secteurs_ref": ALL_SECTEURS,
-        "arr_to_sect": {str(k): v for k, v in ARR_TO_SECT.items()},
-        "typologies_ref": TYPOLOGIES,
-        "fenetres_ref": FENETRES,
+        "secteurs":        sect_s,
+        "zones":           zone_s,
+        "quartiers":       quart_s,
+        "secteurs_ref":    secteurs_ref,
+        "zones_ref":       ref["zones"],
+        "quartiers_ref":   {k: {"nom": v["nom"], "commune": v["commune"], "arr": v["arr"], "zone": v["zone"], "secteur": v["secteur"]} for k, v in geo.quartiers.items()},
+        "typologies_ref":  TYPOLOGIES,
+        "fenetres_ref":    FENETRES,
         "boulogne": {"total_mutations": len(boul), "total_apparts": len(apparts92),
                      "by_year": by_year(apparts92), "by_quarter": by_quarter(apparts92)},
     }

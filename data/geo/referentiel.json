@@ -1,0 +1,543 @@
+{
+ "communes": {
+  "75056": "Paris",
+  "92012": "Boulogne-Billancourt"
+ },
+ "zones": {
+  "Z1": {
+   "nom": "Zone 1 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P23",
+    "P25",
+    "P26",
+    "P27",
+    "P28"
+   ]
+  },
+  "Z2": {
+   "nom": "Zone 2 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P1",
+    "P13",
+    "P15",
+    "P16",
+    "P21",
+    "P22",
+    "P24",
+    "P29",
+    "P3",
+    "P30",
+    "P31",
+    "P34",
+    "P4",
+    "P5"
+   ]
+  },
+  "Z3": {
+   "nom": "Zone 3 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P32",
+    "P62",
+    "P63",
+    "P64"
+   ]
+  },
+  "Z4": {
+   "nom": "Zone 4 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P10",
+    "P11",
+    "P12",
+    "P14",
+    "P17",
+    "P19",
+    "P20",
+    "P6",
+    "P7",
+    "P8",
+    "P9"
+   ]
+  },
+  "Z5": {
+   "nom": "Zone 5 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P2",
+    "P33",
+    "P35",
+    "P36",
+    "P37",
+    "P38",
+    "P52",
+    "P53"
+   ]
+  },
+  "Z6": {
+   "nom": "Zone 6 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P58",
+    "P65",
+    "P66"
+   ]
+  },
+  "Z7": {
+   "nom": "Zone 7 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P59",
+    "P60",
+    "P61"
+   ]
+  },
+  "Z8": {
+   "nom": "Zone 8 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P57"
+   ]
+  },
+  "Z9": {
+   "nom": "Zone 9 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P46",
+    "P69",
+    "P70"
+   ]
+  },
+  "Z10": {
+   "nom": "Zone 10 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P18",
+    "P42",
+    "P44",
+    "P49",
+    "P55",
+    "P67"
+   ]
+  },
+  "Z11": {
+   "nom": "Zone 11 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P39",
+    "P40",
+    "P41",
+    "P43",
+    "P48",
+    "P54",
+    "P68",
+    "P71",
+    "P77"
+   ]
+  },
+  "Z12": {
+   "nom": "Zone 12 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P51",
+    "P56"
+   ]
+  },
+  "Z13": {
+   "nom": "Zone 13 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P50",
+    "P72",
+    "P73",
+    "P74",
+    "P75",
+    "P78",
+    "P80"
+   ]
+  },
+  "Z14": {
+   "nom": "Zone 14 (encadrement des loyers)",
+   "commune": "75056",
+   "quartiers": [
+    "P45",
+    "P47",
+    "P76",
+    "P79"
+   ]
+  }
+ },
+ "secteurs": {
+  "1": {
+   "nom": "Louvre – Opéra",
+   "commune": "75056",
+   "quartiers": [
+    "P1",
+    "P2",
+    "P3",
+    "P4",
+    "P5",
+    "P6",
+    "P7",
+    "P8"
+   ],
+   "arrLabel": "1er, 2e"
+  },
+  "2": {
+   "nom": "Marais – Bastille",
+   "commune": "75056",
+   "quartiers": [
+    "P10",
+    "P11",
+    "P12",
+    "P13",
+    "P14",
+    "P15",
+    "P16",
+    "P9"
+   ],
+   "arrLabel": "3e, 4e"
+  },
+  "3": {
+   "nom": "Île de la Cité – Luxembourg",
+   "commune": "75056",
+   "quartiers": [
+    "P17",
+    "P18",
+    "P19",
+    "P20"
+   ],
+   "arrLabel": "5e"
+  },
+  "4": {
+   "nom": "Saint-Germain – Invalides",
+   "commune": "75056",
+   "quartiers": [
+    "P21",
+    "P22",
+    "P23",
+    "P24",
+    "P25",
+    "P26",
+    "P27",
+    "P28"
+   ],
+   "arrLabel": "6e, 7e"
+  },
+  "5": {
+   "nom": "Champs-Élysées – Trocadéro",
+   "commune": "75056",
+   "quartiers": [
+    "P29",
+    "P30",
+    "P31",
+    "P32",
+    "P61",
+    "P62",
+    "P63",
+    "P64"
+   ],
+   "arrLabel": "8e, 16e"
+  },
+  "6": {
+   "nom": "Opéra – Grands Boulevards",
+   "commune": "75056",
+   "quartiers": [
+    "P33",
+    "P34",
+    "P35",
+    "P36",
+    "P65",
+    "P66"
+   ],
+   "arrLabel": "9e + Ternes, Plaine de Monceaux"
+  },
+  "7": {
+   "nom": "Montmartre – Belleville",
+   "commune": "75056",
+   "quartiers": [
+    "P37",
+    "P38",
+    "P39",
+    "P40",
+    "P69",
+    "P70",
+    "P71",
+    "P72",
+    "P73",
+    "P74"
+   ],
+   "arrLabel": "10e, 18e + Villette, Pont-de-Flandre"
+  },
+  "8": {
+   "nom": "Nation – Vincennes",
+   "commune": "75056",
+   "quartiers": [
+    "P45",
+    "P46",
+    "P47",
+    "P48"
+   ],
+   "arrLabel": "12e"
+  },
+  "9": {
+   "nom": "Grenelle – Convention",
+   "commune": "75056",
+   "quartiers": [
+    "P57",
+    "P58",
+    "P59",
+    "P60"
+   ],
+   "arrLabel": "15e"
+  },
+  "10": {
+   "nom": "Montrouge – Alésia",
+   "commune": "75056",
+   "quartiers": [
+    "P51",
+    "P53",
+    "P54",
+    "P55",
+    "P56"
+   ],
+   "arrLabel": "14e + Maison-Blanche"
+  },
+  "11": {
+   "nom": "Épinettes – Batignolles",
+   "commune": "75056",
+   "quartiers": [
+    "P67",
+    "P68"
+   ],
+   "arrLabel": "Epinettes, Batignolles"
+  },
+  "12": {
+   "nom": "Buttes-Chaumont",
+   "commune": "75056",
+   "quartiers": [
+    "P75",
+    "P76"
+   ],
+   "arrLabel": "Amérique, Combat"
+  },
+  "13": {
+   "nom": "Ménilmontant – Oberkampf",
+   "commune": "75056",
+   "quartiers": [
+    "P41",
+    "P42",
+    "P43",
+    "P44",
+    "P77",
+    "P78",
+    "P79",
+    "P80"
+   ],
+   "arrLabel": "11e, 20e"
+  },
+  "14": {
+   "nom": "Ivry – Tolbiac – Gobelins",
+   "commune": "75056",
+   "quartiers": [
+    "P49",
+    "P50",
+    "P52"
+   ],
+   "arrLabel": "Salpêtrière, Gare, Croulebarbe"
+  },
+  "B1": {
+   "nom": "Les Princes Marmottan",
+   "commune": "92012",
+   "quartiers": [
+    "B1"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B2": {
+   "nom": "République Point du Jour",
+   "commune": "92012",
+   "quartiers": [
+    "B2"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B3": {
+   "nom": "Jean-Baptiste Clément",
+   "commune": "92012",
+   "quartiers": [
+    "B3"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B4": {
+   "nom": "Mail Maréchal Juin",
+   "commune": "92012",
+   "quartiers": [
+    "B4"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B5": {
+   "nom": "Trapèze",
+   "commune": "92012",
+   "quartiers": [
+    "B5"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B6": {
+   "nom": "Route de la Reine",
+   "commune": "92012",
+   "quartiers": [
+    "B6"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B7": {
+   "nom": "Édouard Vaillant",
+   "commune": "92012",
+   "quartiers": [
+    "B7"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B8": {
+   "nom": "Centre Ville",
+   "commune": "92012",
+   "quartiers": [
+    "B8"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B9": {
+   "nom": "Le Gallo",
+   "commune": "92012",
+   "quartiers": [
+    "B9"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B10": {
+   "nom": "Pont de Sèvres",
+   "commune": "92012",
+   "quartiers": [
+    "B10"
+   ],
+   "arrLabel": "Boulogne-Billancourt"
+  },
+  "B0": {
+   "nom": "Boulogne-Billancourt (commune entière)",
+   "commune": "92012",
+   "quartiers": [
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "B6",
+    "B7",
+    "B8",
+    "B9",
+    "B10"
+   ],
+   "arrLabel": "92100"
+  }
+ },
+ "arrondissements": {
+  "1": {
+   "nom": "Paris 1er arr.",
+   "commune": "75056"
+  },
+  "2": {
+   "nom": "Paris 2e arr.",
+   "commune": "75056"
+  },
+  "3": {
+   "nom": "Paris 3e arr.",
+   "commune": "75056"
+  },
+  "4": {
+   "nom": "Paris 4e arr.",
+   "commune": "75056"
+  },
+  "5": {
+   "nom": "Paris 5e arr.",
+   "commune": "75056"
+  },
+  "6": {
+   "nom": "Paris 6e arr.",
+   "commune": "75056"
+  },
+  "7": {
+   "nom": "Paris 7e arr.",
+   "commune": "75056"
+  },
+  "8": {
+   "nom": "Paris 8e arr.",
+   "commune": "75056"
+  },
+  "9": {
+   "nom": "Paris 9e arr.",
+   "commune": "75056"
+  },
+  "10": {
+   "nom": "Paris 10e arr.",
+   "commune": "75056"
+  },
+  "11": {
+   "nom": "Paris 11e arr.",
+   "commune": "75056"
+  },
+  "12": {
+   "nom": "Paris 12e arr.",
+   "commune": "75056"
+  },
+  "13": {
+   "nom": "Paris 13e arr.",
+   "commune": "75056"
+  },
+  "14": {
+   "nom": "Paris 14e arr.",
+   "commune": "75056"
+  },
+  "15": {
+   "nom": "Paris 15e arr.",
+   "commune": "75056"
+  },
+  "16": {
+   "nom": "Paris 16e arr.",
+   "commune": "75056"
+  },
+  "17": {
+   "nom": "Paris 17e arr.",
+   "commune": "75056"
+  },
+  "18": {
+   "nom": "Paris 18e arr.",
+   "commune": "75056"
+  },
+  "19": {
+   "nom": "Paris 19e arr.",
+   "commune": "75056"
+  },
+  "20": {
+   "nom": "Paris 20e arr.",
+   "commune": "75056"
+  }
+ },
+ "releve": {
+  "paris": {
+   "quartiers": 80,
+   "source_quartiers": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/quartier_paris/exports/geojson",
+   "source_zones": "https://opendata.paris.fr/api/explore/v2.1/catalog/datasets/logement-encadrement-des-loyers/records"
+  },
+  "boulogne": {
+   "iris": 42,
+   "quartiers": 10,
+   "source": "https://data.geopf.fr/wfs/ows"
+  }
+ }
+}

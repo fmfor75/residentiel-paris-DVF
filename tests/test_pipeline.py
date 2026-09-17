@@ -23,6 +23,7 @@ class Pipeline(unittest.TestCase):
         importlib.reload(P)
         P.TODAY = date(2026, 9, 11); P.YEARS = list(range(2014, 2027))
         P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); P.PAUSE_ENTRE_FICHIERS = 0
+        P.GEO_FILE = os.path.join(ROOT, "data/geo/quartiers.geojson"); P.REF_FILE = os.path.join(ROOT, "data/geo/referentiel.json")
 
     def tearDown(self):
         os.chdir(self.cwd); shutil.rmtree(self.tmp, ignore_errors=True)
@@ -54,9 +55,18 @@ class Pipeline(unittest.TestCase):
                   "excl_ppm2_hors_bornes", "excl_surface_hors_bornes", "excl_valeur_nulle", "sans_geoloc", "excl_sans_logement"):
             self.assertEqual(c.get(k, 0), att[k], k)
         self.assertEqual(c["mutations_retenues"], c["mutations_perimetre"] - sum(v for k, v in c.items() if k.startswith("excl_")))
-        # Le doublon est retenu une fois ; le sans-géoloc du 17e tombe en S6
+        # Le doublon est retenu une fois ; le sans-géoloc est compté sans quartier
         self.assertGreaterEqual(c["surface_source:carrez"], att["surface_source:carrez_speciaux"])
         self.assertIn("6", d["secteurs"]); self.assertIn("B0", d["secteurs"])
+        # Géographie : 90 quartiers, 14 zones, secteurs par polygones ; presque tout affecté
+        self.assertEqual(m["geo"]["quartiers"], 90)
+        self.assertLess(sum(m["geo"]["sans_quartier"].values()), 0.02 * m["total_mutations"])
+        self.assertEqual(len(d["zones"]), 14); self.assertGreaterEqual(len(d["quartiers"]), 60)
+        self.assertEqual(set(k for k in d["secteurs"] if k.startswith("B")), {f"B{i}" for i in range(0, 11)})
+        q = next(iter(d["quartiers"].values())); self.assertIn("by_typo", q["by_type"]["Appartement"]); self.assertNotIn("by_month", q["by_type"]["Appartement"])
+        self.assertEqual(sum(v["total"] for v in d["zones"].values()), sum(v["total"] for k, v in d["quartiers"].items() if k.startswith("P")))
+        # Le sans-géoloc n'a pas de quartier : compté, absent des secteurs, présent dans son arrondissement
+        self.assertEqual(c["sans_quartier"], att["sans_geoloc"])
         # Schéma consommé par index.html (rétro-compatibilité)
         s5 = d["secteurs"]["5"]["by_type"]["Appartement"]
         for k in ("count", "mean", "median", "p10", "p90", "by_year", "by_quarter", "by_typo", "windows", "by_month"): self.assertIn(k, s5)
