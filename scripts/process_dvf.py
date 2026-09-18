@@ -53,6 +53,7 @@ def millesimes_candidats():
 
 CACHE_FILE = "data/dvf_cache.json.gz"   # v13.1 : toutes les années, gzip (36 Mo → ~8 Mo), empreinte de source par entrée
 OUTPUT     = "data/dvf_paris.json"
+SALES      = "data/dvf_sales.bin"   # lot 4 : ventes compactes pour le calcul dans le navigateur (non commité, chiffré par build_site)
 
 # ══════════════════════════════════════════════════════════════════
 # CONFIG MÉTIER — une seule source de vérité, recopiée dans le JSON
@@ -181,16 +182,24 @@ def url_existe(url, timeout=20):
     si un fichier déjà traité doit être retéléchargé (run mensuel, incident : le calendrier
     semestriel ratait la régénération de geo-dvf, un mois après la publication DGFiP)."""
     if url in HEAD_CACHE: return HEAD_CACHE[url]
-    try:
-        r = requests.head(url, timeout=timeout, allow_redirects=True)
-        ok = r.status_code == 200
-        mb = int(r.headers.get("content-length", 0)) / 1e6
-        # Un fichier « existant » de moins de 10 Ko est une page d'erreur déguisée
-        if ok and 0 < mb < 0.01: ok = False
-        HEAD_CACHE[url] = (ok, mb)
-        HEAD_INFO[url] = f"{r.headers.get('last-modified','')}|{r.headers.get('content-length','')}" if ok else ""
-    except requests.RequestException:
-        HEAD_CACHE[url] = (False, 0); HEAD_INFO[url] = ""
+    # Deux tentatives : incident du 18/09/2026, une coupure réseau transitoire sur un seul HEAD a fait
+    # conclure « aucune source » pour 2021 et refuser le run. Une erreur réseau n'est pas un 404.
+    for tentative in (1, 2):
+        try:
+            r = requests.head(url, timeout=timeout, allow_redirects=True)
+            ok = r.status_code == 200
+            mb = int(r.headers.get("content-length", 0)) / 1e6
+            # Un fichier « existant » de moins de 10 Ko est une page d'erreur déguisée
+            if ok and 0 < mb < 0.01: ok = False
+            HEAD_CACHE[url] = (ok, mb)
+            HEAD_INFO[url] = f"{r.headers.get('last-modified','')}|{r.headers.get('content-length','')}" if ok else ""
+            return HEAD_CACHE[url]
+        except requests.RequestException as e:
+            if tentative == 2:
+                print(f"    ⚠ réseau : {url} ({type(e).__name__})")
+                HEAD_CACHE[url] = (False, 0); HEAD_INFO[url] = ""
+            else:
+                time.sleep(3)
     return HEAD_CACHE[url]
 HEAD_INFO = {}
 
@@ -468,6 +477,35 @@ def verifier(all_muts, sources_used, allow_partial, years):
     return erreurs
 
 # ══════════════════════════════════════════════════════════════════
+# EXPORT COMPACT DES VENTES (lot 4)
+# ══════════════════════════════════════════════════════════════════
+# Le navigateur calcule lui-même percentiles, séries et typologies à fourchettes libres : il lui faut
+# les ventes, pas des statistiques figées. Format binaire little-endian, 10 octets par vente :
+#   uint8  index du quartier dans meta.quartier_index (ordre trié des ids)
+#   uint8  type : 0 appartement, 1 maison
+#   uint16 mois depuis 2000-01 (année = 2000 + ym // 12, mois = ym % 12 + 1)
+#   uint16 surface × 100 (m²)
+#   uint32 valeur foncière (€, arrondie)
+# prix/m² = valeur / surface, comme dans compute_stats : les chiffres du navigateur doivent être identiques
+# à ceux de ce pipeline (tests/test_engine.mjs le vérifie à l'unité près).
+import struct
+SALES_MAGIC = b"DVS1"
+def ecrire_ventes_compactes(all_muts, geo):
+    qids = sorted(geo.quartiers); qidx = {q: i for i, q in enumerate(qids)}
+    rows = []
+    for m in all_muts:
+        if not m.get("q"): continue
+        y, mo = int(m["date"][:4]), int(m["date"][5:7])
+        rows.append((qidx[m["q"]], 1 if m["type"] == "Maison" else 0, (y - 2000) * 12 + mo - 1,
+                     min(65535, round(m["surf"] * 100)), min(4_294_967_295, round(m["val"]))))
+    rows.sort()   # tri par quartier puis date : meilleure compression, aucune information perdue
+    with open(SALES, "wb") as f:
+        f.write(SALES_MAGIC + struct.pack("<I", len(rows)))
+        for r in rows: f.write(struct.pack("<BBHHI", *r))
+    print(f"  ✓ {SALES} : {len(rows):,} ventes, {os.path.getsize(SALES)/1e6:.1f} Mo (quartier_index : {len(qids)})")
+    return qids
+
+# ══════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════
 
@@ -565,12 +603,18 @@ def main():
     print("\n=== Calcul des statistiques ===")
     annees_ok = sorted({m["annee"] for m in all_muts}); last_year = annees_ok[-1]
     last_date = max(m["date"] for m in all_muts)
+    # Lot 4 : seules les ventes rattachées à un quartier entrent dans les statistiques, à tous les niveaux
+    # (arrondissement et commune compris). Avant, 463 ventes sans coordonnées comptaient dans les arrondissements
+    # et dans Boulogne entière mais pas dans les secteurs/zones/quartiers : deux définitions pour un même chiffre.
+    all_muts = [m for m in all_muts if m.get("q")]
     paris = [m for m in all_muts if m["dep"] == "75"]; boul = [m for m in all_muts if m["dep"] == "92"]
     apparts75 = [m for m in paris if m["type"] == "Appartement"]; apparts92 = [m for m in boul if m["type"] == "Appartement"]
     ref = geo.ref
     lab = lambda d: {k: v["nom"] for k, v in d.items()}
 
-    arr_s   = group_stats(paris, lambda m: m["arr"], {int(k): v["nom"] for k, v in ref["arrondissements"].items()}, last_year)
+    # Arrondissement = celui du polygone du quartier (cohérent avec tous les autres niveaux), pas le code
+    # commune déclaré dans DVF : 19 ventes diffèrent, comptées dans meta.exclusions (arr_dvf_differe_du_polygone).
+    arr_s   = group_stats(paris, lambda m: geo.quartiers[m["q"]]["arr"], {int(k): v["nom"] for k, v in ref["arrondissements"].items()}, last_year)
     sect_s  = group_stats(all_muts, lambda m: m["sect"], lab(ref["secteurs"]), last_year)
     sect_s["B0"] = group_stats(boul, lambda m: "B0", lab(ref["secteurs"]), last_year).get("B0", {})
     zone_s  = group_stats(paris, lambda m: m["zone"], lab(ref["zones"]), last_year)
@@ -606,6 +650,7 @@ def main():
         "secteurs_ref":    secteurs_ref,
         "zones_ref":       ref["zones"],
         "quartiers_ref":   {k: {"nom": v["nom"], "commune": v["commune"], "arr": v["arr"], "zone": v["zone"], "secteur": v["secteur"]} for k, v in geo.quartiers.items()},
+        "quartier_index":  sorted(geo.quartiers),   # ordre des index dans dvf_sales.bin
         "typologies_ref":  TYPOLOGIES,
         "fenetres_ref":    FENETRES,
         "boulogne": {"total_mutations": len(boul), "total_apparts": len(apparts92),
@@ -614,6 +659,7 @@ def main():
     os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
     with open(OUTPUT, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
+    ecrire_ventes_compactes(all_muts, geo)
     print(f"\n✓ {OUTPUT} ({os.path.getsize(OUTPUT)/1e6:.1f} Mo) — {output['meta']['periode']} — dernière mutation {last_date}")
     gby = output["global"]["by_year"]
     if len(gby) >= 2:

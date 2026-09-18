@@ -6,16 +6,33 @@ servie par GitHub Pages, protégée par un code d'accès.
 ## Architecture
 
 ```
-index.html                    ← dashboard (écran de code → déchiffrement local → étude)
-data/enc/*.bin, manifest.json ← statistiques chiffrées par niveau (méta, arrondissements, secteurs, zones, quartiers)
-data/geo/                     ← référentiel géographique versionné (quartiers.geojson, referentiel.json)
+index.html                    ← dashboard (écran de code → déchiffrement local → étude / carte)
+engine.js                     ← moteur de calcul exécuté dans le navigateur (mêmes règles que le pipeline Python)
+data/enc/meta.bin             ← méta, référentiels (secteurs, zones, quartiers, typologies par défaut) — chiffré
+data/enc/sales.bin            ← toutes les ventes retenues, 10 octets par vente (format DVS1) — chiffré
+data/enc/manifest.json        ← liste des fichiers chiffrés et paramètres de dérivation de clé (clair)
+data/geo/                     ← référentiel géographique versionné (quartiers.geojson, referentiel.json) — clair
 data/dvf_cache.json.gz        ← cache des mutations consolidées par (département, année), avec empreinte de source
-scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (data/dvf_paris.json, non commité)
-scripts/build_site.py         ← découpage par niveau + gzip + chiffrement AES-GCM (clé dérivée de DVF_CODE)
+scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (dvf_paris.json + dvf_sales.bin, non commités)
+scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN)
-tests/                        ← tests bout en bout sur fixtures HTTP locales + tests du chiffrement
+tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
+
+## Fonctionnement du dashboard (lot 4)
+
+Le navigateur déchiffre `sales.bin` (≈ 200 000 ventes) et calcule lui-même toutes les statistiques : niveau
+(commune, arrondissement, secteur, zone d'encadrement, quartier), période, type de bien et **typologies dont les
+bornes de surface sont modifiables à chaque étude** (préremplies avec T1 9–30, T2 30–50, T3 50–70, T4 70–100,
+T5 100–400 m²). L'étude complète est encodée dans l'URL (`#…&typos=T1:9-30:1,…`), donc partageable.
+
+`engine.js` reproduit exactement `process_dvf.py` (percentiles interpolés, arrondi demi-pair de Python, 3 ventes
+minimum) ; `node tests/test_engine.mjs` le vérifie sur données réelles après un run du pipeline (tolérance ±1 €/m²).
+
+L'onglet **Carte** affiche les polygones réellement utilisés (Leaflet, fond IGN) colorés selon le niveau choisi ;
+une adresse saisie est géocodée (géoplateforme IGN) puis affectée par point-dans-polygone au quartier, avec
+l'arrondissement, le secteur et la zone correspondants, chacun ouvrable en étude d'un clic.
 
 ## Mise à jour des données
 
@@ -27,22 +44,23 @@ statistiques, les chiffre et commite `data/enc/`. Lancement manuel : Actions →
 ## Code d'accès
 
 Secret GitHub `DVF_CODE` (Settings → Secrets and variables → Actions). Le code n'apparaît nulle part dans le dépôt :
-il sert à dériver une clé (PBKDF2-SHA256, 200 000 itérations) avec laquelle les statistiques sont chiffrées au build
-et déchiffrées dans le navigateur. Pour changer le code : modifier le secret puis lancer le workflow avec `force`.
-Localement : `DVF_CODE="…" python scripts/process_dvf.py && DVF_CODE="…" python scripts/build_site.py`.
+il sert à dériver une clé (PBKDF2-SHA256, 200 000 itérations) avec laquelle `meta.bin` et `sales.bin` sont chiffrés
+au build et déchiffrés dans le navigateur. Pour changer le code : modifier le secret puis lancer le workflow avec
+`force`. Localement : `DVF_CODE="…" python scripts/process_dvf.py && DVF_CODE="…" python scripts/build_site.py`.
 
 ## Règles de traitement (v13)
 
 Ventes (« Vente » strict, VEFA exclue) d'un logement unique (appartement ou maison), dépendances tolérées, local
 professionnel ou second logement → exclu. Surface Carrez si présente et à ±30 % de la surface bâtie, sinon bâtie.
 Bornes : 1 000–40 000 €/m², 9–400 m². Chaque exclusion est comptée (`meta.exclusions`). Gardes bloquantes : année
-creuse, source partielle, rétention < 25 %, colonnes manquantes, > 2 % de ventes sans quartier.
+creuse, source partielle, rétention < 25 %, colonnes manquantes, > 2 % de ventes sans quartier. Les ventes sans
+quartier (hors polygones) ne sont comptées dans aucun niveau, pas même l'arrondissement.
 
 Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 10 quartiers de Boulogne (IRIS IGN dissous),
-affectation par point-dans-polygone. Niveaux calculés : arrondissements, secteurs (listes de quartiers), zones
-officielles d'encadrement des loyers, quartiers.
+affectation par point-dans-polygone. Niveaux : arrondissements (celui du polygone, pas celui déclaré dans DVF),
+secteurs (listes de quartiers), zones officielles d'encadrement des loyers, quartiers.
 
 ## Sources
 
 DGFiP « Demandes de valeurs foncières » via Etalab (geo-dvf, opendatarchives) · Ville de Paris (quartiers,
-encadrement des loyers) · IGN géoplateforme (IRIS) · Licence Ouverte 2.0.
+encadrement des loyers) · IGN géoplateforme (IRIS, fond de carte, géocodage) · Licence Ouverte 2.0.

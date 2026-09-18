@@ -5,38 +5,20 @@
   "hash": "SHA-256",
   "iterations": 200000
  },
- "generated_at": "2026-09-18T12:36:25.045870Z",
+ "generated_at": "2026-09-18T13:16:43.252783Z",
  "periode": "2014–2025",
  "files": {
   "meta": {
    "file": "meta.bin",
-   "bytes": 21762,
-   "plain_bytes": 103082,
-   "sha256": "6a78fe968ac5e818"
+   "bytes": 19561,
+   "plain_bytes": 94450,
+   "sha256": "9da086abfec3b962"
   },
-  "arrondissements": {
-   "file": "arrondissements.bin",
-   "bytes": 408710,
-   "plain_bytes": 1876247,
-   "sha256": "e46efd70214a48f0"
-  },
-  "secteurs": {
-   "file": "secteurs.bin",
-   "bytes": 492235,
-   "plain_bytes": 2267404,
-   "sha256": "818b03037eeb5423"
-  },
-  "zones": {
-   "file": "zones.bin",
-   "bytes": 296217,
-   "plain_bytes": 1374243,
-   "sha256": "3089d459418cb44e"
-  },
-  "quartiers": {
-   "file": "quartiers.bin",
-   "bytes": 344564,
-   "plain_bytes": 1755483,
-   "sha256": "c2fb9e15c9e6a75d"
+  "sales": {
+   "file": "sales.bin",
+   "bytes": 2062312,
+   "plain_bytes": 3712418,
+   "sha256": "a4542a4eeea6e1ea"
   }
  }
 }

@@ -3,8 +3,10 @@
 """
 build_site.py — prépare les données servies au dashboard : découpage par niveau, gzip, chiffrement.
 
-Entrée  : data/dvf_paris.json (produit par process_dvf.py, NON commité depuis le lot 3)
-Sortie  : data/enc/manifest.json (clair) + data/enc/<niveau>.bin (chiffrés)
+Entrée  : data/dvf_paris.json + data/dvf_sales.bin (produits par process_dvf.py, NON commités)
+Sortie  : data/enc/manifest.json (clair) + data/enc/meta.bin + data/enc/sales.bin (chiffrés)
+Lot 4   : le navigateur calcule tout lui-même à partir des ventes (sales.bin) ; les fichiers par niveau
+          (arrondissements, secteurs, zones, quartiers) ne sont plus produits.
 
 Format d'un .bin :  b"DVF1" | salt (16) | iv (12) | AES-256-GCM(gzip(json))  — le tag GCM (16) est en fin.
 Clé     : PBKDF2-HMAC-SHA256(code, salt, 200 000 itérations) → 32 octets. Même dérivation côté navigateur (WebCrypto).
@@ -25,6 +27,7 @@ from datetime import datetime
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 SRC     = "data/dvf_paris.json"
+SALES   = "data/dvf_sales.bin"
 OUT_DIR = "data/enc"
 MAGIC   = b"DVF1"
 SALT    = bytes.fromhex("6a61646572302d6476662d70617269732d3236")[:16]   # "jadero-dvf-paris-26"
@@ -32,12 +35,8 @@ ITER    = 200_000
 
 # Découpage : chaque entrée du manifest = un fichier, chargé à la demande par le dashboard.
 NIVEAUX = {
-    "meta":            lambda d: {k: d[k] for k in ("meta", "global", "secteurs_ref", "zones_ref", "quartiers_ref",
-                                                     "typologies_ref", "fenetres_ref", "boulogne") if k in d},
-    "arrondissements": lambda d: d["arrondissements"],
-    "secteurs":        lambda d: d["secteurs"],
-    "zones":           lambda d: d["zones"],
-    "quartiers":       lambda d: d["quartiers"],
+    "meta": lambda d: {k: d[k] for k in ("meta", "global", "secteurs_ref", "zones_ref", "quartiers_ref", "quartier_index",
+                                         "typologies_ref", "fenetres_ref") if k in d},
 }
 
 def derive_key(code: str) -> bytes:
@@ -48,6 +47,12 @@ def encrypt(key: bytes, plain: bytes) -> bytes:
     iv = hmac.new(key, gz, hashlib.sha256).digest()[:12]
     return MAGIC + SALT + iv + AESGCM(key).encrypt(iv, gz, MAGIC)
 
+def ecrire(path, blob):
+    old = open(path, "rb").read() if os.path.exists(path) else None
+    if old != blob:
+        with open(path, "wb") as f: f.write(blob)
+    return old == blob
+
 def decrypt(key: bytes, blob: bytes) -> bytes:
     assert blob[:4] == MAGIC, "format inconnu"
     salt, iv, ct = blob[4:20], blob[20:32], blob[32:]
@@ -56,7 +61,7 @@ def decrypt(key: bytes, blob: bytes) -> bytes:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=SRC); ap.add_argument("--out", default=OUT_DIR)
+    ap.add_argument("--src", default=SRC); ap.add_argument("--sales", default=SALES); ap.add_argument("--out", default=OUT_DIR)
     ap.add_argument("--code", default=os.environ.get("DVF_CODE", ""))
     args = ap.parse_args()
     if len(args.code) < 8:
@@ -66,17 +71,20 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     manifest = {"format": "DVF1", "kdf": {"name": "PBKDF2", "hash": "SHA-256", "iterations": ITER},
                 "generated_at": d["meta"]["generated_at"], "periode": d["meta"]["periode"], "files": {}}
-    for nom, sel in NIVEAUX.items():
-        plain = json.dumps(sel(d), ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    sources = {nom: json.dumps(sel(d), ensure_ascii=False, separators=(",", ":")).encode("utf-8") for nom, sel in NIVEAUX.items()}
+    if os.path.exists(args.sales): sources["sales"] = open(args.sales, "rb").read()
+    else: print(f"✗ {args.sales} absent : lancer process_dvf.py d'abord"); return 2
+    for nom, plain in sources.items():
         blob = encrypt(key, plain)
         assert decrypt(key, blob) == plain           # aller-retour vérifié avant d'écrire
-        path = os.path.join(args.out, f"{nom}.bin")
-        old = open(path, "rb").read() if os.path.exists(path) else None
-        if old != blob:
-            with open(path, "wb") as f: f.write(blob)
+        inchange = ecrire(os.path.join(args.out, f"{nom}.bin"), blob)
         manifest["files"][nom] = {"file": f"{nom}.bin", "bytes": len(blob), "plain_bytes": len(plain),
                                   "sha256": hashlib.sha256(blob).hexdigest()[:16]}
-        print(f"  {nom:<16} {len(plain)/1e6:5.2f} Mo → {len(blob)/1e6:5.2f} Mo chiffré {'(inchangé)' if old == blob else '(écrit)'}")
+        print(f"  {nom:<8} {len(plain)/1e6:5.2f} Mo → {len(blob)/1e6:5.2f} Mo chiffré {'(inchangé)' if inchange else '(écrit)'}")
+    # Fichiers d'anciens niveaux (lot 3) : supprimés pour ne pas laisser des données périmées en ligne
+    for vieux in ("arrondissements", "secteurs", "zones", "quartiers"):
+        vp = os.path.join(args.out, f"{vieux}.bin")
+        if os.path.exists(vp): os.remove(vp); print(f"  − {vieux}.bin supprimé (niveau précalculé, remplacé par sales.bin)")
     mpath = os.path.join(args.out, "manifest.json")
     old = open(mpath, encoding="utf-8").read() if os.path.exists(mpath) else None
     new = json.dumps(manifest, ensure_ascii=False, indent=1)
