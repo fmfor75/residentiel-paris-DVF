@@ -6,8 +6,10 @@ servie par GitHub Pages, protégée par un code d'accès.
 ## Architecture
 
 ```
-index.html                    ← dashboard (écran de code → déchiffrement local → étude / carte)
+index.html                    ← dashboard (écran de code → déchiffrement local → étude / carte), infobulles « i », mobile
 engine.js                     ← moteur de calcul exécuté dans le navigateur (mêmes règles que le pipeline Python)
+pdf.js                        ← export PDF de l'étude (jsPDF, chargé à la demande) ; assets/inter-pdf.js = police Inter embarquée
+assets/logo-jadero.png        ← logo (page de connexion, PDF)
 data/enc/meta.bin             ← méta, référentiels (secteurs, zones, quartiers, typologies par défaut) — chiffré
 data/enc/sales.bin            ← toutes les ventes retenues, 10 octets par vente (format DVS1) — chiffré
 data/enc/manifest.json        ← liste des fichiers chiffrés et paramètres de dérivation de clé (clair)
@@ -30,9 +32,19 @@ T5 100–400 m²). L'étude complète est encodée dans l'URL (`#…&typos=T1:9-
 `engine.js` reproduit exactement `process_dvf.py` (percentiles interpolés, arrondi demi-pair de Python, 3 ventes
 minimum) ; `node tests/test_engine.mjs` le vérifie sur données réelles après un run du pipeline (tolérance ±1 €/m²).
 
-L'onglet **Carte** affiche les polygones réellement utilisés (Leaflet, fond IGN) colorés selon le niveau choisi ;
-une adresse saisie est géocodée (géoplateforme IGN) puis affectée par point-dans-polygone au quartier, avec
-l'arrondissement, le secteur et la zone correspondants, chacun ouvrable en étude d'un clic.
+L'onglet **Carte** affiche les polygones réellement utilisés (Leaflet, fond IGN) colorés selon le niveau choisi,
+légende repliée par défaut ; une adresse saisie (autocomplétion IGN limitée aux communes couvertes) est géocodée
+puis affectée par point-dans-polygone au quartier, avec l'arrondissement, le secteur et la zone correspondants,
+chacun ouvrable en étude d'un clic.
+
+Chaque chiffre porte un « i » qui explique sa méthode de calcul (dictionnaire `HELP` dans index.html, repris dans la
+page Méthode du PDF). **Exporter en PDF** produit dans le navigateur un document A4 : couverture avec le logo et la
+carte (point de l'adresse localisée si une adresse a été saisie, sinon la zone étudiée), chiffres clés, évolutions,
+graphiques vectoriels, typologies, tableau annuel, méthode. La carte du PDF est dessinée depuis les tuiles IGN et les
+mêmes polygones que l'écran ; les tuiles non chargées sont comptées et signalées dans la légende.
+
+Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
+iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).
 
 ## Mise à jour des données
 
