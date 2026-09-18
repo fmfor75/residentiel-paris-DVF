@@ -48,8 +48,12 @@ input{font-family:inherit;color:inherit}
 .brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#1E293B,#0B1220);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;letter-spacing:.08em;flex-shrink:0;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 6px 14px -6px rgba(15,23,42,.6)}
 .brand-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .brand-sub{font-size:11px;color:var(--text3);font-family:var(--mono)}
-.gate h1{font-size:22px;font-weight:500;margin:28px 0 6px;letter-spacing:-.02em}
+.gate-card{text-align:center}
+.gate-logo{display:block;width:230px;max-width:80%;height:auto;margin:6px auto 0}
+.gate-sub{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:14px;letter-spacing:.04em}
+.gate h1{font-size:22px;font-weight:500;margin:24px 0 6px;letter-spacing:-.02em}
 .gate p{color:var(--text3);font-size:13px;margin-bottom:22px;line-height:1.6}
+.gate .input{text-align:center}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .field label{font-size:11.5px;font-weight:500;color:var(--text2);letter-spacing:.02em}
 .input{border:1px solid var(--line3);border-radius:10px;padding:11px 13px;font-size:14px;background:rgba(255,255,255,.7);width:100%;transition:border-color .15s,box-shadow .15s}
@@ -215,7 +219,8 @@ footer a{color:var(--text3)}
 <!-- ═══════════ Écran d'accès ═══════════ -->
 <div class="gate" id="gate">
   <form class="gate-card glass" id="gateForm" autocomplete="off">
-    <div class="brand"><div class="brand-mark">DM</div><div><div class="brand-title">Data Marché Résidentiel</div><div class="brand-sub">DVF · Paris & Boulogne-Billancourt</div></div></div>
+    <img class="gate-logo" src="assets/logo-jadero.png" alt="Jadero" width="900" height="228">
+    <div class="gate-sub">DATA MARCHÉ RÉSIDENTIEL · DVF</div>
     <h1>Accès réservé</h1>
     <p>Les données de cette plateforme sont chiffrées. Saisissez le code d'accès pour les déchiffrer dans votre navigateur.</p>
     <div class="gate-err" id="gateErr" hidden></div>
