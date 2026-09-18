@@ -3,704 +3,580 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Étude de Marché · Paris Résidentiel</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<meta name="robots" content="noindex, nofollow">
+<title>Data Marché Résidentiel · DVF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
-:root{--bg:#f8f9fa;--surface:#fff;--surface2:#f1f3f5;--surface3:#e9ecef;--border:#dee2e6;--border2:#ced4da;--text1:#212529;--text2:#495057;--text3:#868e96;--text4:#adb5bd;--accent:#1971c2;--accent2:#1864ab;--gold:#e67700;--green:#2f9e44;--green2:#ebfbee;--red:#c92a2a;--red2:#fff5f5;--blue2:#e7f5ff;--radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);}
-*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text1);font-family:'Sora',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+/* ── Design system : institutionnel sobre (fond blanc cassé, bleu nuit, un accent) ─────────────── */
+:root{
+  --bg:#FAFAF9;--surface:#FFFFFF;--surface2:#F4F4F2;--border:#E5E4E0;--border2:#D3D2CC;
+  --text:#0F172A;--text2:#3F4756;--text3:#6B7280;--text4:#9AA0AA;
+  --primary:#0F172A;--accent:#1D4ED8;--accent-soft:#E8EEFB;--gold:#A16207;
+  --good:#047857;--good-soft:#ECFDF5;--bad:#B91C1C;--bad-soft:#FEF2F2;--warn:#B45309;--warn-soft:#FFFBEB;
+  --s1:#2a78d6;--band:rgba(42,120,214,.13);--p1090:#7FA8DE;--vol:#C9C7BE;
+  --r:8px;--r-lg:12px;
+  --sh1:0 1px 2px rgba(15,23,42,.05);--sh2:0 4px 16px rgba(15,23,42,.08);
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
 
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 40px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
-.topbar-brand{display:flex;align-items:center;gap:10px;}
-.topbar-logo{width:32px;height:32px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;letter-spacing:-.5px;}
-.topbar-title{font-size:15px;font-weight:600;letter-spacing:-.2px;}
-.topbar-sub{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px;}
-.status-pill{display:flex;align-items:center;gap:6px;background:var(--green2);border:1px solid #b2f2bb;border-radius:20px;padding:4px 10px;font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace;}
-.status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--green);}
-.status-pill.loading{background:#fff9db;border-color:#ffe066;color:var(--gold);}
-.status-pill.loading .dot{background:var(--gold);animation:blink 1s infinite;}
-.status-pill.err{background:var(--red2);border-color:#ffc9c9;color:var(--red);}
-.status-pill.err .dot{background:var(--red);}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── Écran d'accès ─────────────────────────────────────────────────────────────────────────────── */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.gate-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh2);padding:36px 32px;width:100%;max-width:400px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:36px;height:36px;border-radius:8px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;letter-spacing:.02em;flex-shrink:0}
+.brand-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--text3);font-family:var(--mono)}
+.gate h1{font-size:18px;font-weight:600;margin:24px 0 6px;letter-spacing:-.01em}
+.gate p{color:var(--text3);font-size:13px;margin-bottom:20px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.input{border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;font-size:14px;background:var(--surface);color:var(--text);width:100%;transition:border-color .15s}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.btn{border:1px solid transparent;border-radius:var(--r);padding:10px 16px;font-size:13px;font-weight:600;transition:background .15s,border-color .15s,color .15s;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn-primary{background:var(--primary);color:#fff;width:100%}
+.btn-primary:hover{background:#1E293B}
+.btn-primary[disabled]{opacity:.6;cursor:progress}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+.btn-sm{padding:6px 10px;font-size:12px}
+.gate-err{color:var(--bad);background:var(--bad-soft);border:1px solid #FECACA;border-radius:var(--r);padding:8px 12px;font-size:12px;margin-bottom:12px}
+.gate-foot{margin-top:20px;font-size:11px;color:var(--text4);line-height:1.6}
 
-.layout{display:grid;grid-template-columns:300px 1fr;gap:0;min-height:calc(100vh - 60px);}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;position:sticky;top:60px;height:calc(100vh - 60px);}
-.sidebar-section{display:flex;flex-direction:column;gap:8px;}
-.sidebar-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px;}
-.sidebar-label .num{width:18px;height:18px;background:var(--accent);color:#fff;border-radius:4px;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* ── Application ───────────────────────────────────────────────────────────────────────────────── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:50}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:11px;font-family:var(--mono);color:var(--text3);background:var(--surface2)}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+.pill.busy .dot{background:var(--warn);animation:blink 1s infinite}
+.pill.err{color:var(--bad);background:var(--bad-soft);border-color:#FECACA}.pill.err .dot{background:var(--bad)}
+@keyframes blink{50%{opacity:.3}}
+.layout{display:grid;grid-template-columns:304px 1fr;min-height:calc(100vh - 56px)}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:18px 16px 28px;display:flex;flex-direction:column;gap:20px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec-h{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;justify-content:space-between}
+.seg{display:grid;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px}
+.seg-4{grid-template-columns:repeat(4,1fr)}.seg-3{grid-template-columns:repeat(3,1fr)}.seg-5{grid-template-columns:repeat(5,1fr)}.seg-2{grid-template-columns:repeat(2,1fr)}
+.seg button{border:0;background:transparent;border-radius:6px;padding:6px 4px;font-size:11.5px;font-weight:500;color:var(--text2);transition:all .15s;white-space:nowrap}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--sh1);font-weight:600}
+.seg button[disabled]{color:var(--text4);cursor:not-allowed}
+.search{position:relative}
+.search .input{padding-left:32px;font-size:13px}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text4)}
+.zlist{display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow-y:auto;padding-right:2px}
+.zgrp{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text4);padding:8px 6px 3px}
+.zbtn{background:transparent;border:1px solid transparent;border-radius:6px;padding:7px 9px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;transition:all .12s;width:100%}
+.zbtn:hover{background:var(--surface2);border-color:var(--border)}
+.zbtn.on{background:var(--accent-soft);border-color:#BFD1F5}
+.zbtn .n{font-size:12.5px;font-weight:500;color:var(--text);line-height:1.25}
+.zbtn .m{font-size:10.5px;color:var(--text3);display:block;margin-top:1px}
+.zbtn .id{font-size:10px;font-family:var(--mono);color:var(--text4);background:var(--surface2);border-radius:4px;padding:1px 5px}
+.zbtn.on .id{background:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:11.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .12s}
+.chip:hover{border-color:var(--border2)}
+.chip.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.chip small{font-family:var(--mono);font-size:10px;opacity:.75}
+.sw-row{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--text2)}
+.sw{width:34px;height:20px;border-radius:10px;background:var(--border2);position:relative;border:0;transition:background .15s;flex-shrink:0}
+.sw::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw.on{background:var(--accent)}.sw.on::after{left:17px}
+.hint{font-size:11px;color:var(--text4);line-height:1.5}
 
-.secteurs-list{display:flex;flex-direction:column;gap:2px;}
-.sect-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:8px 10px;cursor:pointer;text-align:left;transition:all .12s;display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center;}
-.sect-btn:hover{border-color:var(--accent);background:var(--blue2);}
-.sect-btn.active{background:var(--blue2);border-color:var(--accent);box-shadow:0 0 0 2px rgba(25,113,194,.15);}
-.sect-nom{font-size:11px;font-weight:500;color:var(--text1);}
-.sect-meta{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;display:block;margin-top:1px;}
-.sect-id{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text4);background:var(--surface2);padding:2px 5px;border-radius:4px;}
-
-/* Fenêtre */
-.fen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;}
-.fen-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:6px 4px;cursor:pointer;text-align:center;font-size:10px;font-weight:500;color:var(--text2);font-family:'JetBrains Mono',monospace;transition:all .12s;}
-.fen-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--blue2);}
-.fen-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
-
-/* Typologies */
-.typo-table{display:flex;flex-direction:column;gap:2px;}
-.typo-head{display:grid;grid-template-columns:36px 1fr 1fr 24px;gap:3px;padding:0 3px;margin-bottom:2px;}
-.typo-head span{font-size:9px;color:var(--text4);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;text-align:center;}
-.typo-row{display:grid;grid-template-columns:36px 1fr 1fr 24px;gap:3px;align-items:center;padding:3px;border-radius:5px;}
-.typo-row:hover{background:var(--surface2);}
-.typo-badge{font-size:10px;font-weight:600;color:var(--accent);font-family:'JetBrains Mono',monospace;}
-.ti{background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text1);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 5px;outline:none;width:100%;text-align:center;}
-.ti:focus{border-color:var(--accent);background:#fff;}
-.tt{width:24px;height:24px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .12s;}
-.tt.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-
-/* Options */
-.options-list{display:flex;flex-direction:column;gap:7px;}
-.opt-row{display:flex;align-items:center;justify-content:space-between;}
-.opt-lbl{font-size:12px;color:var(--text2);}
-.opt-lbl small{display:block;font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;}
-.sw{width:32px;height:18px;background:var(--surface3);border:1px solid var(--border2);border-radius:9px;position:relative;cursor:pointer;transition:all .15s;flex-shrink:0;}
-.sw.on{background:var(--accent);border-color:var(--accent);}
-.sw::after{content:'';position:absolute;width:12px;height:12px;background:#fff;border-radius:50%;top:2px;left:2px;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
-.sw.on::after{left:16px;}
-.btn-go{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-family:'Sora',sans-serif;font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;width:100%;transition:background .15s;}
-.btn-go:hover{background:var(--accent2);}
-
-/* Content */
-.content{padding:24px 28px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
-.etude-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-.etude-hdr-left h2{font-size:18px;font-weight:600;letter-spacing:-.3px;}
-.etude-hdr-left p{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:3px;}
-.chips{display:flex;gap:6px;flex-wrap:wrap;}
-.chip{font-size:9px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text3);background:var(--surface2);}
-.chip.blue{background:var(--blue2);border-color:#74c0fc;color:var(--accent2);}
-.chip.gold{background:#fff9db;border-color:#ffe066;color:var(--gold);}
-.chip.green{background:var(--green2);border-color:#b2f2bb;color:var(--green);}
-
-/* Card */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
-.card-hdr{padding:12px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.card-title{font-size:12px;font-weight:600;color:var(--text1);display:flex;align-items:center;gap:8px;}
-.badge{font-size:9px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:20px;}
-.badge.blue{background:var(--blue2);border:1px solid #74c0fc;color:var(--accent2);}
-.badge.gold{background:#fff9db;border:1px solid #ffe066;color:var(--gold);}
-.badge.green{background:var(--green2);border:1px solid #b2f2bb;color:var(--green);}
-.card-count{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);}
-.card-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
-
-/* KPIs 3-stat (max/min/moy) */
-.tri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.quad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-.tri-kpi{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;}
-.tri-kpi.hi-max{background:#fff5f5;border-color:#ffc9c9;}
-.tri-kpi.hi-max .tri-v{color:var(--red);}
-.tri-kpi.hi-moy{background:var(--blue2);border-color:#74c0fc;}
-.tri-kpi.hi-moy .tri-v{color:var(--accent2);}
-.tri-kpi.hi-min{background:var(--green2);border-color:#b2f2bb;}
-.tri-kpi.hi-min .tri-v{color:var(--green);}
-.tri-l{font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;}
-.tri-v{font-size:20px;font-weight:700;line-height:1;letter-spacing:-.5px;color:var(--text1);}
-.tri-u{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:2px;}
-
-/* Évolutions */
-.evo-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
-.evo-cell{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 6px;text-align:center;}
-.evo-cell.fen-active{background:var(--blue2);border-color:#74c0fc;}
-.el{font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
-.ev{font-size:17px;font-weight:700;letter-spacing:-.5px;color:var(--text2);}
-.ev.up{color:var(--green);}
-.ev.down{color:var(--red);}
-.es{font-size:8px;color:var(--text4);font-family:'JetBrains Mono',monospace;margin-top:2px;}
-
-/* Typo share */
-.typo-share{display:flex;flex-direction:column;gap:6px;}
-.ts-title{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);}
-.ts-row{display:flex;align-items:center;gap:8px;}
-.ts-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text2);width:28px;flex-shrink:0;}
-.ts-bar-wrap{flex:1;height:10px;background:var(--surface3);border-radius:5px;overflow:hidden;}
-.ts-bar{height:100%;background:var(--accent);border-radius:5px;transition:width .4s;}
-.ts-bar.top{background:var(--gold);}
-.ts-pct{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);width:36px;text-align:right;}
-.ts-count{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text4);width:52px;text-align:right;}
-
-/* Charts */
-.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:10px;}
-.chart-box{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px 14px;}
-.cb-title{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
-.cw{position:relative;height:180px;}
-
-.divider{height:1px;background:var(--border);margin:2px 0;}
-.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:10px;color:var(--text3);}
-.empty-icon{font-size:28px;opacity:.4;}
-.empty h3{font-size:15px;font-weight:600;color:var(--text2);}
-.empty p{font-size:11px;text-align:center;line-height:1.8;max-width:340px;}
-footer{padding:14px 40px;border-top:1px solid var(--border);font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);line-height:1.8;background:var(--surface);}
-footer a{color:var(--accent);text-decoration:none;}
-@media(max-width:900px){.layout{grid-template-columns:1fr;}.sidebar{position:static;height:auto;}.charts-row{grid-template-columns:1fr;}.evo-grid{grid-template-columns:repeat(3,1fr);}}
+.content{padding:22px 26px 40px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.hdr h2{font-size:20px;font-weight:600;letter-spacing:-.015em;line-height:1.2}
+.crumbs{font-size:11.5px;color:var(--text3);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.crumbs .sep{color:var(--text4)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text3);background:var(--surface)}
+.tag.acc{background:var(--accent-soft);border-color:#BFD1F5;color:var(--accent)}
+.tag.warn{background:var(--warn-soft);border-color:#FDE68A;color:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh1);overflow:hidden}
+.card-h{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.card-t{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-t .badge{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);color:var(--text3);font-weight:500}
+.card-sub{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.card-b{padding:16px 18px;display:flex;flex-direction:column;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.kpi{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative}
+.kpi .l{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15;margin-top:6px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.kpi .u{font-size:10.5px;color:var(--text3);margin-top:3px}
+.kpi.med{background:var(--accent-soft);border-color:#BFD1F5}.kpi.med .v{color:var(--accent)}
+.evos{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.evo{border:1px solid var(--border);border-radius:var(--r);padding:9px 10px;text-align:center;background:var(--surface)}
+.evo.on{border-color:#BFD1F5;background:var(--accent-soft)}
+.evo .l{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.evo .v{font-size:16px;font-weight:700;margin-top:3px;font-family:var(--mono);font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:3px}
+.evo .v.up{color:var(--good)}.evo .v.down{color:var(--bad)}.evo .v.nd{color:var(--text4);font-weight:500}
+.evo .s{font-size:10px;color:var(--text4);font-family:var(--mono);margin-top:2px}
+.charts{display:grid;grid-template-columns:1fr;gap:12px}
+.chart{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px 8px;position:relative}
+.chart-t{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0}
+.legend i{display:inline-block;width:14px;height:0;border-top:2px solid var(--s1);vertical-align:middle;margin-right:5px}
+.legend i.band{height:8px;border:0;background:var(--band);border-radius:2px}
+.legend i.vol{height:8px;border:0;background:var(--vol);border-radius:2px}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--primary);color:#fff;border-radius:6px;padding:7px 10px;font-size:11px;font-family:var(--mono);line-height:1.5;box-shadow:var(--sh2);transform:translate(-50%,calc(-100% - 10px));white-space:nowrap;z-index:5;opacity:0;transition:opacity .1s}
+.tip b{font-weight:600}
+.tip.show{opacity:1}
+.typo-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.typo-tbl th{text-align:right;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:6px 8px;border-bottom:1px solid var(--border)}
+.typo-tbl th:first-child,.typo-tbl td:first-child{text-align:left}
+.typo-tbl td{padding:8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.typo-tbl tr:last-child td{border-bottom:0}
+.typo-tbl td:first-child{font-family:var(--sans);font-weight:500}
+.typo-tbl td:first-child small{color:var(--text3);font-weight:400;margin-left:6px;font-family:var(--mono);font-size:10.5px}
+.typo-tbl .share{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+.typo-tbl .bar{width:90px;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;display:inline-block}
+.typo-tbl .bar i{display:block;height:100%;background:var(--s1);border-radius:4px}
+.typo-tbl .up{color:var(--good)}.typo-tbl .down{color:var(--bad)}
+.typo-tbl tr.dim td{color:var(--text4)}
+.typo-tbl tr.top td:first-child::after{content:'dominante';font-family:var(--mono);font-size:9.5px;color:var(--gold);margin-left:8px;font-weight:500;letter-spacing:.04em}
+.tbl-wrap{overflow-x:auto}
+.ytbl{width:100%;border-collapse:collapse;font-size:12px}
+.ytbl th{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.ytbl td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ytbl th:first-child,.ytbl td:first-child{text-align:left}
+.ytbl tr:last-child td{border-bottom:0}
+.ytbl tr:hover td{background:var(--surface2)}
+.empty{padding:48px 24px;text-align:center;color:var(--text3)}
+.empty h3{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.empty p{font-size:12.5px;max-width:420px;margin:0 auto;line-height:1.7}
+.method{font-size:11.5px;color:var(--text3);line-height:1.7}
+.method b{color:var(--text2);font-weight:600}
+.method .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+footer{padding:16px 26px;border-top:1px solid var(--border);font-size:11px;font-family:var(--mono);color:var(--text4);line-height:1.8;background:var(--surface)}
+footer a{color:var(--text3)}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.evos{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}.sidebar{position:static;height:auto;border-right:0;border-bottom:1px solid var(--border)}
+  .zlist{max-height:260px}.content{padding:16px}.kpis{grid-template-columns:repeat(2,1fr)}.evos{grid-template-columns:repeat(3,1fr)}
+  .topbar{padding:0 14px}.brand-sub{display:none}.seg button{font-size:11px;padding:6px 2px}
+}
+@media (max-width:480px){.kpis{grid-template-columns:repeat(2,1fr)}.evos{grid-template-columns:repeat(2,1fr)}.hdr h2{font-size:17px}}
 </style>
 </head>
 <body>
 
+<!-- ═══════════ Écran d'accès ═══════════ -->
+<div class="gate" id="gate">
+  <form class="gate-card" id="gateForm" autocomplete="off">
+    <div class="brand"><div class="brand-mark">DM</div><div><div class="brand-title">Data Marché Résidentiel</div><div class="brand-sub">DVF · Paris & Boulogne-Billancourt</div></div></div>
+    <h1>Accès réservé</h1>
+    <p>Les données de cette plateforme sont chiffrées. Saisissez le code d'accès pour les déchiffrer dans votre navigateur.</p>
+    <div class="gate-err" id="gateErr" hidden></div>
+    <div class="field"><label for="code">Code d'accès</label><input class="input" id="code" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary" id="gateBtn" type="submit">Ouvrir la plateforme</button>
+    <div class="gate-foot">Le code n'est jamais transmis : il sert uniquement à dériver la clé de déchiffrement, localement. Il reste actif jusqu'à la fermeture de l'onglet.</div>
+  </form>
+</div>
+
+<!-- ═══════════ Application ═══════════ -->
+<div id="app" hidden>
 <header class="topbar">
-  <div class="topbar-brand">
-    <div class="topbar-logo">PI</div>
-    <div>
-      <div class="topbar-title">Paris Immo · Étude de Marché</div>
-      <div class="topbar-sub" id="topSub">DVF · Secteurs encadrement des loyers</div>
-    </div>
-  </div>
+  <div class="brand"><div class="brand-mark">DM</div><div><div class="brand-title">Data Marché Résidentiel</div><div class="brand-sub" id="topSub">DVF DGFiP</div></div></div>
   <div class="topbar-right">
-    <div class="status-pill loading" id="statusPill"><span class="dot"></span><span id="statusTxt">Chargement…</span></div>
+    <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Chargement…</span></span>
+    <button class="btn btn-ghost btn-sm" id="btnLogout" type="button">Verrouiller</button>
   </div>
 </header>
 
 <div class="layout">
 <aside class="sidebar">
-
-  <div class="sidebar-section">
-    <div class="sidebar-label"><span class="num">1</span> Zone géographique</div>
-    <div style="display:flex;gap:3px;margin-bottom:6px;">
-      <button class="fen-btn active" id="mode-sect" style="flex:1" onclick="setMode('secteur')">Secteurs DRIHL</button>
-      <button class="fen-btn" id="mode-arr" style="flex:1" onclick="setMode('arrondissement')">Arrondissements</button>
+  <div class="sec">
+    <div class="sec-h"><span>Zone géographique</span></div>
+    <div class="seg seg-4" id="segNiveau">
+      <button data-v="arrondissement">Arrond.</button>
+      <button data-v="secteur">Secteur</button>
+      <button data-v="zone">Zone</button>
+      <button data-v="quartier">Quartier</button>
     </div>
-    <div class="secteurs-list" id="sectList"></div>
+    <div class="search" id="searchWrap"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg><input class="input" id="search" placeholder="Rechercher un quartier…" aria-label="Rechercher"></div>
+    <div class="zlist" id="zlist"></div>
+    <div class="hint" id="niveauHint"></div>
   </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-label"><span class="num">2</span> Horizon d'analyse</div>
-    <div class="fen-grid" id="fenGrid">
-      <button class="fen-btn" data-fen="mensuel"      onclick="setFen('mensuel')">Mensuel</button>
-      <button class="fen-btn" data-fen="trimestriel"  onclick="setFen('trimestriel')">Trim.</button>
-      <button class="fen-btn" data-fen="annuel"       onclick="setFen('annuel')">Annuel</button>
-      <button class="fen-btn" data-fen="3"            onclick="setFen('3')">3 ans</button>
-      <button class="fen-btn" data-fen="5"            onclick="setFen('5')">5 ans</button>
-      <button class="fen-btn" data-fen="10"           onclick="setFen('10')">10 ans</button>
-      <button class="fen-btn active" data-fen="0"     onclick="setFen('0')" style="grid-column:span 3">Historique complet</button>
+  <div class="sec">
+    <div class="sec-h"><span>Période analysée</span></div>
+    <div class="seg seg-5" id="segPer">
+      <button data-v="1">1 an</button><button data-v="3">3 ans</button><button data-v="5">5 ans</button><button data-v="10">10 ans</button><button data-v="all">Tout</button>
     </div>
+    <div class="hint" id="perHint"></div>
   </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-label"><span class="num">3</span> Typologies</div>
-    <div class="typo-table">
-      <div class="typo-head"><span></span><span>min</span><span>max</span><span></span></div>
-      <div id="typoRows"></div>
+  <div class="sec">
+    <div class="sec-h"><span>Granularité des courbes</span></div>
+    <div class="seg seg-3" id="segGran">
+      <button data-v="month">Mois</button><button data-v="quarter">Trimestre</button><button data-v="year">Année</button>
     </div>
   </div>
-
-  <div class="sidebar-section">
-    <div class="sidebar-label"><span class="num">4</span> Options</div>
-    <div class="options-list">
-      <div class="opt-row"><div class="opt-lbl">Appartements</div><div class="sw on" id="sw-appart" onclick="toggleOpt('appart')"></div></div>
-      <div class="opt-row"><div class="opt-lbl">Maisons</div><div class="sw" id="sw-maison" onclick="toggleOpt('maison')"></div></div>
-      <div class="divider"></div>
-      <div class="opt-row">
-        <div class="opt-lbl">Marché global<small>Toutes typologies confondues</small></div>
-        <div class="sw on" id="sw-global" onclick="toggleOpt('global')"></div>
-      </div>
+  <div class="sec">
+    <div class="sec-h"><span>Type de bien</span></div>
+    <div class="seg seg-2" id="segType">
+      <button data-v="Appartement">Appartements</button><button data-v="Maison">Maisons</button>
     </div>
   </div>
-
-  <button class="btn-go" onclick="lancer()">Générer l'étude →</button>
+  <div class="sec">
+    <div class="sec-h"><span>Typologies</span><span class="hint">par surface</span></div>
+    <div class="chips" id="typoChips"></div>
+    <div class="sw-row"><span>Marché global (toutes surfaces)</span><button class="sw on" id="swGlobal" type="button" role="switch" aria-checked="true" aria-label="Marché global"></button></div>
+  </div>
 </aside>
 
 <main class="content" id="content">
-  <div class="empty">
-    <div class="empty-icon">📊</div>
-    <h3>Configurez votre étude</h3>
-    <p>① Sélectionnez un secteur<br>② Choisissez l'horizon d'analyse<br>③ Activez les typologies souhaitées<br>④ Cliquez "Générer l'étude"</p>
-  </div>
+  <div class="empty"><h3>Chargement des données</h3><p>Déchiffrement en cours…</p></div>
 </main>
 </div>
 
-<footer>
-  Sources : <a href="https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/" target="_blank">DVF DGFiP</a> ·
-  <a href="https://data.cquest.org/dgfip_dvf/" target="_blank">Archives cquest.org (2014–2019)</a> ·
-  <a href="https://files.data.gouv.fr/geo-dvf/latest/" target="_blank">Geo-DVF Etalab (2020–2025)</a> ·
-  Licence Ouverte Etalab 2.0
+<footer id="foot" hidden>
+  Sources : <a href="https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/" target="_blank" rel="noopener">DVF DGFiP</a> via Etalab (geo-dvf) et opendatarchives · quartiers administratifs et zonage d'encadrement des loyers : Ville de Paris (opendata.paris.fr) · IRIS : IGN géoplateforme · Licence Ouverte 2.0.
+  Traitement : ventes d'un logement unique (appartement ou maison), dépendances tolérées, VEFA et ventes multi-logements exclues, surface Carrez si cohérente sinon surface bâtie, prix retenus entre 1 000 et 40 000 €/m² et surfaces 9–400 m².
 </footer>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════
-// RÉFÉRENTIELS
-// ═══════════════════════════════════════════════════
-const SECTEURS = [
-  {id:1,  nom:"Louvre – Opéra",              arrLabel:"1er, 2e"},
-  {id:2,  nom:"Marais – Bastille",            arrLabel:"3e, 4e"},
-  {id:3,  nom:"Île de la Cité – Luxembourg",  arrLabel:"5e, 6e"},
-  {id:4,  nom:"Saint-Germain – Invalides",    arrLabel:"6e, 7e"},
-  {id:5,  nom:"Champs-Élysées – Trocadéro",  arrLabel:"8e, 16e"},
-  {id:6,  nom:"Opéra – Grands Boulevards",    arrLabel:"9e, 17e"},
-  {id:7,  nom:"Montmartre – Belleville",      arrLabel:"10e, 18e, 19e"},
-  {id:8,  nom:"Nation – Vincennes",           arrLabel:"12e"},
-  {id:9,  nom:"Grenelle – Convention",        arrLabel:"15e"},
-  {id:10, nom:"Montrouge – Alésia",           arrLabel:"13e, 14e"},
-  {id:11, nom:"Épinettes – Batignolles",      arrLabel:"17e"},
-  {id:12, nom:"Buttes-Chaumont",              arrLabel:"19e"},
-  {id:13, nom:"Ménilmontant – Oberkampf",     arrLabel:"11e, 20e"},
-  {id:14, nom:"Ivry – Tolbiac – Gobelins",    arrLabel:"13e"},
-];
-const TYPO_DEFS = [
-  {id:'T1',label:'T1/Studio',surfMin:9,  surfMax:30, active:false},
-  {id:'T2',label:'T2',       surfMin:30, surfMax:50, active:true},
-  {id:'T3',label:'T3',       surfMin:50, surfMax:70, active:true},
-  {id:'T4',label:'T4',       surfMin:70, surfMax:100,active:true},
-  {id:'T5',label:'T5+',      surfMin:100,surfMax:400,active:false},
-];
-const TYPO_LABELS = {T1:'T1/Studio (9–30m²)',T2:'T2 (30–50m²)',T3:'T3 (50–70m²)',T4:'T4 (70–100m²)',T5:'T5+ (>100m²)'};
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════════
+// Constantes d'affichage. Les référentiels (secteurs, zones, quartiers, typologies)
+// viennent du fichier meta — une seule source de vérité, construite par le pipeline.
+// ═══════════════════════════════════════════════════════════════════════════════
+const ENC_DIR = 'data/enc/';
+const PERIODES = {'1':'1 an','3':'3 ans','5':'5 ans','10':'10 ans','all':'Historique complet'};
+const GRANS = {month:'Mensuel',quarter:'Trimestriel',year:'Annuel'};
+const NIVEAUX = {arrondissement:'Arrondissement',secteur:'Secteur',zone:'Zone d’encadrement',quartier:'Quartier'};
+const NIVEAU_FILE = {arrondissement:'arrondissements',secteur:'secteurs',zone:'zones',quartier:'quartiers'};
+const NIVEAU_HINT = {
+  arrondissement:'Les 20 arrondissements de Paris.',
+  secteur:'Regroupements de quartiers entiers : 14 secteurs pour Paris, la commune et 10 quartiers pour Boulogne-Billancourt.',
+  zone:'Les 14 zones officielles de l’encadrement des loyers (Ville de Paris) : elles regroupent les quartiers par niveau de marché, pas par contiguïté.',
+  quartier:'Les 80 quartiers administratifs de Paris et les 10 quartiers de Boulogne-Billancourt. Courbes annuelles et trimestrielles seulement.'};
+const EFFECTIF_FAIBLE = 30;   // en dessous, le KPI est affiché mais signalé : un percentile sur 20 ventes n'est pas un prix de marché
+const fmt0 = v => (v==null||isNaN(v)) ? '—' : Math.round(v).toLocaleString('fr-FR');
+const fmtPct = v => v==null ? 'N/D' : `${v>0?'+':''}${v.toFixed(1).replace('.',',')} %`;
+const fmtDate = s => new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const QUARTIERS_BOULOGNE = [
-  {id:'B0', nom:'Commune entière',                    arrLabel:'Boulogne-Billancourt · 92100'},
-  {id:'B1', nom:'Billancourt – Île Seguin',           arrLabel:'Sud-Est · bords de Seine'},
-  {id:'B2', nom:'Pont de Sèvres – Rives de Seine',   arrLabel:'Sud-Ouest · M9 Pont de Sèvres'},
-  {id:'B3', nom:'Centre-ville – République',          arrLabel:'Centre · M10 Boulogne Pt de St-Cloud'},
-  {id:'B4', nom:'Silly – Gallieni – Droits de l’Homme', arrLabel:'Nord-Ouest'},
-  {id:'B5', nom:'Boulogne Nord – Parchamp',           arrLabel:'Nord · Bois de Boulogne'},
-  {id:'B6', nom:'Marcel Sembat – Aguesseau',          arrLabel:'Est · M9 Marcel Sembat'},
-];
-
-// ═══════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════
-let DB=null, sectSel=null, fenetre='0', typos=TYPO_DEFS.map(t=>({...t})), opts={appart:true,maison:false,global:true}, CHARTS={};
-let geoMode = 'secteur'; // 'secteur' ou 'arrondissement'
-
-const ARRONDISSEMENTS = [
-  {id:1, nom:"Paris 1er",  arrLabel:"Louvre · Palais-Royal",       note:null},
-  {id:2, nom:"Paris 2e",   arrLabel:"Bourse · Sentier",             note:null},
-  {id:3, nom:"Paris 3e",   arrLabel:"Marais Nord",                  note:null},
-  {id:4, nom:"Paris 4e",   arrLabel:"Marais Sud · Île Saint-Louis", note:null},
-  {id:5, nom:"Paris 5e",   arrLabel:"Latin · Panthéon",             note:null},
-  {id:6, nom:"Paris 6e",   arrLabel:"Saint-Germain",                note:null},
-  {id:7, nom:"Paris 7e",   arrLabel:"Invalides · Tour Eiffel",      note:null},
-  {id:8, nom:"Paris 8e",   arrLabel:"Champs-Élysées · Madeleine",   note:null},
-  {id:9, nom:"Paris 9e",   arrLabel:"Opéra · Pigalle",              note:null},
-  {id:10,nom:"Paris 10e",  arrLabel:"Canal Saint-Martin · Gare Est",note:null},
-  {id:11,nom:"Paris 11e",  arrLabel:"Bastille · Oberkampf",         note:null},
-  {id:12,nom:"Paris 12e",  arrLabel:"Nation · Bercy",               note:null},
-  {id:13,nom:"Paris 13e",  arrLabel:"Gobelins · Ivry",              note:null},
-  {id:14,nom:"Paris 14e",  arrLabel:"Montparnasse · Alésia",        note:null},
-  {id:15,nom:"Paris 15e",  arrLabel:"Grenelle · Vaugirard",         note:null},
-  {id:16,nom:"Paris 16e",  arrLabel:"Trocadéro · Passy",            note:null},
-  {id:17,nom:"Paris 17e",  arrLabel:"Batignolles · Épinettes",      note:"⚠ Couvre S6+S11"},
-  {id:18,nom:"Paris 18e",  arrLabel:"Montmartre · Clignancourt",    note:null},
-  {id:19,nom:"Paris 19e",  arrLabel:"Buttes-Chaumont · Belleville", note:"⚠ Couvre S7+S12"},
-  {id:20,nom:"Paris 20e",  arrLabel:"Ménilmontant · Père-Lachaise", note:null},
-];
-
-// Lot 2 : les secteurs sont désormais des listes de quartiers entiers (polygones officiels) ;
-// plus aucun arrondissement n'est « agrégé faute de géoloc ». Les notes d'avertissement ont été retirées.
-const SECTEURS_NOTES = {};
-
-// ═══════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════
-function setMode(mode) {
-  geoMode = mode;
-  sectSel = null;
-  document.getElementById('mode-sect').classList.toggle('active', mode==='secteur');
-  document.getElementById('mode-arr').classList.toggle('active', mode==='arrondissement');
-  rebuildList();
+// ═══════════════════════════════════════════════════════════════════════════════
+// Chiffrement : PBKDF2-SHA256 (200 000 it.) → AES-256-GCM → gzip. Miroir exact de scripts/build_site.py.
+// La clé dérivée (pas le code) est gardée en sessionStorage : survit au rechargement, meurt avec l'onglet.
+// ═══════════════════════════════════════════════════════════════════════════════
+const KDF_ITER = 200000, MAGIC = 'DVF1';
+let KEY = null; const CACHE = {};
+async function deriveKey(code, salt){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', hash:'SHA-256', salt, iterations:KDF_ITER}, km, 256);
+  return new Uint8Array(bits);
+}
+async function importRaw(raw){ return crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['decrypt']); }
+async function fetchBlob(name){
+  const r = await fetch(`${ENC_DIR}${name}.bin?v=${Date.now()}`, {cache:'no-store'});
+  if (!r.ok) throw new Error(`HTTP ${r.status} sur ${name}.bin`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+async function decryptBlob(blob, key){
+  if (new TextDecoder().decode(blob.slice(0,4)) !== MAGIC) throw new Error('format inconnu');
+  const iv = blob.slice(20,32), ct = blob.slice(32);
+  const gz = await crypto.subtle.decrypt({name:'AES-GCM', iv, additionalData:new TextEncoder().encode(MAGIC)}, key, ct);
+  const txt = await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  return JSON.parse(txt);
+}
+async function loadLevel(name){
+  if (CACHE[name]) return CACHE[name];
+  setStatus('busy', `Chargement ${name}…`);
+  const d = await decryptBlob(await fetchBlob(name), KEY);
+  CACHE[name] = d; return d;
 }
 
-function rebuildList() {
-  const sl = document.getElementById('sectList');
-  sl.innerHTML = '';
-
-  function addGroup(label, items, idFn, idLabelFn, noteFn) {
-    const grp = document.createElement('div');
-    grp.style.cssText = 'font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:8px 4px 4px;';
-    grp.textContent = label;
-    sl.appendChild(grp);
-    items.forEach(s => {
-      const b = document.createElement('button');
-      b.className='sect-btn'; b.id=`sb-${idFn(s)}`;
-      const note = noteFn ? noteFn(s) : null;
-      const noteHtml = note ? `<span style="font-size:9px;color:var(--gold);display:block;margin-top:2px;">${note}</span>` : '';
-      b.innerHTML = `<div><span class="sect-nom">${s.nom}</span><span class="sect-meta">${s.arrLabel}</span>${noteHtml}</div><span class="sect-id">${idLabelFn(s)}</span>`;
-      b.onclick = () => {
-        sectSel = idFn(s);
-        document.querySelectorAll('.sect-btn').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active');
-      };
-      sl.appendChild(b);
-    });
-  }
-
-  if (geoMode === 'secteur') {
-    addGroup('Paris — Secteurs DRIHL', SECTEURS, s=>s.id, s=>`S${s.id}`, s=>SECTEURS_NOTES[s.id]||null);
-    addGroup('Boulogne-Billancourt', QUARTIERS_BOULOGNE, s=>s.id, s=>s.id, null);
-  } else {
-    addGroup('Paris — Arrondissements', ARRONDISSEMENTS, s=>s.id, s=>`${s.id}e`, s=>s.note||null);
-    addGroup('Boulogne-Billancourt', QUARTIERS_BOULOGNE, s=>s.id, s=>s.id, null);
-  }
+// ═══════════════════════════════════════════════════════════════════════════════
+// Écran d'accès
+// ═══════════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+async function tryOpen(rawKey){
+  KEY = await importRaw(rawKey);
+  const meta = await decryptBlob(await fetchBlob('meta'), KEY);   // échoue (OperationError) si mauvais code
+  CACHE.meta = meta; return meta;
 }
-
-async function init() {
-  buildSidebar();
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault(); const btn = $('gateBtn'), err = $('gateErr'); err.hidden = true; btn.disabled = true; btn.textContent = 'Déchiffrement…';
   try {
-    const r = await fetch('./data/dvf_paris.json?t='+Date.now());
-    if (!r.ok) throw new Error('HTTP '+r.status);
-    DB = await r.json();
-    // Lot 2 : le référentiel des secteurs vient du JSON (data/geo/referentiel.json), plus du HTML.
-    if (DB.secteurs_ref) {
-      SECTEURS.length = 0; QUARTIERS_BOULOGNE.length = 0;
-      Object.entries(DB.secteurs_ref).forEach(([id, s]) => {
-        if (s.ville === 'Boulogne') QUARTIERS_BOULOGNE.push({id, nom: s.nom, arrLabel: s.arrLabel || ''});
-        else SECTEURS.push({id: +id, nom: s.nom, arrLabel: s.arrLabel || ''});
-      });
-      SECTEURS.sort((a, b) => a.id - b.id);
-      QUARTIERS_BOULOGNE.sort((a, b) => parseInt(a.id.slice(1)) - parseInt(b.id.slice(1)));
-      rebuildList();
-    }
-    const d = new Date(DB.meta.generated_at);
-    setStatus('ok', `${(DB.meta.total_apparts||0).toLocaleString('fr-FR')} apparts · ${DB.meta.periode} · MàJ ${d.toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`);
-    document.getElementById('topSub').textContent = `DVF · Secteurs encadrement des loyers · ${DB.meta.periode}`;
-  } catch(e) { setStatus('err','Données non disponibles'); }
+    const blob = await fetchBlob('meta'); const salt = blob.slice(4,20);
+    const raw = await deriveKey($('code').value, salt);
+    await tryOpen(raw);
+    try { sessionStorage.setItem('dvf_k', btoa(String.fromCharCode(...raw))); } catch(_){}
+    $('code').value = ''; start();
+  } catch(ex) {
+    err.textContent = ex.name === 'OperationError' ? 'Code incorrect.' : `Impossible de charger les données (${ex.message}).`; err.hidden = false;
+  } finally { btn.disabled = false; btn.textContent = 'Ouvrir la plateforme'; }
+});
+$('btnLogout').addEventListener('click', () => { try { sessionStorage.removeItem('dvf_k'); } catch(_){} location.hash=''; location.reload(); });
+(async function boot(){
+  let raw = null; try { const s = sessionStorage.getItem('dvf_k'); if (s) raw = Uint8Array.from(atob(s), c=>c.charCodeAt(0)); } catch(_){}
+  if (raw) { try { await tryOpen(raw); start(); return; } catch(_) { try { sessionStorage.removeItem('dvf_k'); } catch(__){} } }
+  $('code').focus();
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// État & référentiels
+// ═══════════════════════════════════════════════════════════════════════════════
+let META = null, REF = null;
+const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:new Set(['T2','T3','T4']), global:true, q:''};
+
+function buildRef(meta){
+  const qr = meta.quartiers_ref || {}, sr = meta.secteurs_ref || {}, zr = meta.zones_ref || {};
+  const arrs = []; for (let a=1;a<=20;a++) arrs.push({id:String(a), nom:`Paris ${a===1?'1er':a+'e'}`, meta:'', grp:'Paris'});
+  const quartierNom = id => qr[id]?.nom || id;
+  const numOf = id => parseInt(id.replace(/\D/g,''))||0;
+  const secteurs = Object.entries(sr).map(([id,s]) => ({id, nom:s.nom, meta:s.arrLabel||'', grp:s.ville==='Boulogne'?'Boulogne-Billancourt':'Paris', quartiers:s.quartiers||[]}))
+    .sort((a,b)=> a.grp===b.grp ? numOf(a.id)-numOf(b.id) : (a.grp==='Paris'?-1:1));
+  const zones = Object.entries(zr).map(([id,z]) => { const qs = z.quartiers||[]; const arrList = [...new Set(qs.map(q=>qr[q]?.arr).filter(Boolean))].sort((a,b)=>a-b);
+    return {id, nom:`Zone ${id.slice(1)}`, meta:`${qs.length} quartiers · ${arrList.map(a=>a===1?'1er':a+'e').join(', ')}`, grp:'Paris', quartiers:qs}; })
+    .sort((a,b)=>numOf(a.id)-numOf(b.id));
+  const quartiers = Object.entries(qr).map(([id,q]) => ({id, nom:q.nom, arr:q.arr, zone:q.zone, secteur:q.secteur, commune:q.commune,
+    meta: q.commune==='75056' ? `${sr[q.secteur]?.nom||''} · ${q.zone}` : 'Boulogne-Billancourt',
+    grp: q.commune==='75056' ? `Paris ${q.arr===1?'1er':q.arr+'e'}` : 'Boulogne-Billancourt', sortKey: q.commune==='75056' ? q.arr*1000+numOf(id) : 100000+numOf(id)}))
+    .sort((a,b)=>a.sortKey-b.sortKey);
+  return {arrondissement:arrs, secteur:secteurs, zone:zones, quartier:quartiers, quartierNom, sr, zr, qr};
+}
+function itemsOf(niveau){ return REF[niveau]; }
+function findItem(niveau, id){ return itemsOf(niveau).find(x=>x.id===id); }
+
+// URL : #niveau=secteur&id=5&per=5&gran=year&type=Appartement&typos=T2,T3&global=1
+function readHash(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('niveau') in NIVEAUX) S.niveau = h.get('niveau');
+  if (h.get('id')) S.id = h.get('id');
+  if (h.get('per') in PERIODES) S.per = h.get('per');
+  if (h.get('gran') in GRANS) S.gran = h.get('gran');
+  if (['Appartement','Maison'].includes(h.get('type'))) S.type = h.get('type');
+  if (h.get('typos')!=null) S.typos = new Set(h.get('typos').split(',').filter(Boolean));
+  if (h.get('global')!=null) S.global = h.get('global')==='1';
+}
+function writeHash(){
+  const p = new URLSearchParams({niveau:S.niveau, id:S.id||'', per:S.per, gran:S.gran, type:S.type, typos:[...S.typos].join(','), global:S.global?'1':'0'});
+  history.replaceState(null, '', '#'+p.toString());
 }
 
-function buildSidebar() {
-  rebuildList();
-  const tr = document.getElementById('typoRows');
-  typos.forEach((t,i) => {
-    const row = document.createElement('div'); row.className='typo-row';
-    row.innerHTML = `<span class="typo-badge">${t.id}</span>
-      <input class="ti" type="number" value="${t.surfMin}" min="1" max="500" onchange="typos[${i}].surfMin=+this.value">
-      <input class="ti" type="number" value="${t.surfMax}" min="1" max="500" onchange="typos[${i}].surfMax=+this.value">
-      <button class="tt ${t.active?'on':''}" id="tt-${i}" onclick="toggleTypo(${i})">${t.active?'✓':'+'}</button>`;
-    tr.appendChild(row);
+// ═══════════════════════════════════════════════════════════════════════════════
+// Sidebar
+// ═══════════════════════════════════════════════════════════════════════════════
+function setSeg(id, v){ document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on', b.dataset.v===v)); }
+function renderSidebar(){
+  setSeg('segNiveau', S.niveau); setSeg('segPer', S.per); setSeg('segGran', S.gran); setSeg('segType', S.type);
+  $('niveauHint').textContent = NIVEAU_HINT[S.niveau];
+  $('searchWrap').hidden = S.niveau !== 'quartier';
+  const ly = META.meta.last_year, y0 = META.meta.annees[0];
+  $('perHint').textContent = S.per==='all' ? `${y0} → ${ly} (${META.meta.annees.length} années)` : `${ly-(+S.per)+1} → ${ly}` + (META.meta.last_year_complete ? '' : ` · ${ly} incomplète`);
+  const mBtn = document.querySelector('#segGran button[data-v="month"]');
+  mBtn.disabled = S.niveau==='quartier'; mBtn.title = mBtn.disabled ? 'Séries mensuelles non calculées à la maille quartier' : '';
+  if (mBtn.disabled && S.gran==='month') { S.gran = 'quarter'; setSeg('segGran', S.gran); }
+  // liste des zones
+  const list = $('zlist'); list.innerHTML = '';
+  const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+  const q = norm(S.q.trim());
+  let grp = null, shown = 0;
+  itemsOf(S.niveau).forEach(it => {
+    if (q && !norm(it.nom+' '+(it.meta||'')+' '+it.grp).includes(q)) return;
+    if (it.grp !== grp) { grp = it.grp; const g = document.createElement('div'); g.className='zgrp'; g.textContent = grp; list.appendChild(g); }
+    const b = document.createElement('button'); b.type='button'; b.className = 'zbtn' + (it.id===S.id?' on':''); b.dataset.id = it.id;
+    const idLabel = S.niveau==='secteur'&&/^\d+$/.test(it.id) ? 'S'+it.id : S.niveau==='arrondissement' ? (it.id==='1'?'1er':it.id+'e') : it.id;
+    b.innerHTML = `<span><span class="n">${esc(it.nom)}</span>${it.meta?`<span class="m">${esc(it.meta)}</span>`:''}</span><span class="id">${esc(idLabel)}</span>`;
+    b.onclick = () => { S.id = it.id; update(); };
+    list.appendChild(b); shown++;
   });
-}
-
-function setFen(f) {
-  fenetre = f;
-  document.querySelectorAll('.fen-btn').forEach(b => b.classList.toggle('active', b.dataset.fen===f));
-}
-function toggleTypo(i) { typos[i].active=!typos[i].active; const b=document.getElementById(`tt-${i}`); b.classList.toggle('on',typos[i].active); b.textContent=typos[i].active?'✓':'+'; }
-function toggleOpt(k) { opts[k]=!opts[k]; document.getElementById(`sw-${k}`).classList.toggle('on',opts[k]); }
-function lancer() {
-  if (!DB) { setStatus('err','Données non disponibles'); return; }
-  if (!sectSel) { setStatus('err','Sélectionnez un secteur'); return; }
-  const actives = typos.filter(t=>t.active);
-  if (!actives.length && !opts.global) { setStatus('err','Activez au moins une typologie'); return; }
-  destroyCharts(); setStatus('loading','Calcul en cours…');
-  setTimeout(() => { try { renderEtude(sectSel,actives); setStatus('ok','Étude générée'); } catch(e) { console.error(e); setStatus('err','Erreur : '+e.message); } }, 30);
-}
-
-// ═══════════════════════════════════════════════════
-// DATA HELPERS
-// ═══════════════════════════════════════════════════
-function getTypeStats(sectId, typeBien) {
-  // Les IDs Boulogne sont des strings "B0"-"B6", les IDs Paris sont des numbers
-  if (geoMode==='arrondissement' && typeof sectId === 'number') {
-    return DB?.arrondissements?.[String(sectId)]?.by_type?.[typeBien]||null;
-  }
-  return DB?.secteurs?.[String(sectId)]?.by_type?.[typeBien]||null;
-}
-function getTypoStats(sectId, typeBien, typoId) { return getTypeStats(sectId,typeBien)?.by_typo?.[typoId]||null; }
-
-// Récupérer le bon dictionnaire de périodes selon la fenêtre
-function getPeriodData(stats) {
-  if (!stats) return {};
-  if (fenetre==='mensuel' || fenetre==='trimestriel') {
-    // by_quarter disponible, on l'utilise pour trimestriel; pour mensuel on approx avec trimestriel
-    return stats.by_quarter || stats.by_year || {};
-  }
-  return stats.by_year || {};
-}
-
-// Filtrer les périodes selon la fenêtre numérique
-function filterPeriods(byP) {
-  if (!byP) return {};
-  const keys = Object.keys(byP).sort();
-  if (!keys.length) return {};
-  if (fenetre==='0' || fenetre==='mensuel' || fenetre==='trimestriel' || fenetre==='annuel') return byP;
-  const n = parseInt(fenetre);
-  // Pour "3 ans", "5 ans", "10 ans" : filtrer les N dernières années calendaires
-  const lastYear = parseInt(keys[keys.length-1].substring(0,4));
-  const cutYear  = lastYear - n + 1;
-  const result = {};
-  keys.filter(k => parseInt(k.substring(0,4)) >= cutYear).forEach(k => result[k]=byP[k]);
-  return result;
-}
-
-// Calculer max/min/moy sur une fenêtre de périodes
-function computeWindowStats(byP_filtered) {
-  const vals = Object.values(byP_filtered||{}).filter(v=>v&&v.count>=3);
-  if (!vals.length) return null;
-  const totalN = vals.reduce((a,v)=>a+v.count,0);
-  const moyV   = Math.round(vals.reduce((a,v)=>a+v.mean*v.count,0)/totalN);
-  const medV   = Math.round(vals.reduce((a,v)=>a+(v.median||v.mean)*v.count,0)/totalN);
-  const maxV   = Math.max(...vals.map(v=>v.p90||v.q3||v.mean));
-  const minV   = Math.min(...vals.map(v=>v.p10||v.q1||v.mean));
-  return { max:Math.round(maxV), min:Math.round(minV), moy:moyV, med:medV, count:totalN };
-}
-
-// Évolution entre première et dernière période de la fenêtre filtrée
-function calcEvoWindow(byP_filtered) {
-  const keys = Object.keys(byP_filtered||{}).sort();
-  if (keys.length < 2) return null;
-  const v0 = byP_filtered[keys[0]]?.mean;
-  const v1 = byP_filtered[keys[keys.length-1]]?.mean;
-  if (!v0||!v1) return null;
-  return ((v1-v0)/v0*100).toFixed(1);
-}
-
-// Évolution sur N années depuis la fin
-function calcEvoN(byYear, n) {
-  const yrs = Object.keys(byYear||{}).sort();
-  if (yrs.length < 2) return null;
-  const lastIdx = yrs.length-1;
-  if (n >= yrs.length) return null;
-  const refIdx = lastIdx - n;
-  const v1 = byYear[yrs[lastIdx]]?.mean;
-  const v0 = byYear[yrs[refIdx]]?.mean;
-  if (!v0||!v1) return null;
-  return ((v1-v0)/v0*100).toFixed(1);
-}
-
-// Libellé fenêtre
-function fenLabel() {
-  const m = {mensuel:'Mensuel',trimestriel:'Trimestriel',annuel:'Annuel','3':'3 dernières années','5':'5 dernières années','10':'10 dernières années','0':'Historique complet'};
-  return m[fenetre]||'Historique';
-}
-
-// ═══════════════════════════════════════════════════
-// RENDER
-// ═══════════════════════════════════════════════════
-function renderEtude(sectId, actives) {
-  // Chercher dans toutes les listes possibles
-  const isBoulogne = typeof sectId === 'string' && sectId.startsWith('B');
-  const sect = isBoulogne
-    ? QUARTIERS_BOULOGNE.find(s=>s.id===sectId)
-    : (geoMode==='secteur' ? SECTEURS : ARRONDISSEMENTS).find(s=>s.id===sectId);
-  const typeBien = opts.appart?'Appartement':'Maison';
-  const typeData = getTypeStats(sectId, typeBien);
-  const box      = document.getElementById('content');
-  let sections   = [];
-
-  // ── GLOBAL
-  if (opts.global && typeData) {
-    const byPFull     = getPeriodData(typeData);
-    const byPFiltered = filterPeriods(byPFull);
-    const byYFull     = typeData.by_year||{};
-    sections.push({ type:'global', badge:'Marché global', badgeClass:'gold',
-      title:`Secteur ${sectId} · ${sect.nom} · ${typeBien}s`,
-      stats:typeData, byPFull, byPFiltered, byYFull, chartId:'gl' });
-  }
-
-  // ── PAR TYPO
-  actives.forEach((typo,idx) => {
-    const raw = getTypoStats(sectId, typeBien, typo.id);
-    if (!raw || raw.count < 5) return;
-    const byPFull     = getPeriodData(raw);
-    const byPFiltered = filterPeriods(byPFull);
-    const byYFull     = raw.by_year||{};
-    sections.push({ type:'typo', badge:`${typo.id} · ${typo.label}`, badgeClass:'blue',
-      title:`${typo.surfMin}–${typo.surfMax} m²`, stats:raw, byPFull, byPFiltered, byYFull,
-      typo, chartId:`t${idx}` });
+  if (!shown) { const e = document.createElement('div'); e.className='hint'; e.style.padding='8px'; e.textContent='Aucun quartier ne correspond.'; list.appendChild(e); }
+  // typologies
+  const tc = $('typoChips'); tc.innerHTML = '';
+  (META.typologies_ref||[]).forEach(t => {
+    const b = document.createElement('button'); b.type='button'; b.className='chip'+(S.typos.has(t.id)?' on':''); b.setAttribute('aria-pressed', S.typos.has(t.id));
+    b.innerHTML = `${t.id}<small>${t.surfMin}–${t.surfMax} m²</small>`; b.onclick = () => { S.typos.has(t.id)?S.typos.delete(t.id):S.typos.add(t.id); update(); }; tc.appendChild(b);
   });
+  $('swGlobal').classList.toggle('on', S.global); $('swGlobal').setAttribute('aria-checked', S.global);
+}
+['segNiveau','segPer','segGran','segType'].forEach(id => $(id).addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  const v = b.dataset.v;
+  if (id==='segNiveau') { if (v!==S.niveau) { S.niveau = v; S.id = null; S.q=''; $('search').value=''; } }
+  else if (id==='segPer') S.per = v; else if (id==='segGran') S.gran = v; else S.type = v;
+  update();
+}));
+$('search').addEventListener('input', e => { S.q = e.target.value; renderSidebar(); });
+$('swGlobal').addEventListener('click', () => { S.global = !S.global; update(); });
 
-  if (!sections.length) {
-    box.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><h3>Aucune donnée</h3><p>Pas de données pour cette sélection.</p></div>`;
-    return;
-  }
+// ═══════════════════════════════════════════════════════════════════════════════
+// Calculs d'affichage (tout vient de statistiques précalculées sur les mutations)
+// ═══════════════════════════════════════════════════════════════════════════════
+function periodFrom(){ const ly = META.meta.last_year; return S.per==='all' ? META.meta.annees[0] : ly-(+S.per)+1; }
+function seriesFor(stats){
+  const src = S.gran==='month' ? stats.by_month : S.gran==='quarter' ? stats.by_quarter : stats.by_year;
+  if (!src) return null;
+  const from = periodFrom();
+  return Object.keys(src).sort().filter(k => parseInt(k.slice(0,4)) >= from).map(k => ({k, ...src[k]}));
+}
+// Évolution de la médiane sur n années civiles : médiane(dernière année) vs médiane(dernière − n). N/D si l'une manque.
+function evoN(byYear, n){
+  const ly = META.meta.last_year, a = byYear?.[String(ly)]?.median, b = byYear?.[String(ly-n)]?.median;
+  return (a && b) ? (a/b-1)*100 : null;
+}
+function evoPeriode(byYear){
+  const ly = META.meta.last_year, from = periodFrom(); const a = byYear?.[String(ly)]?.median;
+  const y0 = Object.keys(byYear||{}).map(Number).filter(y=>y>=from).sort((x,y)=>x-y)[0]; const b = byYear?.[String(y0)]?.median;
+  return (a && b && y0<ly) ? {v:(a/b-1)*100, y0} : {v:null, y0};
+}
+function cagr(byYear){
+  const {v, y0} = evoPeriode(byYear); const ly = META.meta.last_year;
+  if (v==null || ly<=y0) return null; return (Math.pow(1+v/100, 1/(ly-y0))-1)*100;
+}
+function windowOf(stats){ return stats?.windows?.[S.per] || null; }
+const MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+function labelOf(k){ if (S.gran==='month') { const [y,m]=k.split('-'); return `${MOIS[+m-1]} ${y}`; } return k.replace('-Q',' T'); }
+function axisLabel(k){ return S.gran==='year' ? k : S.gran==='quarter' ? k.replace('-Q',' T') : k.slice(2); }
 
-  // Récupérer les infos de parts de marché typologies
-  const byTypo = typeData?.by_typo||{};
-  const topTypo = byTypo['_top_typo']||null;
+// ═══════════════════════════════════════════════════════════════════════════════
+// Graphiques SVG (sans dépendance) : bande P10–P90 + médiane, et volume
+// ═══════════════════════════════════════════════════════════════════════════════
+const AX = 'font-size="10" fill="#9AA0AA" font-family="JetBrains Mono,monospace"';
+function chartBand(el, pts){
+  const W = 760, H = 230, pl = 52, pr = 12, pt = 12, pb = 28; const iw = W-pl-pr, ih = H-pt-pb;
+  if (!pts || pts.length < 2) { el.innerHTML = `<div class="empty" style="padding:24px"><p>Pas assez de périodes (${pts?pts.length:0}) pour tracer une courbe.</p></div>`; return; }
+  const lo = Math.min(...pts.map(p=>p.p10)), hi = Math.max(...pts.map(p=>p.p90)); const raw = (hi-lo)/4 || 100; const ystep = [100,200,250,500,1000,2000,2500,5000,10000].find(s=>s>=raw) || 10000; const y0 = Math.floor(lo/ystep)*ystep, y1 = Math.ceil(hi/ystep)*ystep; const ticks = Math.round((y1-y0)/ystep);
+  const x = i => pl + i*(iw/(pts.length-1)), y = v => pt + ih - (v-y0)/(y1-y0)*ih;
+  const path = key => pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
+  const band = pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.p90).toFixed(1)}`).join(' ') + ' ' + pts.slice().reverse().map((p,i)=>`L${x(pts.length-1-i).toFixed(1)},${y(p.p10).toFixed(1)}`).join(' ') + ' Z';
+  let grid = '', ylab = '';
+  for (let t=0;t<=ticks;t++){ const v = y0 + ystep*t; grid += `<line x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#ECECEA"/>`; ylab += `<text x="${pl-8}" y="${(y(v)+3.5).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; }
+  const step = Math.ceil(pts.length/8); let xlab = '';
+  pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="${i===pts.length-1?'end':i===0?'start':'middle'}" ${AX}>${esc(axisLabel(p.k))}</text>`; });
+  const last = pts[pts.length-1];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution du prix au m²">${grid}${ylab}${xlab}
+    <path d="${band}" fill="var(--band)"/>
+    <path d="${path('p10')}" fill="none" stroke="var(--p1090)" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="${path('p90')}" fill="none" stroke="var(--p1090)" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="${path('median')}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${x(pts.length-1).toFixed(1)}" cy="${y(last.median).toFixed(1)}" r="4" fill="var(--s1)" stroke="#fff" stroke-width="2"/>
+    <text x="${(x(pts.length-1)-8).toFixed(1)}" y="${(y(last.median)-9).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="600" fill="#0F172A" font-family="JetBrains Mono,monospace">${fmt0(last.median)}</text>
+    <g class="hover"></g><rect x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent"/></svg><div class="tip"></div>`;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), hov = el.querySelector('.hover');
+  svg.addEventListener('mousemove', ev => {
+    const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; const i = Math.max(0, Math.min(pts.length-1, Math.round((mx-pl)/(iw/(pts.length-1)))));
+    const p = pts[i]; const cx = x(i), cy = y(p.median);
+    hov.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt}" y2="${pt+ih}" stroke="#0F172A" stroke-opacity=".25"/><circle cx="${cx}" cy="${cy}" r="5" fill="var(--s1)" stroke="#fff" stroke-width="2"/>`;
+    tip.innerHTML = `<b>${esc(labelOf(p.k))}</b> · ${p.count.toLocaleString('fr-FR')} ventes<br>P90 ${fmt0(p.p90)} · <b>méd. ${fmt0(p.median)}</b> · P10 ${fmt0(p.p10)} €/m²`;
+    tip.style.left = `${cx/W*r.width}px`; tip.style.top = `${cy/H*r.height + 12}px`; tip.classList.add('show');
+  });
+  svg.addEventListener('mouseleave', () => { tip.classList.remove('show'); hov.innerHTML=''; });
+}
+function chartBars(el, pts){
+  const W = 760, H = 110, pl = 52, pr = 12, pt = 8, pb = 22; const iw = W-pl-pr, ih = H-pt-pb;
+  if (!pts || !pts.length) { el.innerHTML=''; return; }
+  const max = Math.max(...pts.map(p=>p.count)) || 1; const bw = iw/pts.length; const gap = Math.min(2, bw*0.25);
+  let bars = ''; pts.forEach((p,i)=>{ const h = p.count/max*ih; bars += `<rect x="${(pl+i*bw+gap/2).toFixed(1)}" y="${(pt+ih-h).toFixed(1)}" width="${Math.max(1,bw-gap).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--vol)"><title>${esc(labelOf(p.k))} : ${p.count.toLocaleString('fr-FR')} ventes</title></rect>`; });
+  const step = Math.ceil(pts.length/8); let xlab='';
+  pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${(pl+i*bw+bw/2).toFixed(1)}" y="${H-6}" text-anchor="middle" ${AX}>${esc(axisLabel(p.k))}</text>`; });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Volume de ventes"><line x1="${pl}" x2="${W-pr}" y1="${pt+ih}" y2="${pt+ih}" stroke="#E5E4E0"/><text x="${pl-8}" y="${pt+8}" text-anchor="end" ${AX}>${fmt0(max)}</text>${bars}${xlab}</svg>`;
+}
 
-  // Header
-  let html = `
-    <div class="etude-hdr">
-      <div class="etude-hdr-left">
-        <h2>${sect.nom}</h2>
-        <p>${isBoulogne?sectId:'Secteur '+sectId} · ${sect?.arrLabel||''} · ${typeBien} · DVF DGFiP · ${DB.meta.periode}</p>
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rendu de l'étude
+// ═══════════════════════════════════════════════════════════════════════════════
+function kpiBlock(w, label, key, cls=''){
+  const v = w?.[key]; const faible = w && w.count < EFFECTIF_FAIBLE;
+  return `<div class="kpi ${cls}"><div class="l">${label}</div><div class="v">${fmt0(v)}</div><div class="u">€/m² · ${esc(PERIODES[S.per])}${faible?' · <span style="color:var(--warn)">effectif faible</span>':''}</div></div>`;
+}
+function evoCells(byYear){
+  const ly = META.meta.last_year; const cells = [1,3,5,10].map(n => ({l:`${n} an${n>1?'s':''}`, v:evoN(byYear,n), s:`${ly-n} → ${ly}`, on:String(n)===S.per}));
+  const ep = evoPeriode(byYear); cells.push({l:'Période', v:ep.v, s:`${ep.y0??'—'} → ${ly}`, on:S.per==='all'});
+  const c = cagr(byYear); cells.push({l:'Annualisé', v:c, s:`${ep.y0??'—'} → ${ly}`, on:false, pa:true});
+  return `<div class="evos">${cells.map(c=>`<div class="evo ${c.on?'on':''}"><div class="l">${c.l}</div><div class="v ${c.v==null?'nd':c.v>0?'up':c.v<0?'down':''}">${c.v==null?'N/D':(c.v>0?'▲':c.v<0?'▼':'')+' '+fmtPct(Math.abs(c.v)).replace('+','')+(c.pa?'/an':'')}</div><div class="s">${c.s}</div></div>`).join('')}</div>`;
+}
+function sectionCard(title, badge, stats, chartId){
+  const w = windowOf(stats); const pts = seriesFor(stats);
+  return `<div class="card">
+    <div class="card-h"><div class="card-t"><span class="badge">${esc(badge)}</span>${esc(title)}</div><span class="card-sub">${w?w.count.toLocaleString('fr-FR')+' ventes · ':''}${esc(PERIODES[S.per])}${w?` · ${w.from} → ${w.to}`:''}</span></div>
+    <div class="card-b">
+      ${w ? `<div class="kpis">${kpiBlock(w,'P90 · haut de marché','p90')}${kpiBlock(w,'Médiane','median','med')}${kpiBlock(w,'Moyenne','mean')}${kpiBlock(w,'P10 · bas de marché','p10')}
+        <div class="kpi"><div class="l">Ventes</div><div class="v">${fmt0(w.count)}</div><div class="u">surface méd. ${w.surf_median} m²</div></div></div>` : `<div class="empty" style="padding:16px"><p>Moins de 3 ventes sur cette période.</p></div>`}
+      ${evoCells(stats.by_year)}
+      <div class="charts">
+        <div class="chart"><div class="chart-t"><span>Prix au m² · ${esc(GRANS[S.gran])}</span><span class="legend"><span><i></i>Médiane</span><span><i class="band"></i>P10 – P90</span></span></div><div id="${chartId}-band"></div></div>
+        <div class="chart"><div class="chart-t"><span>Volume de ventes · ${esc(GRANS[S.gran])}</span><span class="legend"><span><i class="vol"></i>Ventes</span></span></div><div id="${chartId}-vol"></div></div>
       </div>
-      <div class="chips">
-        <span class="chip blue">${(typeData?.count||0).toLocaleString('fr-FR')} transactions</span>
-        <span class="chip gold">${fenLabel()}</span>
-        ${topTypo?`<span class="chip green">↑ ${TYPO_LABELS[topTypo]||topTypo}</span>`:''}
-        <span class="chip">MàJ ${new Date(DB.meta.generated_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}</span>
-      </div>
-    </div>`;
+    </div></div>`;
+}
+function typoTable(typeData){
+  const bt = typeData?.by_typo || {}; const ids = (META.typologies_ref||[]).map(t=>t.id).filter(id=>bt[id]); if (!ids.length) return '';
+  const top = bt._top_typo; const maxShare = Math.max(...ids.map(id=>bt[id].share||0));
+  const rows = ids.map(id => { const t = bt[id]; const w = t.windows?.[S.per]; const tdef = META.typologies_ref.find(x=>x.id===id); const e1 = evoN(t.by_year,1), e5 = evoN(t.by_year,5);
+    const faible = w && w.count < EFFECTIF_FAIBLE;
+    return `<tr class="${id===top?'top':''} ${!w?'dim':''}"><td>${id}<small>${tdef.surfMin}–${tdef.surfMax} m²</small></td>
+      <td><span class="share"><span class="bar"><i style="width:${(t.share/maxShare*100).toFixed(0)}%"></i></span>${t.share.toFixed(1).replace('.',',')} %</span></td>
+      <td>${w?fmt0(w.count):'—'}${faible?' <span title="effectif faible" style="color:var(--warn)">•</span>':''}</td><td>${fmt0(w?.p10)}</td><td><b>${fmt0(w?.median)}</b></td><td>${fmt0(w?.p90)}</td>
+      <td class="${e1>0?'up':e1<0?'down':''}">${fmtPct(e1)}</td><td class="${e5>0?'up':e5<0?'down':''}">${fmtPct(e5)}</td></tr>`; }).join('');
+  return `<div class="card"><div class="card-h"><div class="card-t"><span class="badge">Typologies</span>Répartition et prix par surface · ${esc(S.type)}s</div><span class="card-sub">part sur ${esc(META.meta.periode)} · prix sur ${esc(PERIODES[S.per]).toLowerCase()}</span></div>
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché</th><th>Ventes</th><th>P10</th><th>Médiane</th><th>P90</th><th>1 an</th><th>5 ans</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="hint">Parts calculées sur tout l'historique ; prix (€/m²) et ventes sur la période sélectionnée. • effectif inférieur à ${EFFECTIF_FAIBLE} ventes.</div></div></div>`;
+}
+function yearTable(stats, nom){
+  const by = stats.by_year || {}; const years = Object.keys(by).sort();
+  const rows = years.map((y,i)=>{ const v = by[y], prev = by[years[i-1]]; const e = prev ? (v.median/prev.median-1)*100 : null;
+    return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.mean)}</td><td>${v.surf_mean} m²</td><td style="color:${e>0?'var(--good)':e<0?'var(--bad)':'inherit'}">${fmtPct(e)}</td></tr>`; }).join('');
+  const csv = ['annee;ventes;p10;q1;mediane;q3;p90;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.q3,v.p90,v.mean,v.surf_mean].join(';');})].join('\n');
+  return `<div class="card"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(S.type)}s</div><button class="btn btn-ghost btn-sm" type="button" onclick="dlCsv(this)" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes</th><th>P10</th><th>Q1</th><th>Médiane</th><th>Q3</th><th>P90</th><th>Moyenne</th><th>Surf. moy.</th><th>Méd. vs n-1</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+}
+window.dlCsv = btn => { const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(btn.dataset.csv); a.download = `dvf_${btn.dataset.name.replace(/[^\w]+/g,'_')}_${S.type}.csv`; a.click(); };
 
-  // ── BLOC PART DE MARCHÉ TYPOLOGIES (toujours affiché)
-  if (Object.keys(byTypo).filter(k=>k!=='_top_typo').length > 0) {
-    const typoIds = ['T1','T2','T3','T4','T5'].filter(id => byTypo[id]);
-    const maxShare = Math.max(...typoIds.map(id=>byTypo[id].share||0));
-    html += `
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-title"><span class="badge gold">Répartition du marché</span> Transactions par typologie · ${typeBien}</div>
-          <span class="card-count">${(typeData?.count||0).toLocaleString('fr-FR')} tx · ${DB.meta.periode}</span>
-        </div>
-        <div class="card-body">
-          <div class="typo-share">
-            <div class="ts-title">Part de marché par surface · ${DB.meta.periode}</div>
-            ${typoIds.map(id => {
-              const t = byTypo[id]; const isTop = id===topTypo;
-              return `<div class="ts-row">
-                <span class="ts-label">${id}</span>
-                <div class="ts-bar-wrap"><div class="ts-bar ${isTop?'top':''}" style="width:${(t.share/maxShare*100).toFixed(1)}%"></div></div>
-                <span class="ts-pct">${t.share}%</span>
-                <span class="ts-count">${t.count.toLocaleString('fr-FR')} tx</span>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
-      </div>`;
-  }
-
-  // ── SECTIONS (global + typologies)
-  sections.forEach(sec => {
-    const { byPFiltered, byYFull } = sec;
-    const ws = computeWindowStats(byPFiltered);
-    const allYrs = Object.keys(byYFull).sort();
-    const lastYr = allYrs[allYrs.length-1]||'—';
-
-    // Évolutions multi-horizon (toujours sur byYFull)
-    const evos = [
-      {label:'1 an',  n:1,  fen:'annuel'},
-      {label:'3 ans', n:3,  fen:'3'},
-      {label:'5 ans', n:5,  fen:'5'},
-      {label:'10 ans',n:10, fen:'10'},
-      {label:'Période',n:allYrs.length-1,fen:'0'},
-    ];
-
-    const evoClass = v => !v?'':parseFloat(v)>0?'up':'down';
-    const evoStr   = v => !v?'N/D':`${parseFloat(v)>0?'+':''}${v}%`;
-    const yrRef    = n => allYrs.length>n?allYrs[allYrs.length-1-n]:'—';
-    const annMoy   = () => { const v=calcEvoN(byYFull,allYrs.length-1); if(!v||allYrs.length<2)return'N/D'; return `${(parseFloat(v)/(allYrs.length-1)).toFixed(1)}%/an`; };
-
-    // Périodes pour le graphique
-    const chartKeys = Object.keys(byPFiltered).sort();
-
-    html += `
-      <div class="card">
-        <div class="card-hdr">
-          <div class="card-title"><span class="badge ${sec.badgeClass}">${sec.badge}</span>${sec.title}</div>
-          <span class="card-count">${ws?ws.count.toLocaleString('fr-FR')+' tx · ':''}${chartKeys[0]||'—'} → ${chartKeys[chartKeys.length-1]||'—'}${(()=>{const n=parseInt(fenetre);return !isNaN(n)&&n>0&&chartKeys.length<n?' · '+chartKeys.length+' ans disp.':''})()}</span>
-        </div>
-        <div class="card-body">
-
-          <div class="quad-grid">
-            <div class="tri-kpi hi-max">
-              <div class="tri-l">P90 · Haut de marché</div>
-              <div class="tri-v">${ws?n0(ws.max):'—'}</div>
-              <div class="tri-u">€/m² · ${fenLabel()}</div>
-            </div>
-            <div class="tri-kpi hi-moy">
-              <div class="tri-l">Médiane</div>
-              <div class="tri-v">${ws?n0(ws.med):'—'}</div>
-              <div class="tri-u">€/m² · ${fenLabel()}</div>
-            </div>
-            <div class="tri-kpi" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;">
-              <div class="tri-l" style="font-size:8px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;">Moyenne</div>
-              <div class="tri-v" style="font-size:20px;font-weight:700;line-height:1;letter-spacing:-.5px;color:var(--text2);">${ws?n0(ws.moy):'—'}</div>
-              <div class="tri-u">€/m² · ${fenLabel()}</div>
-            </div>
-            <div class="tri-kpi hi-min">
-              <div class="tri-l">P10 · Bas de marché</div>
-              <div class="tri-v">${ws?n0(ws.min):'—'}</div>
-              <div class="tri-u">€/m² · ${fenLabel()}</div>
-            </div>
-          </div>
-
-          <div class="evo-grid">
-            ${evos.map(h=>{
-              const v=calcEvoN(byYFull,h.n);
-              const act=h.fen===fenetre;
-              return `<div class="evo-cell ${act?'fen-active':''}">
-                <div class="el">${h.label}</div>
-                <div class="ev ${evoClass(v)}">${evoStr(v)}</div>
-                <div class="es">${yrRef(h.n)} → ${lastYr}</div>
-              </div>`;
-            }).join('')}
-            <div class="evo-cell">
-              <div class="el">Annuel moy.</div>
-              <div class="ev" style="font-size:14px">${annMoy()}</div>
-              <div class="es">${allYrs[0]||'—'} → ${lastYr}</div>
-            </div>
-          </div>
-
-          <div class="charts-row">
-            <div class="chart-box">
-              <div class="cb-title">Évolution moyenne €/m² · ${fenLabel()}</div>
-              <div class="cw"><canvas id="cline-${sec.chartId}"></canvas></div>
-            </div>
-            <div class="chart-box">
-              <div class="cb-title">Max · Moy · Min · ${fenLabel()}</div>
-              <div class="cw"><canvas id="cbar-${sec.chartId}"></canvas></div>
-            </div>
-          </div>
-
-        </div>
-      </div>`;
-  });
-
+let renderSeq = 0;
+async function update(){
+  writeHash(); renderSidebar();
+  const box = $('content');
+  if (!S.id) { box.innerHTML = `<div class="empty"><h3>Choisissez une zone</h3><p>Sélectionnez un ${NIVEAUX[S.niveau].toLowerCase()} dans la colonne de gauche. La période et la granularité se règlent à tout moment, l'étude se met à jour immédiatement.</p></div>`; setStatus('ok', statusLine()); return; }
+  const seq = ++renderSeq;
+  let level; try { level = await loadLevel(NIVEAU_FILE[S.niveau]); } catch(ex) { setStatus('err', 'Données indisponibles'); box.innerHTML = `<div class="empty"><h3>Impossible de charger ce niveau</h3><p>${esc(ex.message)}</p></div>`; return; }
+  if (seq !== renderSeq) return;
+  const item = findItem(S.niveau, S.id); const entry = level[S.id];
+  if (!item || !entry) { box.innerHTML = `<div class="empty"><h3>Zone introuvable</h3><p>Aucune donnée pour « ${esc(S.id)} » à ce niveau.</p></div>`; setStatus('ok', statusLine()); return; }
+  const typeData = entry.by_type?.[S.type];
+  const nom = item.nom;
+  const crumbs = S.niveau==='quartier' ? [item.commune==='75056'?'Paris':'Boulogne-Billancourt', item.commune==='75056'?`${item.arr===1?'1er':item.arr+'e'} arr.`:null, REF.sr[item.secteur]?.nom, item.zone ? `Zone ${item.zone.slice(1)} (encadrement)` : null].filter(Boolean)
+    : S.niveau==='secteur' ? [item.grp, `${item.quartiers.length} quartier${item.quartiers.length>1?'s':''} : ${item.quartiers.map(REF.quartierNom).join(', ')}`]
+    : S.niveau==='zone' ? ['Paris', `${item.quartiers.length} quartiers : ${item.quartiers.map(REF.quartierNom).join(', ')}`] : ['Paris'];
+  let html = `<div class="hdr"><div><h2>${esc(nom)}</h2><div class="crumbs">${crumbs.map(esc).join('<span class="sep">›</span>')}</div></div>
+    <div class="tags"><span class="tag acc">${esc(NIVEAUX[S.niveau])}</span><span class="tag">${typeData?typeData.count.toLocaleString('fr-FR'):'0'} ventes · ${esc(META.meta.periode)}</span><span class="tag">MàJ ${fmtDate(META.meta.generated_at)}</span>${META.meta.last_year_complete?'':`<span class="tag warn">${META.meta.last_year} incomplète</span>`}</div></div>`;
+  if (!typeData) { html += `<div class="card"><div class="empty"><h3>Aucune vente de ${S.type.toLowerCase()} retenue</h3><p>Moins de 3 ventes de ce type sur ${esc(nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; box.innerHTML = html; setStatus('ok', statusLine()); return; }
+  const charts = [];
+  if (S.global) { html += sectionCard(`${nom} · ${S.type}s · toutes surfaces`, 'Marché global', typeData, 'c-g'); charts.push(['c-g', typeData]); }
+  html += typoTable(typeData);
+  (META.typologies_ref||[]).filter(t=>S.typos.has(t.id)).forEach(t => { const st = typeData.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); });
+  html += yearTable(typeData, nom);
+  html += `<div class="card"><div class="card-b method"><b>Méthode.</b> Percentiles (P10, Q1, médiane, Q3, P90) et moyenne calculés sur les ventes de la période, pas sur des moyennes annuelles. Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé sur la période. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.
+    <div class="row"><span class="tag">${META.meta.total_mutations.toLocaleString('fr-FR')} ventes retenues</span><span class="tag">Paris ${META.meta.total_apparts_paris.toLocaleString('fr-FR')} appts</span><span class="tag">Boulogne ${META.meta.total_apparts_boulogne.toLocaleString('fr-FR')} appts</span><span class="tag">dernière vente ${fmtDate(META.meta.last_date)}</span><span class="tag">parseur v${META.meta.parser_version}</span></div></div></div>`;
   box.innerHTML = html;
-
-  // ── CHARTS
-  sections.forEach(sec => {
-    const { byPFiltered } = sec;
-    const keys = Object.keys(byPFiltered).sort();
-    const cLineEl = document.getElementById(`cline-${sec.chartId}`);
-    const cBarEl  = document.getElementById(`cbar-${sec.chartId}`);
-
-    if (cLineEl && keys.length >= 2) {
-      CHARTS[`line-${sec.chartId}`] = new Chart(cLineEl, {
-        type:'line',
-        data:{
-          labels:keys,
-          datasets:[
-            {label:'Max', data:keys.map(k=>byPFiltered[k]?.max||byPFiltered[k]?.q3),borderColor:'rgba(201,77,77,0.5)',backgroundColor:'rgba(201,77,77,0.06)',borderWidth:1,borderDash:[4,3],pointRadius:2,fill:'+1',tension:0.3},
-            {label:'Moy',data:keys.map(k=>byPFiltered[k]?.mean),borderColor:'#1971c2',backgroundColor:'rgba(25,113,194,0.07)',borderWidth:2.5,pointBackgroundColor:'#1971c2',pointRadius:3,fill:false,tension:0.3},
-            {label:'Min',data:keys.map(k=>byPFiltered[k]?.min||byPFiltered[k]?.q1),borderColor:'rgba(47,158,68,0.5)',backgroundColor:'rgba(47,158,68,0.06)',borderWidth:1,borderDash:[4,3],pointRadius:2,fill:false,tension:0.3},
-          ]
-        },
-        options:{
-          responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:true,labels:{color:'#868e96',font:{family:'JetBrains Mono',size:9},boxWidth:10}},tooltip:{callbacks:{label:c=>` ${c.dataset.label} : ${c.raw?.toLocaleString('fr-FR')} €/m²`}}},
-          scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9},maxRotation:45}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}}
-        }
-      });
-    }
-
-    if (cBarEl && keys.length > 0) {
-      const ws = computeWindowStats(byPFiltered);
-      if (ws) {
-        CHARTS[`bar-${sec.chartId}`] = new Chart(cBarEl, {
-          type:'bar',
-          data:{
-            labels:['P90','Médiane','Moy.','P10'],
-            datasets:[{
-              data:[ws.max,ws.med,ws.moy,ws.min],
-              backgroundColor:['rgba(201,77,77,0.8)','rgba(25,113,194,0.85)','rgba(134,142,150,0.7)','rgba(47,158,68,0.8)'],
-              borderColor:['#c92a2a','#1971c2','#868e96','#2f9e44'],
-              borderWidth:1,borderRadius:4,
-            }]
-          },
-          options:{
-            responsive:true,maintainAspectRatio:false,
-            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw?.toLocaleString('fr-FR')} €/m²`}}},
-            scales:{x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9}}},y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#adb5bd',font:{family:'JetBrains Mono',size:9},callback:v=>v?.toLocaleString('fr-FR')}}}
-          }
-        });
-      }
-    }
-  });
+  charts.forEach(([id, st]) => { const pts = seriesFor(st); chartBand($(`${id}-band`), pts); chartBars($(`${id}-vol`), pts); });
+  setStatus('ok', statusLine());
 }
+function statusLine(){ return `${META.meta.periode} · MàJ ${new Date(META.meta.generated_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`; }
+function setStatus(t, txt){ const p = $('statusPill'); p.className = 'pill' + (t==='busy'?' busy':t==='err'?' err':''); $('statusTxt').textContent = txt; }
 
-// ═══════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════
-const n0 = v => v?Math.round(v).toLocaleString('fr-FR'):'—';
-function setStatus(t,txt){const p=document.getElementById('statusPill');p.className='status-pill '+t;document.getElementById('statusTxt').textContent=txt;}
-function destroyCharts(){Object.values(CHARTS).forEach(c=>{try{c.destroy();}catch(e){}});CHARTS={};}
-
-init();
+function start(){
+  META = CACHE.meta; REF = buildRef(META);
+  $('gate').hidden = true; $('app').hidden = false; $('foot').hidden = false;
+  $('topSub').textContent = `DVF DGFiP · ${META.meta.periode}`;
+  readHash(); if (S.id && !findItem(S.niveau, S.id)) S.id = null;
+  if (!S.id) { S.niveau = 'secteur'; S.id = '5'; }   // point d'entrée : un secteur bien fourni
+  window.addEventListener('hashchange', () => { readHash(); update(); });
+  update();
+}
 </script>
 </body>
 </html>

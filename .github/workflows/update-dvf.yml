@@ -13,7 +13,7 @@ on:
       mode:
         description: "probe = sonder les sources et relever colonnes/volumes sans rien écrire · full = run complet"
         type: choice
-        options: [full, probe]
+        options: [full, probe, encrypt]
         default: full
       allow_partial:
         description: "Années à publier malgré une source partielle/creuse, ex. 2019,2020 (vide = aucune)"
@@ -49,12 +49,12 @@ jobs:
           python-version: '3.11'
 
       - name: Dépendances
-        run: pip install requests
+        run: pip install requests cryptography
 
       # La suite de tests tourne sur un jeu de données jetable : elle prouve que le code est correct,
       # pas que les sources réelles ont le format attendu — c'est le run réel qui le prouve.
       - name: Tests bout en bout (fixtures)
-        run: python -m unittest tests.test_pipeline -v
+        run: python -m unittest tests.test_pipeline tests.test_build_site -v
 
       - name: Sondage des sources (probe)
         if: ${{ github.event.inputs.mode == 'probe' }}
@@ -62,6 +62,7 @@ jobs:
 
       - name: Traitement DVF
         if: ${{ github.event.inputs.mode != 'probe' }}
+        # mode encrypt : le pipeline tourne aussi (le JSON n'est plus commité, il est recalculé depuis le cache en ~1 min)
         env:
           DVF_ALLOW_PARTIAL: ${{ github.event.inputs.allow_partial }}
         run: |
@@ -82,12 +83,20 @@ jobs:
               print(f"  {k}: {s['count']:>7,}  {s['tag']}{'' if s['complet'] else '  (PARTIEL)'}")
           EOF
 
+      # Lot 3 : les statistiques servies au dashboard sont chiffrées avec le code d'accès (secret DVF_CODE).
+      # dvf_paris.json n'est plus commité ; seuls data/enc/*.bin et le manifest le sont.
+      - name: Chiffrement des données servies
+        if: ${{ github.event.inputs.mode != 'probe' }}
+        env:
+          DVF_CODE: ${{ secrets.DVF_CODE }}
+        run: python scripts/build_site.py
+
       - name: Commit et push
         if: ${{ github.event.inputs.mode != 'probe' }}
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
-          git add data/dvf_paris.json data/dvf_cache.json.gz
+          git add data/enc data/dvf_cache.json.gz
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
           git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"
