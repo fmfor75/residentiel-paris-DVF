@@ -5,38 +5,38 @@
   "hash": "SHA-256",
   "iterations": 200000
  },
- "generated_at": "2026-09-17T17:22:54.438261Z",
+ "generated_at": "2026-09-18T12:36:25.045870Z",
  "periode": "2014–2025",
  "files": {
   "meta": {
    "file": "meta.bin",
-   "bytes": 21764,
+   "bytes": 21762,
    "plain_bytes": 103082,
-   "sha256": "03cb7e6c707d5637"
+   "sha256": "6a78fe968ac5e818"
   },
   "arrondissements": {
    "file": "arrondissements.bin",
    "bytes": 408710,
    "plain_bytes": 1876247,
-   "sha256": "eb80f9b0da036564"
+   "sha256": "e46efd70214a48f0"
   },
   "secteurs": {
    "file": "secteurs.bin",
    "bytes": 492235,
    "plain_bytes": 2267404,
-   "sha256": "c941615d14bcd105"
+   "sha256": "818b03037eeb5423"
   },
   "zones": {
    "file": "zones.bin",
    "bytes": 296217,
    "plain_bytes": 1374243,
-   "sha256": "a92b8d1a07221dbd"
+   "sha256": "3089d459418cb44e"
   },
   "quartiers": {
    "file": "quartiers.bin",
    "bytes": 344564,
    "plain_bytes": 1755483,
-   "sha256": "435ab42ce66d7d5e"
+   "sha256": "c2fb9e15c9e6a75d"
   }
  }
 }
