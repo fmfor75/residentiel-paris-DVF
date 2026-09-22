@@ -52,5 +52,21 @@ const vHaut = E.valoriser(S, meta, gros, lignes, { position: .9, typos: TYPOS })
 ok(vHaut.valeur > v.valeur && vBas.valeur < v.valeur, 'position 0,9 > 0,5 > 0,1');
 ok(vHaut.rows[0].ppm2 === vHaut.rows[0].ppm2Haut && vBas.rows[0].ppm2 === vBas.rows[0].ppm2Bas, 'aux extrémités, retenu = P90 / P10');
 console.log(`  immeuble test sur ${gros} : ${v.lots} lots, ${v.surfTot} m², ${v.valeur.toLocaleString('fr-FR')} € (bas ${v.valeurBas.toLocaleString('fr-FR')}, haut ${v.valeurHaut.toLocaleString('fr-FR')}), ${v.ppm2Moyen} €/m²`);
+// 5. loyers et rentabilité (lot 8) : encadrement Paris, carte des loyers Boulogne, arithmétique
+const LOY = JSON.parse(readFileSync('data/loyers.json', 'utf8'));
+const pMad = { id: 'P31', commune: '75056', nom: 'Madeleine' }, pBou = { id: 'B1', commune: '92012', nom: 'Boulogne' };
+const l1 = E.loyerLigne(LOY, pMad, { id: 'T2', surf: 40 }, { meuble: false, epoque: 'Avant 1946' });
+ok(l1.pieces === 2 && l1.ppm2 === LOY.paris.quartiers.P31.loyers['2|Avant 1946|vide'][1] && l1.source === 'encadrement', `Madeleine T2 vide avant 1946 → majoré ${l1.ppm2}`);
+const l1m = E.loyerLigne(LOY, pMad, { id: 'T2', surf: 40 }, { meuble: true, epoque: 'Avant 1946' }); ok(l1m.ppm2 > l1.ppm2, 'meublé > vide');
+ok(E.loyerLigne(LOY, pMad, { id: 'T5', surf: 130 }).pieces === 4 && E.loyerLigne(LOY, pMad, { id: 'L7', pieces: 3 }).pieces === 3, 'pièces : T5 → 4 et +, saisie respectée');
+const lb = E.loyerLigne(LOY, pBou, { id: 'T2', surf: 40 }); ok(lb.source === 'carte' && lb.ppm2 === 31.97, `Boulogne T2 → carte 1–2 p. ${lb.ppm2}`);
+ok(E.loyerLigne(LOY, pBou, { id: 'T4', surf: 85 }).ppm2 === 28.52, 'Boulogne T4 → carte 3 p. et +');
+const rt = E.rentabilite(LOY, pMad, v, { meuble: false, epoque: 'Avant 1946' });
+const r2 = rt.rows[1]; ok(r2.loyerLot === Math.round(l1.ppm2 * 42) && r2.loyerAnnuel === r2.loyerLot * 12 * 4, `loyer T2 : ${r2.loyerLot} €/mois/lot, ${r2.loyerAnnuel} €/an`);
+ok(Math.abs(r2.rendement - r2.loyerAnnuel / v.rows[1].valeur) < 1e-9, 'rendement ligne = loyer annuel / valeur');
+ok(rt.rows[2].loyerAnnuel === null && rt.rows[2].loyerLot != null, 'ligne à 0 lot : loyer au lot affiché, pas de total');
+ok(Math.abs(rt.loyerAnnuel - (rt.rows[0].loyerAnnuel + rt.rows[1].loyerAnnuel)) < 1 && Math.abs(rt.rendement - rt.loyerAnnuel / v.valeur) < 1e-9, 'total et rendement global');
+ok(rt.rendementBas < rt.rendement && rt.rendement < rt.rendementHaut, 'rendement au P90 < retenu < au P10');
+console.log(`  rentabilité Madeleine (vide, avant 1946) : loyer ${rt.loyerAnnuel.toLocaleString('fr-FR')} €/an, brut ${(rt.rendement*100).toFixed(2)} % (${(rt.rendementBas*100).toFixed(2)} → ${(rt.rendementHaut*100).toFixed(2)})`);
 console.log(`\n${checks} vérifications, ${fails} échecs`);
 process.exit(fails ? 1 : 0);

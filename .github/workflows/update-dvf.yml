@@ -54,12 +54,16 @@ jobs:
       # La suite de tests tourne sur un jeu de données jetable : elle prouve que le code est correct,
       # pas que les sources réelles ont le format attendu — c'est le run réel qui le prouve.
       - name: Tests bout en bout (fixtures)
-        run: python -m unittest tests.test_pipeline tests.test_build_site tests.test_macro -v
+        run: python -m unittest tests.test_pipeline tests.test_build_site tests.test_macro tests.test_loyers -v
 
       # Lot 7 : séries macro (BCE, INSEE) pour l'onglet Perspectives — publiques, en clair, une série en échec est
       # conservée depuis le fichier précédent et marquée ; le fichier n'est réécrit que si les données changent.
       - name: Séries macro (BCE, INSEE)
         run: python scripts/fetch_macro.py ${{ github.event.inputs.mode == 'probe' && '--probe' || '' }}
+
+      # Lot 8 : encadrement des loyers Paris (Ville de Paris) + carte des loyers (data.gouv) → data/loyers.json
+      - name: Loyers (encadrement Paris, carte des loyers)
+        run: python scripts/fetch_loyers.py ${{ github.event.inputs.mode == 'probe' && '--probe' || '' }}
 
       - name: Sondage des sources (probe)
         if: ${{ github.event.inputs.mode == 'probe' }}
@@ -107,7 +111,7 @@ jobs:
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
-          git add data/enc data/dvf_cache.json.gz data/macro.json
+          git add data/enc data/dvf_cache.json.gz data/macro.json data/loyers.json
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
           git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"

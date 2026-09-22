@@ -19,6 +19,7 @@ scripts/process_dvf.py        ← pipeline : sources → mutations → statistiq
 scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN)
 scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
+scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run mensuel
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
@@ -51,6 +52,15 @@ l'adresse ou, en dessous de 30 ventes, le secteur puis l'arrondissement (niveau 
 positionnement P10 → P90 ; valeur par lot, par ligne, totale, fourchette basse / haute. Tout est dans l'URL (`valo=`,
 `addr=`) et repris dans une page du PDF. Fonctions `refSurface` / `valoriser` dans engine.js, testées par
 `node tests/test_valo.mjs`. À l'ouverture, la plateforme affiche la carte et le champ d'adresse.
+
+**Loyers et rentabilité brute** (carte sous la valorisation, bloc PDF) : à Paris, loyer de référence **majoré** de
+l'encadrement pour le quartier de l'adresse, selon vide / meublé, le nombre de pièces de chaque ligne (modifiable, T5 = 4
+pièces et plus) et l'époque de construction de l'immeuble (avant 1946, 1946–1970, 1971–1990, après 1990) ; hors Paris,
+loyer d'annonce de la commune (« carte des loyers » DHUP/ANIL, 1–2 pièces / 3 pièces et plus, charges comprises).
+Rentabilité brute = loyer annuel ÷ valeur retenue, par ligne et globale, avec la fourchette sur les valeurs P90 / P10.
+Données dans `data/loyers.json` (clair), produites par `scripts/fetch_loyers.py` au run mensuel (export opendata.paris.fr
+de la dernière année publiée — 2 560 combinaisons attendues — et dernier jeu « Carte des loyers » sur data.gouv, filtré
+sur les communes du référentiel). Tests : `python -m unittest tests.test_loyers`, `node tests/test_valo.mjs`.
 
 **Perspectives** (onglet, page PDF) : scénarios à 3, 5 et 10 ans, conditionnels à cinq hypothèses réglables (taux de crédit
 visé et horizon, inflation, revenus réels, prime locale, vitesse d'ajustement), avec les valeurs actuelles et leurs sources.

@@ -188,6 +188,10 @@ table{border-collapse:collapse;width:100%}
 .valo-tbl td.ech{font-family:var(--sans);font-size:11px;color:var(--text3);white-space:normal;max-width:180px;text-align:left}.valo-tbl td.ech.warn{color:var(--warn)}
 .valo-tbl tfoot td{font-weight:600;border-top:2px solid var(--line3);border-bottom:0;background:rgba(255,255,255,.4)}
 .valo-tbl .del{width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--text4);font-size:14px;line-height:1}.valo-tbl .del:hover{background:rgba(185,28,28,.08);color:var(--bad);border-color:rgba(185,28,28,.2)}
+.loy-ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center}.loy-ctl .seg{width:auto;min-width:180px}.loy-ctl select{border:1px solid var(--line2);border-radius:8px;background:rgba(255,255,255,.75);font-family:var(--sans);font-size:13px;padding:7px 10px}
+.loy-ctl .lbl{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-right:6px}
+.valo-tbl .vi.pc{width:52px}.valo-tbl td .sub{display:block;font-size:10px;color:var(--text4);font-family:var(--mono)}
+@media (max-width:700px){.loy-ctl .seg{width:100%}}
 .slider{display:grid;grid-template-columns:1fr;gap:6px}
 .slider input[type=range]{width:100%;accent-color:var(--accent2);height:28px}
 .slider .marks{display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--mono);color:var(--text3)}.slider .marks b{color:var(--accent);font-weight:600}
@@ -430,6 +434,9 @@ const HELP = {
   valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune pour Boulogne). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
   valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 ← 50 → P90'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
+  loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
+  loy_carte:['Loyer d’annonce (carte des loyers)', "Hors Paris, loyer moyen des annonces de la commune (indicateurs DHUP / ANIL, charges comprises), pour les appartements de 1–2 pièces ou de 3 pièces et plus. Ce n'est pas un plafond : un loyer observé sur le marché.", '€/m²/mois charges comprises'],
+  rendement:['Rentabilité brute', "Loyer annuel (loyer au m² × surface × 12 × nombre de lots) divisé par la valeur retenue. Brute : avant charges non récupérables, taxe foncière, vacance, travaux et fiscalité. La fourchette reprend le même loyer sur la valeur au P90 (rendement bas) et au P10 (rendement haut).", 'loyer annuel ÷ valeur'],
   persp_modele:['Modèle de projection', "Le prix cible est proportionnel à la capacité d'emprunt d'un ménage à mensualité constante sur 20 ans (fonction du taux de crédit, avec deux trimestres de retard) multipliée par le niveau général des prix, augmenté de la croissance réelle des revenus. Les prix rejoignent la cible progressivement (vitesse d'ajustement). Coefficients imposés, pas ajustés : une seule constante est calée sur 2014–2025. Une régression libre ajustée sur 2014–2019 dérivait de +100 % en 2025.", 'cible = a + log K20(taux) + log IPCH'],
   persp_scen:['Scénarios', "Central : vos hypothèses. Bas : taux de crédit +1 point et inflation −0,5 point. Haut : taux −1 point et inflation +0,5 point. Le taux rejoint sa cible linéairement sur l'horizon choisi.", 'central · bas · haut'],
   persp_sens:['Sensibilité', "Effet à 5 ans, sur la valeur projetée, d'une variation de chaque hypothèse prise isolément, les autres restant à leur valeur centrale.", 'à 5 ans, toutes choses égales'],
@@ -498,7 +505,10 @@ const VALO_MIN_N = 30, VALO_MOIS = 12;
 let MACRO = null, MACRO_ERR = null, CAL = null, SERIE_PARIS = null;   // lot 7 : séries macro (data/macro.json) et calibration
 const PERSP_DEFAUT = () => ({tauxH: null, hz: 12, inflation: 2, revenus: 0.5, prime: 0, lam: 0.2});
 // Lignes par défaut de la valorisation : une par typologie, 0 lot, surface représentative de la fourchette (T5 : 130 m² plutôt que 250)
-const VALO_DEFAUT = () => ({pos: 50, lignes: (META.typologies_ref||[]).map(t => ({id:t.id, lots:0, surf:Math.min(Math.round((t.surfMin+t.surfMax)/2), t.surfMin+30), adj:0}))});
+const EPOQUES = ['Avant 1946', '1946-1970', '1971-1990', 'Apres 1990'];
+const VALO_DEFAUT = () => ({pos: 50, meuble: false, epoque: 0, lignes: (META.typologies_ref||[]).map(t => ({id:t.id, lots:0, surf:Math.min(Math.round((t.surfMin+t.surfMax)/2), t.surfMin+30), adj:0, pieces:E.piecesDefaut(t.id)}))});
+let LOYERS = null, LOYERS_ERR = null;
+async function ensureLoyers(){ if (LOYERS || LOYERS_ERR) return; try { const r = await fetch('data/loyers.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); LOYERS = await r.json(); } catch(ex) { LOYERS_ERR = ex.message; } }
 
 function buildRef(meta){
   const qr = meta.quartiers_ref || {}, sr = meta.secteurs_ref || {}, zr = meta.zones_ref || {};
@@ -528,8 +538,9 @@ function readHash(){
   const pp = h.get('persp');   // tauxH:hz:inflation:revenus:prime:lam
   if (pp) { const m = pp.split(':').map(Number); if (m.length === 6 && m.every(x => !isNaN(x))) S.persp = {tauxH: m[0], hz: m[1], inflation: m[2], revenus: m[3], prime: m[4], lam: m[5]}; }
   const v = h.get('valo');   // pos;T1:lots:surf:adj,…
-  if (v) { const [pos, rows] = v.split(';'); const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4]} : null; }).filter(Boolean);
-    if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), lignes}; }
+  if (v) { const [head, rows] = v.split(';'); const [pos, meuble, epoque] = head.split('|');   // pos|meuble|epoque;T1:lots:surf:adj:pieces,… (ancien format : pos;T1:lots:surf:adj)
+    const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)(?::(\d))?$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4], pieces: m[5] ? +m[5] : E.piecesDefaut(m[1])} : null; }).filter(Boolean);
+    if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), meuble: meuble === '1', epoque: Math.min(3, Math.max(0, +epoque||0)), lignes}; }
   const a = h.get('addr');   // lon,lat,libellé
   if (a) { const m = a.match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(.+)$/); if (m) ADDR_HASH = {lon:+m[1], lat:+m[2], label:m[3]}; }
   const t = h.get('typos');   // T1:9-30:1,T2:30-50:1,…
@@ -539,7 +550,7 @@ function readHash(){
 function writeHash(){
   const p = new URLSearchParams({niveau:S.niveau, id:S.id||'', per:S.per, gran:S.gran, type:S.type, global:S.global?'1':'0', vue:S.vue,
     typos:S.typos.map(t=>`${t.id}:${t.surfMin}-${t.surfMax}:${t.on?1:0}`).join(',')});
-  if (S.valo) p.set('valo', `${S.valo.pos};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}`).join(',')}`);
+  if (S.valo) p.set('valo', `${S.valo.pos}|${S.valo.meuble?1:0}|${S.valo.epoque||0};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}:${l.pieces||E.piecesDefaut(l.id)}`).join(',')}`);
   if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam].join(':'));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
   history.replaceState(null, '', '#'+p.toString());
@@ -790,7 +801,33 @@ function computeValo(){
   if (!LAST_ADDR?.props) return null; if (!S.valo) S.valo = VALO_DEFAUT();
   return E.valoriser(SALES, META, LAST_ADDR.props.id, S.valo.lignes, {position: S.valo.pos/100, typos: S.typos.filter(t=>t.surfMax>t.surfMin), months: VALO_MOIS, minN: VALO_MIN_N});
 }
-function renderValo(){
+function computeRent(v){
+  if (!LOYERS || !v || !LAST_ADDR?.props) return null;
+  return E.rentabilite(LOYERS, LAST_ADDR.props, v, {meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0]});
+}
+const fmtPct2 = v => v==null ? '—' : (v*100).toFixed(2).replace('.',',') + ' %';
+function rentCard(v){
+  const paris = LAST_ADDR.props.commune === '75056';
+  if (LOYERS_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Rentabilité brute</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Loyers indisponibles (${esc(LOYERS_ERR)}) — data/loyers.json est produit par le run mensuel.</p></div></div></div>`;
+  if (!LOYERS) return `<div class="card glass"><div class="card-b"><div class="empty" style="padding:12px"><p>Chargement des loyers…</p></div></div></div>`;
+  const rt = computeRent(v); const src = paris ? LOYERS.paris : LOYERS.carte;
+  const stale = src?.stale ? ` <span style="color:var(--warn)">(source en échec au dernier run, valeurs conservées)</span>` : '';
+  const sub = paris ? `encadrement ${LOYERS.paris.annee} · applicable ${esc(LOYERS.paris.application)} · loyer de référence majoré, hors charges${stale}` : `carte des loyers ${LOYERS.carte.edition} · loyers d'annonce, charges comprises${stale}`;
+  const rows = rt.rows.map((r,i) => `<tr class="${r.lots?'':'dim'}"><td data-l="Typologie"><b style="font-family:var(--sans)">${esc(r.id)}</b><span class="sub">${r.lots} lot${r.lots>1?'s':''} · ${r.surf} m²</span></td>
+      <td data-l="Pièces"><input class="vi pc" type="number" min="1" max="4" step="1" value="${r.pieces}" data-i="${i}" data-k="pieces" aria-label="Nombre de pièces"></td>
+      <td data-l="${paris ? 'Loyer majoré €/m²' : 'Loyer €/m²'}">${r.ppm2 != null ? `<b>${r.ppm2.toFixed(1).replace('.',',')}</b>${paris ? `<span class="sub">réf. ${r.ref.toFixed(1).replace('.',',')} · minoré ${r.mino.toFixed(1).replace('.',',')}</span>` : `<span class="sub">${r.bas.toFixed(1).replace('.',',')} → ${r.haut.toFixed(1).replace('.',',')} · ${fmt0(r.n)} annonces</span>`}` : `<span class="warn">${esc(r.motif||'—')}</span>`}</td>
+      <td data-l="Loyer / lot / mois">${fmtEur(r.loyerLot)}</td><td data-l="Loyer annuel">${fmtEur(r.loyerAnnuel)}</td><td data-l="Rentabilité brute"><b>${fmtPct2(r.rendement)}</b></td></tr>`).join('');
+  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Loyers de référence et rentabilité brute${ib(paris ? 'loy_paris' : 'loy_carte')}</div><span class="card-sub">${sub}</span></div>
+    <div class="card-b" style="padding-top:12px">
+      <div class="loy-ctl"><span><span class="lbl">Location</span></span><div class="seg seg-2" id="segMeuble"><button type="button" data-v="0" class="${S.valo.meuble?'':'on'}">Vide</button><button type="button" data-v="1" class="${S.valo.meuble?'on':''}">Meublé</button></div>
+        ${paris ? `<span><span class="lbl">Immeuble construit</span><select id="selEpoque" aria-label="Époque de construction">${EPOQUES.map((e,i)=>`<option value="${i}" ${i===(S.valo.epoque||0)?'selected':''}>${e.replace('Apres','Après')}</option>`).join('')}</select></span>` : `<span class="hint">Hors Paris : loyer d'annonce moyen de la commune (pas d'encadrement).</span>`}</div>
+      <div class="tbl-wrap"><table class="valo-tbl loy-tbl"><thead><tr><th>Typologie</th><th>Pièces</th><th>${paris ? 'Loyer majoré €/m²' : 'Loyer €/m²'}${ib(paris ? 'loy_paris' : 'loy_carte')}</th><th>Loyer / lot / mois</th><th>Loyer annuel</th><th>Rentabilité brute${ib('rendement')}</th></tr></thead><tbody>${rows}</tbody>
+        <tfoot><tr><td data-l="Total">Total</td><td class="delc"></td><td class="delc"></td><td data-l="Loyer / mois">${fmtEur(rt.loyerMensuel)}</td><td data-l="Loyer annuel">${fmtEur(rt.loyerAnnuel)}</td><td data-l="Rentabilité brute"><b>${fmtPct2(rt.rendement)}</b></td></tr></tfoot></table></div>
+      <div class="valo-kpis"><div class="kpi med big"><div class="l">Rentabilité brute${ib('rendement')}</div><div class="v">${fmtPct2(rt.rendement)}</div><div class="u">${fmtEur(rt.loyerAnnuel)} de loyers par an sur ${fmtEur(rt.valeur)} (P${S.valo.pos})${rt.sansLoyer ? ` · ${rt.sansLoyer} ligne(s) sans loyer exclue(s)` : ''}</div></div>
+        <div class="kpi"><div class="l">Sur valeur haute (P90)</div><div class="v small">${fmtPct2(rt.rendementBas)}</div><div class="u">rendement le plus bas</div></div><div class="kpi"><div class="l">Sur valeur basse (P10)</div><div class="v small">${fmtPct2(rt.rendementHaut)}</div><div class="u">rendement le plus haut</div></div></div>
+      <div class="method"><b>Méthode.</b> ${esc(HELP[paris ? 'loy_paris' : 'loy_carte'][1])} ${esc(HELP.rendement[1])}</div></div></div>`;
+}
+async function renderValo(){
   const box = $('etude');
   if (!LAST_ADDR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Localisez d'abord une adresse</h3><p>Saisissez l'adresse de l'immeuble dans l'onglet Carte : la valorisation utilise les ventes de son quartier.</p><p style="margin-top:12px"><button class="btn btn-primary" type="button" data-vue="carte" style="width:auto">Ouvrir la carte</button></p></div></div>`; return; }
   if (!LAST_ADDR.props) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Adresse hors périmètre</h3><p>${esc(LAST_ADDR.label)} n'est pas dans les communes couvertes (Paris, Boulogne-Billancourt).</p></div></div>`; return; }
@@ -815,18 +852,22 @@ function renderValo(){
       <div class="valo-kpis"><div class="kpi med big"><div class="l">Valeur estimée${ib('valo_tot')}</div><div class="v">${fmtEur(v.valeur)}</div><div class="u">${v.lots} lot${v.lots>1?'s':''} · ${v.surfTot.toLocaleString('fr-FR')} m² · P${pos}</div></div>
         <div class="kpi"><div class="l">Fourchette basse</div><div class="v small">${fmtEur(v.valeurBas)}</div><div class="u">au P10 de chaque ligne</div></div><div class="kpi"><div class="l">Fourchette haute</div><div class="v small">${fmtEur(v.valeurHaut)}</div><div class="u">au P90 de chaque ligne</div></div></div>
       <div class="valo-sub"><div class="kpi"><div class="l">€/m² moyen retenu</div><div class="v small">${fmt0(v.ppm2Moyen)}</div><div class="u">pondéré par les surfaces</div></div><div class="kpi"><div class="l">Quartier</div><div class="v small" style="font-family:var(--sans)">${esc(LAST_ADDR.props.nom)}</div><div class="u">${LAST_ADDR.props.commune==='75056' ? `Paris ${LAST_ADDR.props.arr===1?'1er':LAST_ADDR.props.arr+'e'} · ${esc(REF.sr[LAST_ADDR.props.secteur]?.nom||'')}` : 'Boulogne-Billancourt'}</div></div><div class="kpi"><div class="l">Référence</div><div class="v small" style="font-family:var(--sans)">${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '—'}</div><div class="u">12 derniers mois de ventes disponibles</div></div></div>
-      <div class="method"><b>Méthode.</b> ${esc(HELP.valo_ref[1])} ${esc(HELP.valo_ech[1])} ${esc(HELP.valo_pos[1])}</div></div></div>`;
+      <div class="method"><b>Méthode.</b> ${esc(HELP.valo_ref[1])} ${esc(HELP.valo_ech[1])} ${esc(HELP.valo_pos[1])}</div></div></div>
+    <div id="rentCard">${rentCard(v)}</div>`;
   if (focus) { const el = box.querySelector(`[data-i="${focus.i}"][data-k="${focus.k}"]`); if (el) { el.focus(); try { el.setSelectionRange(focus.s, focus.s); } catch(_){} } }
+  if (!LOYERS && !LOYERS_ERR) { await ensureLoyers(); const rc = $('rentCard'); if (rc && S.vue === 'valo') rc.innerHTML = rentCard(v); }
 }
+$('etude').addEventListener('click', e => { const b = e.target.closest('#segMeuble button'); if (!b) return; S.valo.meuble = b.dataset.v === '1'; writeHash(); renderValo(); });
+$('etude').addEventListener('change', e => { if (e.target.id !== 'selEpoque') return; S.valo.epoque = +e.target.value; writeHash(); renderValo(); });
 let valoTimer = null;
 $('etude').addEventListener('input', e => { const el = e.target; if (!el.closest('.valo-tbl') && el.id !== 'valoPos') return;
   if (el.id === 'valoPos') { S.valo.pos = +el.value; clearTimeout(valoTimer); valoTimer = setTimeout(() => { writeHash(); renderValo(); }, 60); return; }
   const l = S.valo.lignes[+el.dataset.i]; if (!l) return; const k = el.dataset.k;
-  if (k === 'id') l.id = el.value.trim().slice(0,8) || l.id; else { const n = parseFloat(el.value); l[k] = isNaN(n) ? (k==='adj'?0:0) : n; }
+  if (k === 'id') l.id = el.value.trim().slice(0,8) || l.id; else if (k === 'pieces') { const n = parseInt(el.value); if (!isNaN(n)) l.pieces = Math.min(4, Math.max(1, n)); } else { const n = parseFloat(el.value); l[k] = isNaN(n) ? 0 : n; }
   clearTimeout(valoTimer); valoTimer = setTimeout(() => { writeHash(); renderValo(); }, 350); });
 $('etude').addEventListener('click', e => {
   const d = e.target.closest('button[data-del]'); if (d) { S.valo.lignes.splice(+d.dataset.del, 1); if (!S.valo.lignes.length) S.valo = VALO_DEFAUT(); writeHash(); renderValo(); return; }
-  if (e.target.closest('#valoAdd')) { S.valo.lignes.push({id:`L${S.valo.lignes.length+1}`, lots:1, surf:50, adj:0}); writeHash(); renderValo(); return; }
+  if (e.target.closest('#valoAdd')) { S.valo.lignes.push({id:`L${S.valo.lignes.length+1}`, lots:1, surf:50, adj:0, pieces:2}); writeHash(); renderValo(); return; }
   const b = e.target.closest('button[data-vue]'); if (b) { S.vue = b.dataset.vue; update(); }
 });
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1015,6 +1056,10 @@ $('addrForm').addEventListener('submit', async e => {
 // Export PDF (module pdf.js chargé à la demande : jsPDF + polices Inter embarquées + carte dessinée depuis les tuiles IGN)
 // ═══════════════════════════════════════════════════════════════════════════════
 let pdfBusy = false;
+async function valoPourPdf(){
+  if (!LAST_ADDR?.props || !S.valo) return null; await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
+  return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === '75056', src: LAST_ADDR.props.commune === '75056' ? LOYERS.paris : LOYERS.carte} : null};
+}
 async function perspPourPdf(item){   // scénarios avec les hypothèses courantes (ou par défaut), pour la page Perspectives du PDF
   await ensureMacro(); if (MACRO_ERR || !item) return null;
   const tx = lastOf(MACRO.series.taux_credit.obs); if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v*100)/100;
@@ -1031,8 +1076,8 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: LAST_ADDR?.props && S.valo ? {...computeValo(), pos: S.valo.pos} : null, persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id,
-      helpers: {fmt0, fmtPct, fmtPctS, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
+      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id,
+      helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
   } catch(ex) { console.error(ex); setStatus('err', `PDF impossible : ${ex.message}`); }

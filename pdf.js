@@ -208,6 +208,20 @@ export async function exportPdf(ctx){
       [...V.rows.filter(r => r.lots > 0).map(r => ({ cells: [{ t: r.id, w: 'bold' }, String(r.lots), `${r.surf} m²`, `${r.adj > 0 ? '+' : ''}${r.adj} %`, h.fmt0(r.ppm2Bas), { t: h.fmt0(r.ppm2), w: 'bold' }, h.fmt0(r.ppm2Haut), { t: ech(r), c: r.ref && !r.ref.suffisant ? C.gold : C.text2 }, h.fmtEur(r.valeurLot), { t: h.fmtEur(r.valeur), w: 'bold' }] })),
        { fill: [246, 248, 251], cells: [{ t: 'Total', w: 'bold' }, { t: String(V.lots), w: 'bold' }, { t: `${h.fmt0(V.surfTot)} m²`, w: 'bold' }, '', h.fmt0(V.valeurBas && V.surfTot ? V.valeurBas / V.surfTot : null), { t: h.fmt0(V.ppm2Moyen), w: 'bold' }, h.fmt0(V.valeurHaut && V.surfTot ? V.valeurHaut / V.surfTot : null), 'moy. pondérées', '', { t: h.fmtEur(V.valeur), w: 'bold' }] }], M, CW, { s: 6.8, rh: 6 });
     st.y += 6;
+    // ── Loyers et rentabilité brute (lot 8) ──────────────────────────────────────────────────
+    const RT = V.rent;
+    if (RT && RT.loyerAnnuel > 0) {
+      const srcTxt = RT.paris ? `encadrement ${RT.src.annee} (applicable ${RT.src.application}) · loyer de référence majoré, hors charges · ${RT.meuble ? 'meublé' : 'vide'} · immeuble ${RT.epoque.toLowerCase().replace('apres', 'après')}` : `carte des loyers ${RT.src.edition} · loyers d'annonce charges comprises · ${RT.meuble ? 'meublé' : 'vide'}`;
+      st.need(64); st.caps('Loyers et rentabilité brute', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.text(srcTxt, M, st.y + 7.5, { s: 6.2, c: C.grey, maxWidth: CW }); st.y += 11;
+      const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (P${V.pos})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (P90)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (P10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
+      const tw = (CW - 9) / 4; tl.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 5, { s: 5.4 }); st.text(v, cx + 3, st.y + 13.5, { s: 12, w: 'bold', c: acc ? C.accent : C.navy }); st.text(u, cx + 3, st.y + 19, { s: 5.4, c: C.grey, maxWidth: tw - 5 }); });
+      st.y += 27;
+      table(st, [{ l: 'Typologie', w: 1.1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Pièces', w: .75, align: 'right' }, { l: RT.paris ? 'Majoré €/m²' : 'Loyer €/m²', w: 1.25, align: 'right' }, { l: RT.paris ? 'Réf. · minoré' : 'Bas → haut', w: 1.35, align: 'right' }, { l: 'Loyer / lot', w: 1.25, align: 'right' }, { l: 'Loyer annuel', w: 1.35, align: 'right' }, { l: 'Rentab.', w: 1, align: 'right' }],
+        [...RT.rows.filter(r => r.lots > 0).map(r => ({ cells: [{ t: r.id, w: 'bold' }, String(r.lots), r.pieces === 4 ? '4 et +' : String(r.pieces), r.ppm2 != null ? { t: r.ppm2.toFixed(1).replace('.', ','), w: 'bold' } : { t: r.motif || '—', c: C.gold }, r.ppm2 == null ? '' : RT.paris ? `${r.ref.toFixed(1).replace('.', ',')} · ${r.mino.toFixed(1).replace('.', ',')}` : `${r.bas.toFixed(1).replace('.', ',')} → ${r.haut.toFixed(1).replace('.', ',')}`, h.fmtEur(r.loyerLot), h.fmtEur(r.loyerAnnuel), { t: h.fmtPct2(r.rendement), w: 'bold' }] })),
+         { fill: [246, 248, 251], cells: [{ t: 'Total', w: 'bold' }, '', '', '', '', h.fmtEur(RT.loyerMensuel), { t: h.fmtEur(RT.loyerAnnuel), w: 'bold' }, { t: h.fmtPct2(RT.rendement), w: 'bold' }] }], M, CW, { s: 6.8, rh: 6 });
+      st.y += 5;
+      st.para(`${h.HELP[RT.paris ? 'loy_paris' : 'loy_carte'][1]} ${h.HELP.rendement[1]}`, M, CW, { s: 7 }); st.y += 2;
+    }
     st.para(`Méthode. ${h.HELP.valo_ref[1]} ${h.HELP.valo_ech[1]} ${h.HELP.valo_pos[1]} ${h.HELP.valo_tot[1]} Cette valorisation est une lecture statistique des ventes enregistrées (DVF), pas une expertise : elle ne tient compte ni de l'état du bâti, ni des charges, ni des situations locatives.`, M, CW, { s: 7.6 });
     st.newPage();
   }

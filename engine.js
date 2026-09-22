@@ -242,3 +242,36 @@ export function sensibilite(macro, serie, cal, params, n = 20){
   const test = (k, d) => ({ k, d, ratio: projeter(macro, serie, cal, { ...params, [k]: params[k] + d }).at(n).ratio });
   return [['tauxH', 1], ['tauxH', -1], ['inflation', 1], ['inflation', -1], ['revenus', 1], ['revenus', -1], ['prime', 1], ['prime', -1], ['lam', .1], ['lam', -.1]].map(([k, d]) => { const r = test(k, d); return { ...r, effet: r.ratio / base - 1 }; });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Loyers et rentabilité brute (lot 8). Paris : loyer de référence MAJORÉ de l'encadrement (quartier × pièces × époque ×
+// meublé/vide, €/m²/mois hors charges) ; autres communes : « carte des loyers » (loyer d'annonce, charges comprises,
+// 1–2 pièces / 3 pièces et plus). Rentabilité brute = loyer annuel ÷ valeur retenue. Les charges ne sont pas déduites.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const piecesDefaut = id => { const m = String(id).match(/(\d)/); return m ? Math.min(4, Math.max(1, +m[1])) : 2; };
+export function loyerLigne(loyers, props, ligne, { meuble = false, epoque = 'Avant 1946' } = {}){
+  const pieces = Math.min(4, Math.max(1, Math.round(+ligne.pieces || piecesDefaut(ligne.id))));
+  if (!props) return null;
+  if (props.commune === '75056') {
+    const q = loyers?.paris?.quartiers?.[props.id]; if (!q) return { pieces, ppm2: null, motif: 'quartier absent de l’encadrement' };
+    const l = q.loyers[`${pieces}|${epoque}|${meuble ? 'meuble' : 'vide'}`]; if (!l) return { pieces, ppm2: null, motif: 'combinaison absente' };
+    return { pieces, ppm2: l[1], ref: l[0], mino: l[2], source: 'encadrement', annee: loyers.paris.annee, libelle: `loyer majoré ${meuble ? 'meublé' : 'vide'} · ${pieces === 4 ? '4 p. et +' : pieces + ' p.'} · ${epoque.toLowerCase()}` };
+  }
+  const c = loyers?.carte?.communes?.[props.commune]; if (!c) return { pieces, ppm2: null, motif: 'commune absente de la carte des loyers' };
+  const k = pieces <= 2 ? 'app12' : 'app3'; const v = c[k] || c.app; if (!v) return { pieces, ppm2: null, motif: 'indicateur absent' };
+  return { pieces, ppm2: v.loyer, bas: v.bas, haut: v.haut, n: v.n, source: 'carte', edition: loyers.carte.edition, libelle: `loyer d’annonce ${pieces <= 2 ? '1–2 p.' : '3 p. et +'} · ${c.nom}` };
+}
+// valo : résultat de valoriser() ; renvoie loyers mensuels/annuels par ligne et rendement brut (sur retenu, P10, P90)
+export function rentabilite(loyers, props, valo, opts = {}){
+  const rows = valo.rows.map(r => { const l = loyerLigne(loyers, props, r, opts); const mens = l?.ppm2 != null && r.surf > 0 ? pyround(l.ppm2 * r.surf, 0) : null;
+    const annuel = mens != null && r.lots > 0 ? mens * 12 * r.lots : null;
+    return { id: r.id, lots: r.lots, surf: r.surf, ...l, loyerLot: mens, loyerAnnuel: annuel, rendement: annuel != null && r.valeur ? annuel / r.valeur : null,
+             rendementLot: mens != null && r.valeurLot ? mens * 12 / r.valeurLot : null }; });
+  const act = rows.filter(r => r.loyerAnnuel != null); const loyerAnnuel = act.reduce((a, r) => a + r.loyerAnnuel, 0);
+  const valeurAct = valo.rows.filter(r => r.lots > 0 && r.valeur != null && rows.find(x => x.id === r.id && x.loyerAnnuel != null)).reduce((a, r) => a + r.valeur, 0);
+  const basAct = valo.rows.filter(r => r.lots > 0 && r.valeurBas != null && rows.find(x => x.id === r.id && x.loyerAnnuel != null)).reduce((a, r) => a + r.valeurBas, 0);
+  const hautAct = valo.rows.filter(r => r.lots > 0 && r.valeurHaut != null && rows.find(x => x.id === r.id && x.loyerAnnuel != null)).reduce((a, r) => a + r.valeurHaut, 0);
+  const sansLoyer = valo.rows.filter(r => r.lots > 0 && r.valeur != null && !rows.find(x => x.id === r.id && x.loyerAnnuel != null)).length;
+  return { rows, loyerAnnuel, loyerMensuel: loyerAnnuel / 12, valeur: valeurAct, rendement: valeurAct ? loyerAnnuel / valeurAct : null,
+           rendementHaut: basAct ? loyerAnnuel / basAct : null, rendementBas: hautAct ? loyerAnnuel / hautAct : null, sansLoyer };
+}
