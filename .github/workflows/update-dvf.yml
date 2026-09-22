@@ -83,6 +83,12 @@ jobs:
               print(f"  {k}: {s['count']:>7,}  {s['tag']}{'' if s['complet'] else '  (PARTIEL)'}")
           EOF
 
+      # Lots 4 et 6 : le navigateur recalcule tout depuis sales.bin ; on prouve à chaque run que le moteur JS
+      # donne les mêmes chiffres que le pipeline (28 000 comparaisons) et que la valorisation est cohérente.
+      - name: Parité moteur navigateur / pipeline (Node)
+        if: ${{ github.event.inputs.mode != 'probe' }}
+        run: node tests/test_engine.mjs && node tests/test_valo.mjs
+
       # Lot 3 : les statistiques servies au dashboard sont chiffrées avec le code d'accès (secret DVF_CODE).
       # dvf_paris.json n'est plus commité ; seuls data/enc/*.bin et le manifest le sont.
       - name: Chiffrement des données servies

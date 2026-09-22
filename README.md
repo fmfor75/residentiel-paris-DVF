@@ -18,7 +18,7 @@ data/dvf_cache.json.gz        ← cache des mutations consolidées par (départe
 scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (dvf_paris.json + dvf_sales.bin, non commités)
 scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN)
-tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python
+tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
 
@@ -42,6 +42,14 @@ page Méthode du PDF). **Exporter en PDF** produit dans le navigateur un documen
 carte (point de l'adresse localisée si une adresse a été saisie, sinon la zone étudiée), chiffres clés, évolutions,
 graphiques vectoriels, typologies, tableau annuel, méthode. La carte du PDF est dessinée depuis les tuiles IGN et les
 mêmes polygones que l'écran ; les tuiles non chargées sont comptées et signalées dans la légende.
+
+**Valorisation** (onglet disponible dès qu'une adresse est localisée ; « Valoriser l'immeuble » dans la fiche d'adresse) :
+tableau des lots par typologie (nombre, surface moyenne, ajustement en %), prix au m² de référence calculé sur les ventes
+d'appartements des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie, sur le quartier de
+l'adresse ou, en dessous de 30 ventes, le secteur puis l'arrondissement (niveau et effectif affichés) ; curseur de
+positionnement P10 → P90 ; valeur par lot, par ligne, totale, fourchette basse / haute. Tout est dans l'URL (`valo=`,
+`addr=`) et repris dans une page du PDF. Fonctions `refSurface` / `valoriser` dans engine.js, testées par
+`node tests/test_valo.mjs`. À l'ouverture, la plateforme affiche la carte et le champ d'adresse.
 
 Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
 iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).

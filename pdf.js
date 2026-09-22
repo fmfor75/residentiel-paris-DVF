@@ -191,6 +191,26 @@ export async function exportPdf(ctx){
     st.y += barChart(st, h, pts, M + 122, st.y, CW - 122, 42, `Volume · ${granLabel}`) + 8;
   };
   st.newPage();
+  // ── Valorisation de l'immeuble (lot 6) : page dédiée juste après la couverture ───────────────
+  const V = ctx.valo;
+  if (V && V.lots > 0 && address) {
+    st.caps('Valorisation', M, st.y + 2, { s: 6, c: C.green }); st.text(`Positionnement P${V.pos} · référence 12 derniers mois`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+    st.text(st.wrap(`Valorisation de l'immeuble · ${address.label}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · P${V.pos}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au P10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au P90 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
+    const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
+      st.caps(l, cx + 3.2, st.y + 5, { s: 5.6 }); st.text(v, cx + 3.2, st.y + 14.5, { s: v.length > 12 ? 11 : 13, w: 'bold', c: acc ? C.accent : C.navy }); st.text(u, cx + 3.2, st.y + 20, { s: 5.6, c: C.grey }); });
+    st.y += 30;
+    const from = V.rows.find(r => r.ref)?.ref;
+    st.caps(`Lots de l'immeuble · appartements · référence ${from ? `${h.fmtMois(from.ymFrom)} → ${h.fmtMois(from.ymTo)}` : ''}`, M, st.y + 2, { s: 6.2 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
+    // libellé court d'échantillon : le nom complet du secteur débordait sur la colonne voisine (vu sur le rendu)
+    const ech = r => !r.ref ? 'surface manquante' : `${r.ref.n} v. · ${r.ref.niveau === 'quartier' ? 'quartier' : r.ref.niveau === 'arrondissement' ? `arr. ${r.ref.id === '1' ? '1er' : r.ref.id + 'e'}` : r.ref.niveau === 'secteur' ? `secteur ${/^\d+$/.test(r.ref.id) ? 'S' + r.ref.id : r.ref.id}` : 'commune'}${r.ref.suffisant ? '' : ' · insuff.'}`;
+    table(st, [{ l: 'Typologie', w: 1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Surface', w: .8, align: 'right' }, { l: 'Ajust.', w: .7, align: 'right' }, { l: 'P10', w: .85, align: 'right' }, { l: 'Retenu', w: .95, align: 'right' }, { l: 'P90', w: .85, align: 'right' }, { l: 'Échantillon', w: 1.9 }, { l: 'Valeur / lot', w: 1.25, align: 'right' }, { l: 'Valeur', w: 1.35, align: 'right' }],
+      [...V.rows.filter(r => r.lots > 0).map(r => ({ cells: [{ t: r.id, w: 'bold' }, String(r.lots), `${r.surf} m²`, `${r.adj > 0 ? '+' : ''}${r.adj} %`, h.fmt0(r.ppm2Bas), { t: h.fmt0(r.ppm2), w: 'bold' }, h.fmt0(r.ppm2Haut), { t: ech(r), c: r.ref && !r.ref.suffisant ? C.gold : C.text2 }, h.fmtEur(r.valeurLot), { t: h.fmtEur(r.valeur), w: 'bold' }] })),
+       { fill: [246, 248, 251], cells: [{ t: 'Total', w: 'bold' }, { t: String(V.lots), w: 'bold' }, { t: `${h.fmt0(V.surfTot)} m²`, w: 'bold' }, '', h.fmt0(V.valeurBas && V.surfTot ? V.valeurBas / V.surfTot : null), { t: h.fmt0(V.ppm2Moyen), w: 'bold' }, h.fmt0(V.valeurHaut && V.surfTot ? V.valeurHaut / V.surfTot : null), 'moy. pondérées', '', { t: h.fmtEur(V.valeur), w: 'bold' }] }], M, CW, { s: 6.8, rh: 6 });
+    st.y += 6;
+    st.para(`Méthode. ${h.HELP.valo_ref[1]} ${h.HELP.valo_ech[1]} ${h.HELP.valo_pos[1]} ${h.HELP.valo_tot[1]} Cette valorisation est une lecture statistique des ventes enregistrées (DVF), pas une expertise : elle ne tient compte ni de l'état du bâti, ni des charges, ni des situations locatives.`, M, CW, { s: 7.6 });
+    st.newPage();
+  }
   if (S.global) section(`${item.nom} · ${S.type}s · toutes surfaces`, 'Marché global', et);
   typos.filter(t => t.on && et.by_typo?.[t.id]).forEach(t => section(`${t.id} · ${t.surfMin}–${t.surfMax} m²`, 'Typologie', et.by_typo[t.id]));
 
