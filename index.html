@@ -192,6 +192,24 @@ table{border-collapse:collapse;width:100%}
 .slider input[type=range]{width:100%;accent-color:var(--accent2);height:28px}
 .slider .marks{display:flex;justify-content:space-between;font-size:10.5px;font-family:var(--mono);color:var(--text3)}.slider .marks b{color:var(--accent);font-weight:600}
 .valo-kpis{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+/* Perspectives */
+.hyp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hyp .h{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.45);display:flex;flex-direction:column;gap:5px}
+.hyp .h .l{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center}
+.hyp .h .row{display:flex;align-items:center;gap:8px}.hyp .h input,.hyp .h select{border:1px solid var(--line2);border-radius:8px;background:rgba(255,255,255,.75);font-family:var(--mono);font-size:14px;padding:6px 8px;width:96px}
+.hyp .h input:focus,.hyp .h select:focus{border-color:var(--accent2);outline:none;background:#fff}.hyp .h .u{font-size:11px;color:var(--text3)}
+.hyp .h .src{font-size:10.5px;color:var(--text4);line-height:1.4}.hyp .h .src b{color:var(--text2);font-weight:600}
+.ptbl{font-size:12.5px}.ptbl th{text-align:right;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);padding:6px 8px;border-bottom:1px solid var(--line2)}
+.ptbl th:first-child,.ptbl td:first-child{text-align:left}.ptbl td{padding:8px;border-bottom:1px solid rgba(15,23,42,.06);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;vertical-align:top}
+.ptbl td .pct{font-weight:600;font-size:13.5px}.ptbl td .eur{display:block;font-size:11px;color:var(--text3);margin-top:2px}.ptbl td.c .pct{color:var(--accent)}.ptbl td.b .pct{color:var(--bad)}.ptbl td.h .pct{color:var(--good)}
+.ptbl td:first-child{font-family:var(--sans);font-weight:500}.ptbl td:first-child small{display:block;color:var(--text3);font-weight:400;font-size:10.5px;font-family:var(--mono)}
+.sens{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12px}
+.sens .n{font-family:var(--sans);color:var(--text2)}.sens .bar{height:10px;position:relative;background:rgba(15,23,42,.06);border-radius:5px}
+.sens .bar i{position:absolute;top:0;height:100%;border-radius:5px}.sens .bar i.up{background:var(--good);left:50%}.sens .bar i.down{background:var(--bad);right:50%}
+.sens .v{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;min-width:56px}
+.ctx{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.ctx .kpi .v{font-size:18px}.ctx .kpi .u{white-space:normal}
+@media (max-width:900px){.hyp{grid-template-columns:1fr 1fr}.ctx{grid-template-columns:1fr 1fr}}
+@media (max-width:700px){.hyp{grid-template-columns:1fr}.ctx{grid-template-columns:1fr 1fr}.ptbl td .eur{font-size:10px}}
 .valo-kpis .kpi.big .v{font-size:30px}.valo-kpis .kpi .v.small{font-size:16px}
 .valo-sub{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media (max-width:900px){.valo-kpis{grid-template-columns:1fr 1fr}.valo-kpis .kpi.big{grid-column:1/-1}.valo-sub{grid-template-columns:repeat(3,1fr)}}
@@ -268,7 +286,7 @@ footer a{color:var(--text3)}
   .mbar button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
   .zlist{max-height:38vh;max-height:38dvh}.kpis{grid-template-columns:repeat(2,1fr)}.evos{grid-template-columns:repeat(3,1fr)}
   .topbar{padding:0 14px}.brand-sub{display:none}.brand-title{white-space:nowrap}#statusPill{display:none}.hdr h2{font-size:21px}.hdr{padding:2px 2px 0}.card-h,.card-b{padding-left:14px;padding-right:14px}
-  .viewtabs{display:none}
+  .viewtabs{display:inline-grid;width:100%}.viewtabs button{padding:6px 4px;font-size:11.5px}#mbarVue,#mbarValo{display:none}
   #map{height:calc(100vh - 290px);height:calc(100dvh - 290px);min-height:360px}
   .mapbar{top:10px;left:10px;right:10px}.addr{max-width:none;min-width:0}.addr-res{max-width:none}
   .maplegend{left:10px;right:10px;max-width:none;max-height:42%}.leaflet-control-zoom{display:none}
@@ -412,6 +430,12 @@ const HELP = {
   valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune pour Boulogne). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
   valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 ← 50 → P90'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
+  persp_modele:['Modèle de projection', "Le prix cible est proportionnel à la capacité d'emprunt d'un ménage à mensualité constante sur 20 ans (fonction du taux de crédit, avec deux trimestres de retard) multipliée par le niveau général des prix, augmenté de la croissance réelle des revenus. Les prix rejoignent la cible progressivement (vitesse d'ajustement). Coefficients imposés, pas ajustés : une seule constante est calée sur 2014–2025. Une régression libre ajustée sur 2014–2019 dérivait de +100 % en 2025.", 'cible = a + log K20(taux) + log IPCH'],
+  persp_scen:['Scénarios', "Central : vos hypothèses. Bas : taux de crédit +1 point et inflation −0,5 point. Haut : taux −1 point et inflation +0,5 point. Le taux rejoint sa cible linéairement sur l'horizon choisi.", 'central · bas · haut'],
+  persp_sens:['Sensibilité', "Effet à 5 ans, sur la valeur projetée, d'une variation de chaque hypothèse prise isolément, les autres restant à leur valeur centrale.", 'à 5 ans, toutes choses égales'],
+  persp_retro:['Rétrospectif', "Le modèle calé sur 2014–2019 seulement, puis simulé sur 2020–2025 avec les taux et l'inflation réellement observés, comparé à la médiane réelle. C'est l'erreur à attendre du mécanisme, hypothèses connues ; il ne dit rien de la justesse des hypothèses elles-mêmes.", 'calé ≤ 2019 · simulé 2020–2025'],
+  persp_pont:['Point de départ', "La dernière médiane trimestrielle DVF de Paris, prolongée par la variation de l'indice Notaires-INSEE des appartements parisiens jusqu'à son dernier trimestre publié (les actes DVF arrivent avec 6 à 9 mois de retard). Pour la zone étudiée : sa médiane des 12 derniers mois, qui suit ensuite la trajectoire parisienne plus la prime locale.", 'DVF × INSEE'],
+  persp_prime:['Prime locale', "Écart annuel de la zone par rapport à Paris. Par défaut 0 : sur 87 quartiers, la tendance relative de 2014–2019 est corrélée −0,43 à celle de 2019–2025 (les quartiers qui ont surperformé ont ensuite sous-performé) — extrapoler une tendance locale serait faux. La tendance passée est affichée pour information.", '%/an, défaut 0'],
 };
 const ib = k => `<button class="ib" type="button" data-help="${k}" aria-label="Méthode de calcul : ${esc(HELP[k][0])}" tabindex="0">i</button>`;
 const fmt0 = v => (v==null||isNaN(v)) ? '—' : Math.round(v).toLocaleString('fr-FR');
@@ -469,8 +493,10 @@ $('btnLogout').addEventListener('click', () => { try { sessionStorage.removeItem
 // État & référentiels
 // ═══════════════════════════════════════════════════════════════════════════════
 const TYPO_DEFAUT = () => (META.typologies_ref||[]).map(t=>({id:t.id, surfMin:t.surfMin, surfMax:t.surfMax, on:['T2','T3','T4'].includes(t.id)}));
-const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null};
+const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null, persp:null};
 const VALO_MIN_N = 30, VALO_MOIS = 12;
+let MACRO = null, MACRO_ERR = null, CAL = null, SERIE_PARIS = null;   // lot 7 : séries macro (data/macro.json) et calibration
+const PERSP_DEFAUT = () => ({tauxH: null, hz: 12, inflation: 2, revenus: 0.5, prime: 0, lam: 0.2});
 // Lignes par défaut de la valorisation : une par typologie, 0 lot, surface représentative de la fourchette (T5 : 130 m² plutôt que 250)
 const VALO_DEFAUT = () => ({pos: 50, lignes: (META.typologies_ref||[]).map(t => ({id:t.id, lots:0, surf:Math.min(Math.round((t.surfMin+t.surfMax)/2), t.surfMin+30), adj:0}))});
 
@@ -498,7 +524,9 @@ function readHash(){
   if (h.get('gran') in GRANS) S.gran = h.get('gran');
   if (['Appartement','Maison'].includes(h.get('type'))) S.type = h.get('type');
   if (h.get('global')!=null) S.global = h.get('global')==='1';
-  if (['etude','carte','valo'].includes(h.get('vue'))) S.vue = h.get('vue');
+  if (['etude','carte','valo','persp'].includes(h.get('vue'))) S.vue = h.get('vue');
+  const pp = h.get('persp');   // tauxH:hz:inflation:revenus:prime:lam
+  if (pp) { const m = pp.split(':').map(Number); if (m.length === 6 && m.every(x => !isNaN(x))) S.persp = {tauxH: m[0], hz: m[1], inflation: m[2], revenus: m[3], prime: m[4], lam: m[5]}; }
   const v = h.get('valo');   // pos;T1:lots:surf:adj,…
   if (v) { const [pos, rows] = v.split(';'); const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4]} : null; }).filter(Boolean);
     if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), lignes}; }
@@ -512,6 +540,7 @@ function writeHash(){
   const p = new URLSearchParams({niveau:S.niveau, id:S.id||'', per:S.per, gran:S.gran, type:S.type, global:S.global?'1':'0', vue:S.vue,
     typos:S.typos.map(t=>`${t.id}:${t.surfMin}-${t.surfMax}:${t.on?1:0}`).join(',')});
   if (S.valo) p.set('valo', `${S.valo.pos};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}`).join(',')}`);
+  if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam].join(':'));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
   history.replaceState(null, '', '#'+p.toString());
 }
@@ -700,10 +729,11 @@ function crumbsOf(item){
     : S.niveau==='zone' ? ['Paris', `${item.quartiers.length} quartiers : ${item.quartiers.map(REF.quartierNom).join(', ')}`] : ['Paris'];
 }
 function headerHtml(item, count){
-  const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}</div>`;
+  const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
   const pdf = item && lastEtude?.et ? `<button class="btn btn-ghost btn-sm" type="button" id="btnPdf"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 17h12"/></svg>Exporter en PDF</button>` : '';
   if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune==='75056' ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, 'Boulogne-Billancourt'];
     return `<div><h2>${esc(LAST_ADDR.label)}</h2><div class="crumbs">${cr.filter(Boolean).map(esc).join('<span class="sep">›</span>')}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Valorisation</span><span class="tag">12 derniers mois</span></div>`; }
+  if (S.vue === 'persp') return `<div><h2>${item ? esc(item.nom) : 'Perspectives'}</h2><div class="crumbs">${item ? crumbsOf(item).map(esc).join('<span class="sep">›</span>') : 'Scénarios à 3, 5 et 10 ans à partir des taux, de l’inflation et des revenus.'}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Perspectives</span><span class="tag">3 · 5 · 10 ans</span></div>`;
   if (!item) return `<div><h2>${S.vue==='carte'?'Localisez une adresse':'Choisissez une zone'}</h2><div class="crumbs">${S.vue==='carte' ? 'Saisissez une adresse pour connaître son quartier, son secteur et sa zone, ou cliquez un polygone.' : esc(NIVEAU_HINT[S.niveau])}</div></div><div class="tags">${tabs}</div>`;
   return `<div><h2>${esc(item.nom)}</h2><div class="crumbs">${crumbsOf(item).map(esc).join('<span class="sep">›</span>')}</div></div>
     <div class="tags">${tabs}${pdf}<span class="tag acc">${esc(NIVEAUX[S.niveau])}</span><span class="tag">${count.toLocaleString('fr-FR')} ventes · ${esc(META.meta.periode)}</span><span class="tag">MàJ ${fmtDate(META.meta.generated_at)}</span>${META.meta.last_year_complete?'':`<span class="tag warn">${META.meta.last_year} incomplète</span>`}</div>`;
@@ -714,6 +744,7 @@ function renderMbar(item){
   $('mbarS').textContent = item ? `${NIVEAUX[S.niveau]} · ${PERIODES[S.per]} · ${S.type}s` : NIVEAUX[S.niveau];
   $('mbarVue').textContent = S.vue === 'carte' ? 'Étude' : 'Carte'; $('mbarValo').hidden = !LAST_ADDR?.props; $('mbarValo').classList.toggle('primary', S.vue==='valo');
   if (S.vue === 'valo') { $('mbarT').textContent = LAST_ADDR.label; $('mbarS').textContent = 'Valorisation · 12 derniers mois'; }
+  if (S.vue === 'persp') { $('mbarS').textContent = 'Perspectives · 3, 5, 10 ans'; }
 }
 $('mbarValo').addEventListener('click', () => { S.vue = 'valo'; update(); scrollTo({top:0}); });
 
@@ -735,6 +766,7 @@ function update(soft=false){
   if (S.vue === 'carte') { box.hidden = true; mapv.hidden = false; showMap(item); setStatus('ok', statusLine()); if (!item && !LAST_ADDR && matchMedia('(hover:hover)').matches) setTimeout(() => $('addr').focus(), 60); return; }
   mapv.hidden = true; box.hidden = false;
   if (S.vue === 'valo') { renderValo(); setStatus('ok', statusLine()); return; }
+  if (S.vue === 'persp') { renderPersp(item); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Sélectionnez un ${NIVEAUX[S.niveau].toLowerCase()} dans les filtres, ou ouvrez la carte pour localiser une adresse. Tout se recalcule immédiatement dans votre navigateur.</p></div></div>`; setStatus('ok', statusLine()); return; }
   if (!et) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Aucune vente de ${S.type.toLowerCase()} retenue</h3><p>Moins de 3 ventes de ce type sur ${esc(item.nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; setStatus('ok', statusLine()); return; }
   let html = ''; const charts = [];
@@ -797,6 +829,90 @@ $('etude').addEventListener('click', e => {
   if (e.target.closest('#valoAdd')) { S.valo.lignes.push({id:`L${S.valo.lignes.length+1}`, lots:1, surf:50, adj:0}); writeHash(); renderValo(); return; }
   const b = e.target.closest('button[data-vue]'); if (b) { S.vue = b.dataset.vue; update(); }
 });
+// ═══════════════════════════════════════════════════════════════════════════════
+// Perspectives (moteur : E.calibrer / E.projeter / E.scenarios / E.sensibilite / E.retrospectif ; données : data/macro.json)
+// ═══════════════════════════════════════════════════════════════════════════════
+const fmtPctS = v => v==null ? '—' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(1).replace('.',',')} %`;
+const lastOf = obs => { const k = Object.keys(obs).sort().pop(); return {k, v: obs[k]}; };
+const perAn = (obs, k, back) => { const ks = Object.keys(obs).sort(); const i = ks.indexOf(k); return i >= back ? obs[k] / obs[ks[i-back]] - 1 : null; };
+const moisLabel = k => { if (k.includes('-Q')) return `T${k.slice(-1)} ${k.slice(0,4)}`; const [y,m] = k.split('-'); return `${MOIS[+m-1]} ${y}`; };
+async function ensureMacro(){
+  if (MACRO || MACRO_ERR) return;
+  try { const r = await fetch('data/macro.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); MACRO = await r.json();
+    SERIE_PARIS = E.serieTrimestrielle(SALES, E.select(SALES, {quartiers: E.masqueZone(META, 'commune', '75056'), type: 0}));
+    CAL = E.calibrer(MACRO, SERIE_PARIS); }
+  catch(ex) { MACRO_ERR = ex.message; }
+}
+function refZone(item){   // €/m² de la zone étudiée sur les 12 derniers mois disponibles (même fenêtre que la valorisation)
+  const to = E.ymMax(SALES), from = to - VALO_MOIS + 1;
+  const idx = E.select(SALES, {quartiers: E.masqueZone(META, S.niveau, S.id), type: S.type==='Maison'?1:0, ymFrom: from, ymTo: to});
+  return {n: idx.length, median: E.percentileOf(SALES, idx, .5), from, to};
+}
+function tendanceLocale(item){   // tendance relative à Paris sur 10 ans, pour information (jamais extrapolée par défaut)
+  const ly = META.meta.last_year, y0 = ly - 10; const by = lastEtude?.et?.by_year; if (!by?.[String(y0)] || !by?.[String(ly)]) return null;
+  const parisBy = {}; for (const q of Object.keys(SERIE_PARIS)) { const y = q.slice(0,4); (parisBy[y] ||= []).push(SERIE_PARIS[q]); }
+  const pm = y => parisBy[String(y)] ? parisBy[String(y)].reduce((a,b)=>a+b,0)/parisBy[String(y)].length : null; if (!pm(y0) || !pm(ly)) return null;
+  return (Math.pow((by[String(ly)].median/pm(ly)) / (by[String(y0)].median/pm(y0)), 1/10) - 1) * 100;
+}
+async function renderPersp(item){
+  const box = $('etude'); box.innerHTML = `<div class="card glass"><div class="empty"><p>Chargement des séries macroéconomiques…</p></div></div>`; setStatus('busy', 'Séries macro…');
+  await ensureMacro();
+  if (MACRO_ERR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Séries macro indisponibles</h3><p>${esc(MACRO_ERR)} — data/macro.json est produit par le run mensuel (scripts/fetch_macro.py).</p></div></div>`; setStatus('err', 'macro indisponible'); return; }
+  if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Les perspectives s'appliquent à la zone étudiée (et à l'immeuble valorisé, s'il y en a un). Sélectionnez une zone dans les filtres ou localisez une adresse.</p></div></div>`; setStatus('ok', statusLine()); return; }
+  const M = MACRO.series; const tx = lastOf(M.taux_credit.obs), oat = lastOf(M.oat_10.obs), ip = lastOf(M.ipch.obs), ins = lastOf(M.insee_paris_appart.obs), loy = lastOf(M.loyers_paris.obs), pm = lastOf(M.permis_paris.obs);
+  if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v * 100) / 100;
+  const focus = document.activeElement?.dataset?.pk ? document.activeElement.dataset.pk : null;
+  const P = S.persp, params = {tauxH: P.tauxH, horizonTaux: P.hz, inflation: P.inflation, revenus: P.revenus, prime: P.prime, lam: P.lam};
+  const sc = E.scenarios(MACRO, SERIE_PARIS, CAL, params), sens = E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro = E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'});
+  const ref = refZone(item); const valo = LAST_ADDR?.props && S.valo ? computeValo() : null; const tl = tendanceLocale(item);
+  const o = sc.central.origine; const horizons = [[12,'3 ans'],[20,'5 ans'],[40,'10 ans']];
+  const cell = (pj, n, cls) => { const r = pj.at(n).ratio; return `<td class="${cls}"><span class="pct">${fmtPctS((r-1)*100)}</span>${ref.median ? `<span class="eur">${fmt0(ref.median*r)} €/m²</span>` : ''}${valo?.valeur ? `<span class="eur">${fmtEur(valo.valeur*r)}</span>` : ''}</td>`; };
+  const hyp = (k, label, val, unit, step, help, src) => `<div class="h"><div class="l">${label}${help?ib(help):''}</div><div class="row"><input type="number" step="${step}" value="${val}" data-pk="${k}" aria-label="${esc(label)}"><span class="u">${unit}</span></div><div class="src">${src}</div></div>`;
+  const permisMoy = (() => { const ks = Object.keys(M.permis_paris.obs).sort().filter(k => k >= String(META.meta.last_year-10)); return ks.length ? ks.reduce((a,k)=>a+M.permis_paris.obs[k],0)/ks.length : null; })();
+  const stale = Object.entries(M).filter(([k,v]) => v.stale || v.retard).map(([k,v]) => `${v.titre.split(',')[0]} (${v.stale ? 'source en échec, valeurs conservées' : `dernier point ${moisLabel(v.dernier)}`})`);
+  box.innerHTML = `
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Hypothèses</span>Cinq facteurs, réglables${ib('persp_modele')}</div><span class="card-sub">valeurs actuelles et sources · MàJ macro ${fmtDate(MACRO.generated_at)}</span></div>
+      <div class="card-b"><div class="hyp">
+        ${hyp('tauxH', 'Taux de crédit visé', P.tauxH, '%', 0.1, null, `<b>${tx.v.toFixed(2).replace('.',',')} %</b> en ${moisLabel(tx.k)} (BCE, crédits à l'habitat, France) · OAT 10 ans <b>${oat.v.toFixed(2).replace('.',',')} %</b> en ${moisLabel(oat.k)}`)}
+        <div class="h"><div class="l">Horizon du taux</div><div class="row"><select data-pk="hz" aria-label="Horizon du taux"><option value="4" ${P.hz==4?'selected':''}>1 an</option><option value="8" ${P.hz==8?'selected':''}>2 ans</option><option value="12" ${P.hz==12?'selected':''}>3 ans</option><option value="20" ${P.hz==20?'selected':''}>5 ans</option></select><span class="u">pour atteindre le taux visé</span></div><div class="src">Le taux passe linéairement de <b>${tx.v.toFixed(2).replace('.',',')} %</b> au taux visé, puis s'y maintient.</div></div>
+        ${hyp('inflation', 'Inflation', P.inflation, '%/an', 0.1, null, `IPCH France <b>${fmtPctS(perAn(M.ipch.obs, ip.k, 12)*100)}</b> sur 12 mois à ${moisLabel(ip.k)}${M.ipch.retard ? ' <span style="color:var(--warn)">(série en retard)</span>' : ''} · cible BCE 2 %`)}
+        ${hyp('revenus', 'Revenus réels', P.revenus, '%/an', 0.1, null, `Croissance du pouvoir d'achat au-delà de l'inflation. Loyers agglo Paris (INSEE) : <b>${fmtPctS(perAn(M.loyers_paris.obs, loy.k, 4)*100)}</b> sur un an à ${moisLabel(loy.k)}`)}
+        ${hyp('prime', 'Prime locale', P.prime, '%/an', 0.1, 'persp_prime', tl != null ? `Tendance relative de la zone sur 10 ans : <b>${fmtPctS(tl)}/an</b> par rapport à Paris — pour information, non extrapolée.` : `Tendance relative sur 10 ans non calculable pour cette zone (effectif).`)}
+        <div class="h"><div class="l">Vitesse d'ajustement</div><div class="row"><select data-pk="lam" aria-label="Vitesse d'ajustement"><option value="0.12" ${P.lam==0.12?'selected':''}>lente · 12 %/trim</option><option value="0.2" ${P.lam==0.2?'selected':''}>20 %/trim (rétrospectif)</option><option value="0.35" ${P.lam==0.35?'selected':''}>rapide · 35 %/trim</option></select></div><div class="src">Part de l'écart entre prix et cible comblée chaque trimestre. Écart actuel : <b>${fmtPctS(CAL.ecartCourant*100)}</b> (prix ${CAL.ecartCourant<0?'sous':'au-dessus de'} la cible).</div></div>
+      </div>
+      <div class="hint">Point de départ${ib('persp_pont')} : Paris ${fmt0(SERIE_PARIS[o.qDvf])} €/m² au ${moisLabel(o.qDvf)} (DVF)${o.pont ? ` × ${o.pont.ratio.toFixed(3).replace('.',',')} (indice Notaires-INSEE ${moisLabel(o.pont.de)} → ${moisLabel(o.pont.a)})` : ''} = <b>${fmt0(o.prix)} €/m²</b> au ${moisLabel(o.q)}. Zone : ${ref.median ? `<b>${fmt0(ref.median)} €/m²</b> (${ref.n} ventes, ${fmtMois(ref.from)} → ${fmtMois(ref.to)})` : 'effectif insuffisant sur 12 mois'}${valo?.valeur ? ` · immeuble valorisé <b>${fmtEur(valo.valeur)}</b>` : ''}.${stale.length ? ` <span style="color:var(--warn)">Séries à surveiller : ${esc(stale.join(' ; '))}.</span>` : ''}</div></div></div>
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(S.type)}s${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
+      <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
+        ${horizons.map(([n,l]) => `<tr><td>${l}<small>${moisLabel(sc.central.at(n).q)}</small></td>${cell(sc.bas,n,'b')}${cell(sc.central,n,'c')}${cell(sc.haut,n,'h')}</tr>`).join('')}</tbody></table></div>
+      <div class="chart"><div class="chart-t"><span>Trajectoire · Paris, base 100 au ${moisLabel(o.q)}</span><span class="legend"><span><i style="border-color:var(--bad)"></i>Bas</span><span><i></i>Central</span><span><i style="border-color:var(--good)"></i>Haut</span></span></div><div id="persp-chart"></div></div>
+      <div class="hint">Taux de crédit dans le scénario central : ${sc.central.at(12).taux?.toFixed(2).replace('.',',')} % à 3 ans, ${sc.central.at(40).taux?.toFixed(2).replace('.',',')} % à 10 ans. Zone de Boulogne : trajectoire parisienne appliquée (modèle calé sur Paris).</div></div></div>
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Sensibilité</span>Effet à 5 ans de chaque hypothèse${ib('persp_sens')}</div></div>
+      <div class="card-b"><div class="sens">${sens.map(x => { const nom = {tauxH:'Taux de crédit', inflation:'Inflation', revenus:'Revenus réels', prime:'Prime locale', lam:'Vitesse'}[x.k]; const d = x.k==='lam' ? `${x.d>0?'+':''}${Math.round(x.d*100)} pts` : `${x.d>0?'+':''}${x.d} pt`; const w = Math.min(50, Math.abs(x.effet)*100*3);
+        return `<span class="n">${nom} ${d}</span><span class="bar"><i class="${x.effet>=0?'up':'down'}" style="width:${w.toFixed(1)}%"></i></span><span class="v ${x.effet>=0?'up':'down'}">${fmtPctS(x.effet*100)}</span>`; }).join('')}</div></div></div>
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Rétrospectif</span>Ce que vaut le modèle${ib('persp_retro')}</div><span class="card-sub">calé ≤ ${retro.trainUntil} · simulé sur ${retro.nTest} trimestres avec les taux et l'inflation réels</span></div>
+      <div class="card-b"><div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi"><div class="l">Erreur moyenne</div><div class="v">${(retro.errMoy*100).toFixed(1).replace('.',',')} %</div><div class="u">écart absolu moyen, 2020 → 2025</div></div><div class="kpi"><div class="l">Erreur maximale</div><div class="v">${(retro.errMax*100).toFixed(1).replace('.',',')} %</div><div class="u">pic 2020–2021 sous-estimé</div></div><div class="kpi"><div class="l">2024 → 2025</div><div class="v">${fmtPctS((retro.points.find(p=>p.q==='2025-Q4')?.sim / retro.points.find(p=>p.q==='2025-Q4')?.obs - 1)*100)}</div><div class="u">écart simulé / réel fin 2025</div></div></div>
+      <div class="chart"><div class="chart-t"><span>Médiane Paris réelle et simulée · €/m²</span><span class="legend"><span><i></i>Réel</span><span><i style="border-color:var(--gold)"></i>Simulé</span></span></div><div id="retro-chart"></div></div>
+      <div class="method"><b>Méthode.</b> ${esc(HELP.persp_modele[1])} ${esc(HELP.persp_retro[1])} Sources : taux et IPCH BCE (${moisLabel(tx.k)}, ${moisLabel(ip.k)}), indice Notaires-INSEE Paris (${moisLabel(ins.k)}), loyers INSEE (${moisLabel(loy.k)}), logements autorisés à Paris ${fmt0(pm.v)} sur 12 mois en ${moisLabel(pm.k)}${permisMoy ? ` (moyenne ${fmt0(permisMoy)} sur dix ans)` : ''}. Ce sont des scénarios conditionnels aux hypothèses affichées, pas des prévisions.</div></div></div>`;
+  chartLines($('persp-chart'), [{pts: sc.bas.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--bad)'}, {pts: sc.central.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--s1)', w:2}, {pts: sc.haut.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--good)'}], {fmt: v => v.toFixed(0)});
+  chartLines($('retro-chart'), [{pts: retro.points.map(p=>({k:p.q, v:p.obs})), color:'var(--s1)', w:2}, {pts: retro.points.filter(p=>p.sim).map(p=>({k:p.q, v:p.sim})), color:'var(--gold)', w:2, dash:true}], {fmt: fmt0});
+  if (focus) { const el = box.querySelector(`[data-pk="${focus}"]`); if (el) el.focus(); }
+  setStatus('ok', statusLine());
+}
+let perspTimer = null;
+$('etude').addEventListener('input', e => { const el = e.target; const k = el.dataset.pk; if (!k) return; const v = parseFloat(el.value); if (isNaN(v)) return; S.persp[k] = v; clearTimeout(perspTimer); perspTimer = setTimeout(() => { writeHash(); renderPersp(S.id ? findItem(S.niveau, S.id) : null); }, el.tagName === 'SELECT' ? 0 : 400); });
+// Courbes (perspectives, rétrospectif) : plusieurs séries sur un axe trimestriel
+function chartLines(el, series, {fmt = fmt0} = {}){
+  const W = 760, H = 230, pl = 52, pr = 12, pt = 12, pb = 28, iw = W-pl-pr, ih = H-pt-pb;
+  const keys = [...new Set(series.flatMap(s => s.pts.map(p => p.k)))].sort(); const all = series.flatMap(s => s.pts.map(p => p.v));
+  const lo = Math.min(...all), hi = Math.max(...all); const raw = (hi-lo)/4 || 1; const ystep = [1,2,5,10,20,25,50,100,200,250,500,1000,2000].find(s => s >= raw) || 2000; const y0 = Math.floor(lo/ystep)*ystep, y1 = Math.ceil(hi/ystep)*ystep;
+  const x = k => pl + keys.indexOf(k)*(iw/Math.max(1, keys.length-1)), y = v => pt + ih - (v-y0)/(y1-y0||1)*ih;
+  let grid = '', ylab = ''; for (let v = y0; v <= y1 + 1e-9; v += ystep) { grid += `<line x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="rgba(15,23,42,.07)"/>`; ylab += `<text x="${pl-8}" y="${(y(v)+3.5).toFixed(1)}" text-anchor="end" ${AX}>${fmt(v)}</text>`; }
+  const years = keys.filter(k => k.endsWith('Q1') || keys.length < 12); let xlab = ''; const step = Math.ceil(years.length/10);
+  years.forEach((k,i) => { if (i % step === 0) xlab += `<text x="${x(k).toFixed(1)}" y="${H-8}" text-anchor="middle" ${AX}>${k.slice(0,4)}</text>`; });
+  const paths = series.map(s => `<path d="${s.pts.map((p,i)=>`${i?'L':'M'}${x(p.k).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${s.color}" stroke-width="${s.w||1.5}" ${s.dash?'stroke-dasharray="5 4"':''} stroke-linejoin="round"/>`).join('');
+  const last = series[series.length-1].pts.slice(-1)[0], first = series[0].pts.slice(-1)[0];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${grid}${ylab}${xlab}${paths}${series.map(s => { const p = s.pts.slice(-1)[0]; return `<text x="${(x(p.k)-6).toFixed(1)}" y="${(y(p.v)-6).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="600" fill="#0B1220" font-family="JetBrains Mono,monospace">${fmt(p.v)}</text>`; }).join('')}</svg>`;
+}
 const statusLine = () => `${META.meta.periode} · MàJ ${new Date(META.meta.generated_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})}`;
 function setStatus(t, txt){ const p = $('statusPill'); p.className = 'pill' + (t==='busy'?' busy':t==='err'?' err':''); $('statusTxt').textContent = txt; }
 
@@ -899,6 +1015,13 @@ $('addrForm').addEventListener('submit', async e => {
 // Export PDF (module pdf.js chargé à la demande : jsPDF + polices Inter embarquées + carte dessinée depuis les tuiles IGN)
 // ═══════════════════════════════════════════════════════════════════════════════
 let pdfBusy = false;
+async function perspPourPdf(item){   // scénarios avec les hypothèses courantes (ou par défaut), pour la page Perspectives du PDF
+  await ensureMacro(); if (MACRO_ERR || !item) return null;
+  const tx = lastOf(MACRO.series.taux_credit.obs); if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v*100)/100;
+  const P = S.persp, params = {tauxH: P.tauxH, horizonTaux: P.hz, inflation: P.inflation, revenus: P.revenus, prime: P.prime, lam: P.lam};
+  const ref = refZone(item); const valo = LAST_ADDR?.props && S.valo ? computeValo() : null;
+  return {params, sc: E.scenarios(MACRO, SERIE_PARIS, CAL, params), sens: E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro: E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'}), cal: CAL, ref, valoValeur: valo?.valeur || null, macro: MACRO, tl: tendanceLocale(item)};
+}
 async function exportPdf(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
   pdfBusy = true; const btn = $('btnPdf'); if (btn) { btn.disabled = true; btn.textContent = 'Génération…'; } setStatus('busy', 'Génération du PDF…');
@@ -908,8 +1031,8 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: LAST_ADDR?.props && S.valo ? {...computeValo(), pos: S.valo.pos} : null, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id,
-      helpers: {fmt0, fmtPct, fmtEur, fmtMois, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
+      address: LAST_ADDR, valo: LAST_ADDR?.props && S.valo ? {...computeValo(), pos: S.valo.pos} : null, persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id,
+      helpers: {fmt0, fmtPct, fmtPctS, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
   } catch(ex) { console.error(ex); setStatus('err', `PDF impossible : ${ex.message}`); }

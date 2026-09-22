@@ -175,3 +175,70 @@ export function valoriser(S, meta, quartierId, lignes, { position = .5, typos, t
   const incomplet = rows.filter(r => r.lots > 0 && r.valeur == null).length;   // lignes avec lots mais sans référence : comptées, jamais tues
   return { rows, lots, surfTot, valeur, valeurBas, valeurHaut, ppm2Moyen: surfTot ? pyround(valeur / surfTot) : null, position, incomplet };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Perspectives (lot 7) : modèle structurel de capacité d'emprunt, calibré sur la médiane trimestrielle Paris,
+// alimenté par data/macro.json (BCE : taux crédit, IPCH ; INSEE : indice Notaires-INSEE Paris pour le pont).
+//   prix cible_t = a + log K20(taux_{t−lag}) + log IPCH_t          (b = c = 1 imposés : voir journal, une régression
+//   log P_t = log P_{t−1} + λ (cible_t − log P_{t−1})                libre ajustée sur 2014–2019 dérive de +100 % en 2025)
+// Rétrospectif mesuré (Python, 22/09/2026) : calé ≤ 2019-Q4, simulé 2020–2025 avec taux et IPCH réels, lag 2, λ 0,2 :
+// erreur absolue moyenne 4,2 %, max 8,5 %. tests/test_persp.mjs rejoue ce chiffre.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const K20 = r => (1 - Math.pow(1 + r / 1200, -240)) / (r / 1200);   // capacité d'emprunt à mensualité constante, 20 ans, r en %
+export const qOf = ym => `${2000 + Math.floor(ym / 12)}-Q${Math.floor((ym % 12) / 3) + 1}`;
+export const qNext = (q, n = 1) => { let y = +q.slice(0, 4), k = +q.slice(-1) - 1 + n; y += Math.floor(k / 4); k = ((k % 4) + 4) % 4; return `${y}-Q${k + 1}`; };
+// moyenne trimestrielle d'une série mensuelle {"2024-01": v}
+export function moyTrim(obs, q){ const y = q.slice(0, 4), k = +q.slice(-1); const v = [3 * k - 2, 3 * k - 1, 3 * k].map(m => obs[`${y}-${String(m).padStart(2, '0')}`]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
+// médiane trimestrielle d'une sélection (Paris appartements pour la calibration)
+export function serieTrimestrielle(S, idx){ const by = byPeriod(S, idx, keyQuarter); const out = {}; for (const q of Object.keys(by)) out[q] = by[q].median; return out; }
+
+// Calibration : constante a = moyenne(log P − cible) sur les trimestres ≤ until ; renvoie aussi l'écart courant prix/cible
+export function calibrer(macro, serie, { lag = 2, until = null } = {}){
+  const qs = Object.keys(serie).sort().filter(q => !until || q <= until);
+  const R = macro.series.taux_credit.obs, H = macro.series.ipch.obs; const pts = [];
+  for (const q of qs) { const r = moyTrim(R, qNext(q, -lag)), h = moyTrim(H, q); if (r == null || h == null) continue; pts.push({ q, obs: serie[q], cible: Math.log(K20(r)) + Math.log(h) }); }
+  if (pts.length < 8) throw new Error('calibration impossible : séries macro incomplètes');
+  const a = pts.reduce((s, p) => s + Math.log(p.obs) - p.cible, 0) / pts.length;
+  const last = pts[pts.length - 1];
+  return { a, lag, n: pts.length, de: pts[0].q, a_: last.q, ecartCourant: last.obs / Math.exp(a + last.cible) - 1, points: pts };
+}
+// Rétrospectif : calé ≤ trainUntil, simulé ensuite avec les taux et l'IPCH réels ; erreur affichée telle quelle
+export function retrospectif(macro, serie, { lag = 2, lam = .2, trainUntil = '2019-Q4' } = {}){
+  const cal = calibrer(macro, serie, { lag, until: trainUntil }); const qs = Object.keys(serie).sort();
+  const R = macro.series.taux_credit.obs, H = macro.series.ipch.obs; let lp = null; const points = []; let sumE = 0, maxE = 0, n = 0;
+  for (const q of qs) { if (q <= trainUntil) { lp = Math.log(serie[q]); points.push({ q, obs: serie[q], sim: null }); continue; }
+    const r = moyTrim(R, qNext(q, -lag)), h = moyTrim(H, q); if (r == null || h == null) break;
+    lp = lp + lam * (cal.a + Math.log(K20(r)) + Math.log(h) - lp); const sim = Math.exp(lp), e = Math.abs(sim / serie[q] - 1); sumE += e; maxE = Math.max(maxE, e); n++; points.push({ q, obs: serie[q], sim }); }
+  return { trainUntil, lag, lam, points, errMoy: n ? sumE / n : null, errMax: maxE, nTest: n };
+}
+// Projection : depuis le dernier trimestre DVF, prolongé par l'indice INSEE (pont) jusqu'au dernier trimestre publié
+// params : tauxH (taux crédit visé, %), horizonTaux (trimestres pour l'atteindre), inflation (%/an), revenus (% réels/an),
+//          prime (%/an, propre à la zone), lam (vitesse), lag ; quarters = 40 (10 ans)
+export function projeter(macro, serie, cal, params, quarters = 40){
+  const { tauxH, horizonTaux = 12, inflation = 2, revenus = .5, prime = 0, lam = .2 } = params; const lag = cal.lag;
+  const R = macro.series.taux_credit.obs, H = macro.series.ipch.obs, I = macro.series.insee_paris_appart?.obs || {};
+  const qs = Object.keys(serie).sort(); const qDvf = qs[qs.length - 1]; let P0 = serie[qDvf], q0 = qDvf, pont = null;
+  const qIns = Object.keys(I).sort().filter(q => q > qDvf).pop();
+  if (qIns && I[qDvf] != null) { pont = { de: qDvf, a: qIns, ratio: I[qIns] / I[qDvf] }; P0 = P0 * pont.ratio; q0 = qIns; }
+  // taux observés (moyennes trimestrielles) jusqu'au dernier mois publié ; ensuite trajectoire vers tauxH
+  const rObs = q => moyTrim(R, q); const rLastQ = Object.keys(R).sort().pop(); const r0 = R[rLastQ];
+  const hLast = Object.keys(H).sort().pop(); const h0 = H[hLast]; const hQ = q => { const v = moyTrim(H, q); return v; };
+  const monthsBetween = (ymA, ymB) => (+ymB.slice(0, 4) - +ymA.slice(0, 4)) * 12 + (+ymB.slice(5, 7) - +ymA.slice(5, 7));
+  const qEndMonth = q => `${q.slice(0, 4)}-${String(3 * +q.slice(-1)).padStart(2, '0')}`;
+  const hAt = q => { const v = hQ(q); if (v != null) return v; const m = monthsBetween(hLast, qEndMonth(q)) - 1; return h0 * Math.pow(1 + inflation / 100, Math.max(0, m) / 12); };
+  const rAt = (q, t) => { const v = rObs(q); if (v != null && t <= 0) return v; const tt = Math.max(0, t); return r0 + (tauxH - r0) * Math.min(1, tt / horizonTaux); };
+  let lp = Math.log(P0); const path = [{ q: q0, t: 0, prix: P0, ratio: 1 }]; const g = Math.log(1 + revenus / 100) / 4, pr = Math.log(1 + prime / 100) / 4;
+  for (let t = 1; t <= quarters; t++) { const q = qNext(q0, t); const r = rAt(qNext(q, -lag), t - lag);
+    const cible = cal.a + Math.log(K20(r)) + Math.log(hAt(q)) + g * t; lp = lp + lam * (cible - lp);
+    const prix = Math.exp(lp + pr * t); path.push({ q, t, prix, ratio: prix / P0, taux: r }); }
+  return { origine: { q: q0, prix: P0, qDvf, pont, taux: r0, tauxDate: rLastQ, ipchDate: hLast }, path, at: n => path[Math.min(n, quarters)] };
+}
+export function scenarios(macro, serie, cal, params){
+  const c = projeter(macro, serie, cal, params), b = projeter(macro, serie, cal, { ...params, tauxH: params.tauxH + 1, inflation: params.inflation - .5 }), h = projeter(macro, serie, cal, { ...params, tauxH: params.tauxH - 1, inflation: params.inflation + .5 });
+  return { central: c, bas: b, haut: h };
+}
+export function sensibilite(macro, serie, cal, params, n = 20){
+  const base = projeter(macro, serie, cal, params).at(n).ratio;
+  const test = (k, d) => ({ k, d, ratio: projeter(macro, serie, cal, { ...params, [k]: params[k] + d }).at(n).ratio });
+  return [['tauxH', 1], ['tauxH', -1], ['inflation', 1], ['inflation', -1], ['revenus', 1], ['revenus', -1], ['prime', 1], ['prime', -1], ['lam', .1], ['lam', -.1]].map(([k, d]) => { const r = test(k, d); return { ...r, effet: r.ratio / base - 1 }; });
+}

@@ -211,6 +211,44 @@ export async function exportPdf(ctx){
     st.para(`Méthode. ${h.HELP.valo_ref[1]} ${h.HELP.valo_ech[1]} ${h.HELP.valo_pos[1]} ${h.HELP.valo_tot[1]} Cette valorisation est une lecture statistique des ventes enregistrées (DVF), pas une expertise : elle ne tient compte ni de l'état du bâti, ni des charges, ni des situations locatives.`, M, CW, { s: 7.6 });
     st.newPage();
   }
+  // ── Perspectives (lot 7) : scénarios conditionnels, sensibilité, rétrospectif ─────────────────
+  const PP = ctx.persp;
+  if (PP) {
+    const { sc, sens, retro, cal, ref, params, macro } = PP; const o = sc.central.origine; const Mx = macro.series;
+    const tx = h.lastOf(Mx.taux_credit.obs), oat = h.lastOf(Mx.oat_10.obs), ip = h.lastOf(Mx.ipch.obs), pm = h.lastOf(Mx.permis_paris.obs), loy = h.lastOf(Mx.loyers_paris.obs);
+    st.caps('Perspectives', M, st.y + 2, { s: 6, c: C.green }); st.text(`scénarios à 3, 5 et 10 ans depuis ${h.moisLabel(o.q)}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+    st.text(st.wrap(`Perspectives · ${item.nom} · ${S.type}s`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    // hypothèses
+    const hyps = [['Taux de crédit visé', `${params.tauxH.toFixed(2).replace('.', ',')} %`, `actuel ${tx.v.toFixed(2).replace('.', ',')} % (${h.moisLabel(tx.k)}) · atteint en ${params.horizonTaux / 4} an${params.horizonTaux > 4 ? 's' : ''}`], ['Inflation', `${params.inflation.toFixed(1).replace('.', ',')} %/an`, `IPCH ${h.fmtPctS(h.perAn(Mx.ipch.obs, ip.k, 12) * 100)} sur 12 mois (${h.moisLabel(ip.k)})`], ['Revenus réels', `${params.revenus.toFixed(1).replace('.', ',')} %/an`, `au-delà de l'inflation`], ['Prime locale', `${params.prime.toFixed(1).replace('.', ',')} %/an`, PP.tl != null ? `tendance 10 ans observée ${h.fmtPctS(PP.tl)}/an (non extrapolée)` : 'non calculable'], ['Vitesse d’ajustement', `${Math.round(params.lam * 100)} %/trim`, `écart prix / cible actuel ${h.fmtPctS(cal.ecartCourant * 100)}`]];
+    const tw = (CW - 12) / 5; hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+    st.y += 28;
+    // tableau des scénarios
+    st.caps(`Valeur projetée · zone ${ref.median ? h.fmt0(ref.median) + ' €/m² (12 mois)' : ''}${PP.valoValeur ? ` · immeuble ${h.fmtEur(PP.valoValeur)}` : ''}`, M, st.y + 2, { s: 5.8 }); st.text(`Départ Paris ${h.fmt0(o.prix)} €/m²${o.pont ? ' · DVF prolongé par l’indice Notaires-INSEE' : ''}`, PW - M, st.y + 2, { s: 6, c: C.grey, align: 'right' }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
+    const cellTxt = (pj, n) => { const r = pj.at(n).ratio; return `${h.fmtPctS((r - 1) * 100)}${ref.median ? `  ·  ${h.fmt0(ref.median * r)} €/m²` : ''}${PP.valoValeur ? `  ·  ${h.fmtEur(PP.valoValeur * r)}` : ''}`; };
+    table(st, [{ l: 'Horizon', w: .9 }, { l: 'Bas (taux +1, infl. −0,5)', w: 2.2, align: 'right' }, { l: 'Central', w: 2.2, align: 'right' }, { l: 'Haut (taux −1, infl. +0,5)', w: 2.2, align: 'right' }],
+      [[12, '3 ans'], [20, '5 ans'], [40, '10 ans']].map(([n, l]) => ({ cells: [{ t: `${l} · ${h.moisLabel(sc.central.at(n).q)}`, w: 'bold' }, { t: cellTxt(sc.bas, n), c: C.bad }, { t: cellTxt(sc.central, n), w: 'bold', c: C.accent }, { t: cellTxt(sc.haut, n), c: C.good }] })), M, CW, { s: 7, rh: 7 });
+    st.y += 5;
+    // trajectoires (vectoriel)
+    const cx0 = M, cy0 = st.y, cw = 108, ch = 46; st.caps(`Trajectoire Paris · base 100 au ${h.moisLabel(o.q)}`, cx0, cy0 + 2.5, { s: 5.8 });
+    const pl = 12, pt = 6, pb = 6, iw = cw - pl - 9, ih = ch - pt - pb; const all = [...sc.bas.path, ...sc.central.path, ...sc.haut.path].map(p => p.ratio * 100); const lo = Math.floor(Math.min(...all) / 10) * 10, hi = Math.ceil(Math.max(...all) / 10) * 10;
+    const X = t => cx0 + pl + t / 40 * iw, Y = v => cy0 + pt + ih - (v - lo) / (hi - lo) * ih;
+    for (let v = lo; v <= hi; v += 10) { st.line(cx0 + pl, Y(v), cx0 + cw - 3, Y(v), C.line2, .2); st.text(String(v), cx0 + pl - 1.5, Y(v) + .9, { s: 5, c: C.grey2, align: 'right' }); }
+    [[sc.bas, C.bad], [sc.central, C.accent2], [sc.haut, C.good]].forEach(([pj, col]) => { doc.setDrawColor(...col); doc.setLineWidth(pj === sc.central ? .6 : .35); doc.moveTo(X(0), Y(100)); pj.path.slice(1).forEach(p => doc.lineTo(X(p.t), Y(p.ratio * 100))); doc.stroke(); st.text(String(Math.round(pj.at(40).ratio * 100)), X(40) + 1.2, Y(pj.at(40).ratio * 100) + .8, { s: 5.2, w: 'bold', c: col }); });
+    [0, 12, 20, 40].forEach(t => st.text(sc.central.at(t).q.slice(0, 4), X(t), cy0 + ch - 1, { s: 5, c: C.grey2, align: t === 40 ? 'right' : t === 0 ? 'left' : 'center' }));
+    // sensibilité (à droite)
+    const sx = M + cw + 8, sw = CW - cw - 8; st.caps('Sensibilité à 5 ans', sx, cy0 + 2.5, { s: 5.8 });
+    const noms = { tauxH: 'Taux', inflation: 'Inflation', revenus: 'Revenus réels', prime: 'Prime locale', lam: 'Vitesse' };
+    sens.forEach((x, i) => { const yy = cy0 + 7 + i * 3.9; const lab = `${noms[x.k]} ${x.k === 'lam' ? `${x.d > 0 ? '+' : ''}${Math.round(x.d * 100)} pts` : `${x.d > 0 ? '+' : ''}${x.d} pt`}`; st.text(lab, sx, yy + .8, { s: 5.6, c: C.text2 });
+      const mid = sx + 26 + (sw - 26 - 12) / 2, half = (sw - 26 - 12) / 2, w = Math.min(half, Math.abs(x.effet) * 100 / 12 * half); st.rect(x.effet >= 0 ? mid : mid - w, yy - 1.4, w, 2.4, x.effet >= 0 ? [4, 120, 87] : [185, 28, 28], null, .6); st.text(h.fmtPctS(x.effet * 100), sx + sw, yy + .8, { s: 5.6, w: 'bold', c: x.effet >= 0 ? C.good : C.bad, align: 'right' }); });
+    st.y = cy0 + ch + 6;
+    // rétrospectif
+    st.caps(`Rétrospectif · modèle calé ≤ ${retro.trainUntil}, simulé sur ${retro.nTest} trimestres avec les taux et l’inflation réels`, M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 8;
+    const rt = [['Erreur moyenne', `${(retro.errMoy * 100).toFixed(1).replace('.', ',')} %`], ['Erreur maximale', `${(retro.errMax * 100).toFixed(1).replace('.', ',')} %`], ['Fin 2025, simulé / réel', h.fmtPctS((retro.points.find(p => p.q === '2025-Q4')?.sim / retro.points.find(p => p.q === '2025-Q4')?.obs - 1) * 100)]];
+    const rw = (CW - 6) / 3; rt.forEach(([l, v], i) => { const cx = M + i * (rw + 3); st.rect(cx, st.y, rw, 14, C.tile, C.line, 1.2); st.caps(l, cx + 3, st.y + 4.5, { s: 5.2 }); st.text(v, cx + 3, st.y + 11, { s: 10, w: 'bold', c: C.navy }); });
+    st.y += 18;
+    st.para(`Méthode. ${h.HELP.persp_modele[1]} ${h.HELP.persp_scen[1]} ${h.HELP.persp_retro[1]} ${h.HELP.persp_prime[1]} Sources : BCE (taux des crédits à l'habitat ${h.moisLabel(tx.k)}, OAT 10 ans ${oat.v.toFixed(2).replace('.', ',')} % en ${h.moisLabel(oat.k)}, IPCH ${h.moisLabel(ip.k)}), INSEE (indice Notaires-INSEE Paris, indice des loyers ${h.moisLabel(loy.k)}, logements autorisés à Paris ${h.fmt0(pm.v)} sur 12 mois en ${h.moisLabel(pm.k)}). Scénarios conditionnels aux hypothèses affichées : ce ne sont pas des prévisions.`, M, CW, { s: 7.2 });
+    st.newPage();
+  }
   if (S.global) section(`${item.nom} · ${S.type}s · toutes surfaces`, 'Marché global', et);
   typos.filter(t => t.on && et.by_typo?.[t.id]).forEach(t => section(`${t.id} · ${t.surfMin}–${t.surfMax} m²`, 'Typologie', et.by_typo[t.id]));
 

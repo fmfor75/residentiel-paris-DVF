@@ -1,0 +1,36 @@
+// Perspectives (lot 7) : le moteur JS doit reproduire le rétrospectif mesuré en Python (calé ≤ 2019-Q4, lag 2, λ 0,2 :
+// erreur moy. 4,2 %, max 8,5 %), et les projections doivent être cohérentes (monotonie par rapport aux taux, pont INSEE).
+import { readFileSync } from 'node:fs';
+import * as E from '../engine.js';
+const D = JSON.parse(readFileSync('data/dvf_paris.json', 'utf8'));
+const S = E.decodeSales(readFileSync('data/dvf_sales.bin').buffer.slice(0));
+const macro = JSON.parse(readFileSync('data/macro.json', 'utf8'));
+const meta = { quartier_index: D.quartier_index, quartiers_ref: D.quartiers_ref, secteurs_ref: D.secteurs_ref, zones_ref: D.zones_ref };
+let checks = 0, fails = 0; const ok = (c, m) => { checks++; if (!c) { fails++; console.log('  ✗ ' + m); } };
+const idx = E.select(S, { quartiers: E.masqueZone(meta, 'commune', '75056'), type: 0 });
+const serie = E.serieTrimestrielle(S, idx); const qs = Object.keys(serie).sort();
+ok(qs.length === 48 && serie['2025-Q4'] === D.global.by_quarter['2025-Q4'].median, `série trimestrielle ${qs.length} trim, 2025-Q4 = ${serie['2025-Q4']} (pipeline ${D.global.by_quarter['2025-Q4'].median})`);
+ok(Math.abs(E.K20(3) / E.K20(2) - 0.912) < 0.003, `K20 : 2 % → 3 % = ${(E.K20(3)/E.K20(2)-1)*100}`);
+ok(E.qNext('2025-Q4', 1) === '2026-Q1' && E.qNext('2025-Q1', -2) === '2024-Q3', 'qNext');
+ok(Math.abs(E.moyTrim(macro.series.taux_credit.obs, '2025-Q2') - 3.02) < 0.01, 'moyenne trimestrielle du taux 2025-Q2 = 3,02');
+const cal = E.calibrer(macro, serie);
+console.log(`calibration 2014–2025 : a = ${cal.a.toFixed(4)}, ${cal.n} trimestres, écart courant prix / cible ${(cal.ecartCourant*100).toFixed(1)} %`);
+ok(cal.n === 48 && Math.abs(cal.ecartCourant - (-0.024)) < 0.006, 'écart courant ≈ −2,4 % (Python)');
+const r = E.retrospectif(macro, serie, { lag: 2, lam: .2, trainUntil: '2019-Q4' });
+console.log(`rétrospectif ≤2019-Q4 : ${r.nTest} trimestres testés, erreur moy. ${(r.errMoy*100).toFixed(1)} %, max ${(r.errMax*100).toFixed(1)} %`);
+ok(r.nTest === 24 && Math.abs(r.errMoy - 0.042) < 0.004 && Math.abs(r.errMax - 0.085) < 0.006, 'rétrospectif ≈ Python (4,2 % / 8,5 %)');
+const p24 = r.points.find(p => p.q === '2024-Q4'); ok(p24 && Math.abs(p24.sim / p24.obs - 1) < 0.03, `2024-Q4 simulé ${p24?.sim?.toFixed(0)} vs réel ${p24?.obs}`);
+const params = { tauxH: macro.series.taux_credit.obs[Object.keys(macro.series.taux_credit.obs).sort().pop()], horizonTaux: 12, inflation: 2, revenus: .5, prime: 0, lam: .2 };
+const pj = E.projeter(macro, serie, cal, params);
+console.log(`origine : ${pj.origine.q} (DVF ${pj.origine.qDvf}${pj.origine.pont ? `, pont INSEE ×${pj.origine.pont.ratio.toFixed(4)}` : ''}) prix ${pj.origine.prix.toFixed(0)} €/m², taux ${pj.origine.taux} % (${pj.origine.tauxDate})`);
+console.log(`central : 3 ans ${((pj.at(12).ratio-1)*100).toFixed(1)} %, 5 ans ${((pj.at(20).ratio-1)*100).toFixed(1)} %, 10 ans ${((pj.at(40).ratio-1)*100).toFixed(1)} %`);
+ok(pj.path.length === 41 && pj.at(40).ratio > 1 && pj.at(40).ratio < 1.6, 'trajectoire centrale plausible sur 10 ans');
+ok(pj.origine.pont && pj.origine.q === '2026-Q2', 'pont INSEE jusqu\'à 2026-Q2');
+const sc = E.scenarios(macro, serie, cal, params);
+console.log(`scénarios à 5 ans : bas ${((sc.bas.at(20).ratio-1)*100).toFixed(1)} % · central ${((sc.central.at(20).ratio-1)*100).toFixed(1)} % · haut ${((sc.haut.at(20).ratio-1)*100).toFixed(1)} %`);
+ok(sc.bas.at(20).ratio < sc.central.at(20).ratio && sc.central.at(20).ratio < sc.haut.at(20).ratio, 'bas < central < haut');
+const sens = E.sensibilite(macro, serie, cal, params); const tx = sens.find(s => s.k === 'tauxH' && s.d === 1);
+console.log('sensibilité à 5 ans :', sens.map(s => `${s.k}${s.d>0?'+':''}${s.d}: ${(s.effet*100).toFixed(1)} %`).join(' · '));
+ok(tx.effet < -0.04 && tx.effet > -0.10, `+1 pt de taux à 5 ans : ${(tx.effet*100).toFixed(1)} % (attendu entre −4 et −10)`);
+const pp = E.projeter(macro, serie, cal, { ...params, prime: 1 }); ok(Math.abs(pp.at(40).ratio / pj.at(40).ratio - Math.pow(1.01, 10)) < 0.002, 'prime locale +1 %/an = ×1,105 à 10 ans');
+console.log(`\n${checks} vérifications, ${fails} échecs`); process.exit(fails ? 1 : 0);

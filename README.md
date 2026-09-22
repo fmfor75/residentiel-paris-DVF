@@ -18,6 +18,7 @@ data/dvf_cache.json.gz        ← cache des mutations consolidées par (départe
 scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (dvf_paris.json + dvf_sales.bin, non commités)
 scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN)
+scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
@@ -50,6 +51,18 @@ l'adresse ou, en dessous de 30 ventes, le secteur puis l'arrondissement (niveau 
 positionnement P10 → P90 ; valeur par lot, par ligne, totale, fourchette basse / haute. Tout est dans l'URL (`valo=`,
 `addr=`) et repris dans une page du PDF. Fonctions `refSurface` / `valoriser` dans engine.js, testées par
 `node tests/test_valo.mjs`. À l'ouverture, la plateforme affiche la carte et le champ d'adresse.
+
+**Perspectives** (onglet, page PDF) : scénarios à 3, 5 et 10 ans, conditionnels à cinq hypothèses réglables (taux de crédit
+visé et horizon, inflation, revenus réels, prime locale, vitesse d'ajustement), avec les valeurs actuelles et leurs sources.
+Modèle structurel à coefficients imposés : prix cible = capacité d'emprunt à mensualité constante sur 20 ans (taux décalé de
+deux trimestres) × niveau des prix ; une seule constante calée sur 2014–2025 ; ajustement partiel. Rétrospectif affiché :
+calé ≤ 2019-Q4, simulé 2020–2025 avec taux et inflation réels → erreur moyenne 4,2 %, max 8,5 % (`node tests/test_persp.mjs`
+le rejoue). Point de départ : dernière médiane DVF prolongée par l'indice Notaires-INSEE. La prime locale vaut 0 par défaut :
+les tendances relatives des quartiers ne persistent pas d'une période à l'autre (corrélation −0,43). Séries macro dans
+`data/macro.json` (clair), produites par `scripts/fetch_macro.py` au run mensuel — BCE (taux crédits habitat MIR, taux long
+IRS, IPCH) et INSEE BDM sans jeton (indice Paris 010567013, loyers 010600352, logements autorisés Paris 001761793) ; une
+série en échec est conservée et marquée `stale`, un dernier point ancien est marqué `retard` (l'IPCH base 2015 s'arrête à
+déc. 2025 : changement de base). Tests : `python -m unittest tests.test_macro`.
 
 Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
 iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).
