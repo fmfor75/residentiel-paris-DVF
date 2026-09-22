@@ -25,7 +25,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
               {"title": "Indicateur de loyer appartement de 1 ou 2 pièces", "format": "csv", "url": f"http://127.0.0.1:{srv.server_address[1]}/app12.csv"},
               {"title": "Indicateur de loyer appartement de 3 pièces ou plus", "format": "csv", "url": f"http://127.0.0.1:{srv.server_address[1]}/app3.csv"},
               {"title": "Indicateurs de loyer maison", "format": "csv", "url": "http://127.0.0.1:1/maison.csv"}]}]})
-        elif u.path.endswith(".csv"): body = CSV.replace(",", ".") if srv.csv_ok else "<html>erreur</html>"
+        elif u.path.endswith(".csv"): body = CSV if srv.csv_ok else "<html>erreur</html>"          # virgules décimales, comme les vrais fichiers
         else: self.send_response(404); self.end_headers(); return
         self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body.encode("utf-8"))
 

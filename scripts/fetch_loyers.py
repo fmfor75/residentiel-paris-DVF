@@ -76,7 +76,9 @@ def fetch_carte(communes, api=DATAGOUV, timeout=60):
             c = str(x["INSEE_C"]).zfill(5)
             if c not in voulus: continue
             d = out.setdefault(c, {"nom": x.get("LIBGEO", "")})
-            d[key] = {"loyer": round(float(x["loypredm2"]), 2), "bas": round(float(x["lwr.IPm2"]), 2), "haut": round(float(x["upr.IPm2"]), 2), "n": int(float(x.get("nbobs_com") or 0))}
+            # décimales à la virgule dans les CSV DHUP (« 33,5500504387857 ») : le premier run réel a échoué là-dessus (22/09/2026)
+            nb = lambda v: float(str(v).replace(",", ".").strip() or 0)
+            d[key] = {"loyer": round(nb(x["loypredm2"]), 2), "bas": round(nb(x["lwr.IPm2"]), 2), "haut": round(nb(x["upr.IPm2"]), 2), "n": int(nb(x.get("nbobs_com") or 0))}
     manquantes = sorted(c for c in communes if c not in out)
     return {"source": "Carte des loyers — indicateurs de loyers d'annonce par commune (DHUP / ANIL)", "url": ds.get("page", ""), "edition": annee, "unite": "€/m²/mois, loyer d'annonce charges comprises",
             "n": len(out), "manquantes": manquantes, "communes": out}
