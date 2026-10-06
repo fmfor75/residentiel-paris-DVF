@@ -347,7 +347,7 @@ footer a{color:var(--text3)}
   <div class="sec">
     <div class="sec-h"><span>Zone géographique</span></div>
     <div class="seg seg-4" id="segNiveau">
-      <button data-v="arrondissement">Arrond.</button><button data-v="secteur">Secteur</button><button data-v="zone">Zone</button><button data-v="quartier">Quartier</button>
+      <button data-v="arrondissement">Arrond. / commune</button><button data-v="secteur">Secteur</button><button data-v="zone">Zone</button><button data-v="quartier">Quartier</button>
     </div>
     <div class="search" id="searchWrap"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg><input class="input" id="search" placeholder="Rechercher un quartier…" aria-label="Rechercher"></div>
     <div class="zlist" id="zlist"></div>
@@ -380,7 +380,7 @@ footer a{color:var(--text3)}
   <div class="mapwrap glass" id="mapview" hidden>
     <div id="map"></div>
     <div class="mapbar">
-      <form class="addr" id="addrForm" autocomplete="off"><input class="input" id="addr" placeholder="Une adresse à Paris ou Boulogne…" aria-label="Adresse" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addrSug"><button class="btn btn-primary btn-sm" type="submit" style="width:auto">Localiser</button><ul class="sug" id="addrSug" role="listbox" hidden></ul></form>
+      <form class="addr" id="addrForm" autocomplete="off"><input class="input" id="addr" placeholder="Une adresse dans les communes couvertes…" aria-label="Adresse" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="addrSug"><button class="btn btn-primary btn-sm" type="submit" style="width:auto">Localiser</button><ul class="sug" id="addrSug" role="listbox" hidden></ul></form>
       <div class="addr-res" id="addrRes" hidden></div>
     </div>
     <button class="legbtn" id="legToggle" type="button" aria-expanded="false" aria-controls="maplegend"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="5" height="5" rx="1"/><rect x="3" y="11" width="5" height="5" rx="1"/><path d="M10 6.5h7M10 13.5h7"/></svg>Légende</button>
@@ -406,12 +406,26 @@ import * as E from './engine.js';
 const ENC_DIR = 'data/enc/', GEO_URL = 'data/geo/quartiers.geojson';
 const PERIODES = {'1':'1 an','3':'3 ans','5':'5 ans','10':'10 ans','all':'Historique complet'};
 const GRANS = {month:'Mensuel',quarter:'Trimestriel',year:'Annuel'};
-const NIVEAUX = {arrondissement:'Arrondissement',secteur:'Secteur',zone:'Zone d’encadrement',quartier:'Quartier'};
+// Lot 9 : « commune » est un niveau d'état à part entière (hash niveau=commune&id=92012) ; il partage l'onglet « Arrond. / commune ».
+const NIVEAUX = {arrondissement:'Arrondissement',commune:'Commune',secteur:'Secteur',zone:'Zone d’encadrement',quartier:'Quartier'};
+const TAB_OF = n => n === 'commune' ? 'arrondissement' : n;   // onglet de l'interface pour un niveau d'état
 const NIVEAU_HINT = {
-  arrondissement:'Les 20 arrondissements de Paris (arrondissement du polygone du quartier).',
-  secteur:'Regroupements de quartiers entiers : 14 secteurs pour Paris, la commune et 10 quartiers pour Boulogne-Billancourt.',
+  arrondissement:'Les 20 arrondissements de Paris (arrondissement du polygone du quartier) et les communes couvertes hors Paris, entières.',
+  commune:'Les 20 arrondissements de Paris (arrondissement du polygone du quartier) et les communes couvertes hors Paris, entières.',
+  secteur:'Regroupements de quartiers entiers : 14 secteurs pour Paris. Hors Paris, le niveau au-dessus du quartier est la commune (onglet Arrond. / commune).',
   zone:'Les 14 zones officielles de l’encadrement des loyers (Ville de Paris) : elles regroupent les quartiers par niveau de marché, pas par contiguïté.',
-  quartier:'Les 80 quartiers administratifs de Paris et les 10 quartiers de Boulogne-Billancourt (IRIS INSEE regroupés).'};
+  quartier:'Les 80 quartiers administratifs de Paris et les quartiers IRIS (INSEE) des communes couvertes, regroupés quand leur nommage le permet.'};
+const PARIS = '75056';
+const isCommune = g => /^\d{5}$/.test(String(g));   // identifiant de groupe = code INSEE → commune entière hors Paris
+const communeNom = c => META?.communes_ref?.[c]?.nom || c;
+// Libellés de localisation d'un quartier (fiche d'adresse, popup, PDF) : Paris → arrondissement, secteur, zone ; ailleurs → commune
+const locRows = (p, court=false) => p.commune === PARIS
+  ? [['Quartier', p.nom], [court ? 'Arrond.' : 'Arrondissement', `Paris ${p.arr===1?'1er':p.arr+'e'}`], ['Secteur', REF.sr[p.secteur]?.nom], [court ? 'Zone' : 'Zone encadrement', `Zone ${String(p.zone).slice(1)}${court ? ' (encadrement)' : ''}`]]
+  : [['Quartier', p.nom], ['Commune', communeNom(p.commune)]];
+const locActs = p => p.commune === PARIS
+  ? [['quartier', p.id, 'ce quartier'], ['arrondissement', String(p.arr), 'cet arrondissement'], ['secteur', p.secteur, 'ce secteur'], ['zone', p.zone, 'cette zone']]
+  : [['quartier', p.id, 'ce quartier'], ['commune', p.commune, communeNom(p.commune) + ' entier']];
+const communesCouvertes = () => Object.values(META?.communes_ref || {}).map(c => c.nom).join(', ');
 const EFFECTIF_FAIBLE = 30;
 // Méthode de calcul de chaque chiffre affiché. Source unique : infobulles « i » à l'écran et page « Méthode » du PDF.
 const HELP = {
@@ -431,11 +445,11 @@ const HELP = {
   surf:    ['Surface', "Surface Carrez de l'acte quand elle est cohérente avec la surface bâtie (écart ≤ 30 %), sinon surface bâtie. Moyenne des surfaces des logements vendus dans l'année.", 'Carrez ou bâtie'],
   yoy:     ['Médiane vs n−1', "Médiane de l'année rapportée à la médiane de l'année précédente.", 'méd(A) ÷ méd(A−1) − 1'],
   valo_ref:['Prix au m² retenu', "Percentile choisi par le curseur (P10 → P90) parmi les prix au m² des ventes d'appartements de référence, multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
-  valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune pour Boulogne). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
+  valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune hors Paris). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
   valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 ← 50 → P90'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
   loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
-  loy_carte:['Loyer d’annonce (carte des loyers)', "Hors Paris, loyer moyen des annonces de la commune (indicateurs DHUP / ANIL, charges comprises), pour les appartements de 1–2 pièces ou de 3 pièces et plus. Ce n'est pas un plafond : un loyer observé sur le marché.", '€/m²/mois charges comprises'],
+  loy_carte:['Loyer d’annonce (carte des loyers)', "Hors Paris, loyer moyen des annonces de la commune (indicateurs DHUP / ANIL, charges comprises), pour les appartements de 1–2 pièces ou de 3 pièces et plus. Ce n'est pas un plafond : un loyer observé sur le marché. À Saint-Ouen, soumise à l'encadrement de Plaine Commune, les plafonds réglementaires ne sont pas intégrés (lot 9b).", '€/m²/mois charges comprises'],
   rendement:['Rentabilité brute', "Loyer annuel (loyer au m² × surface × 12 × nombre de lots) divisé par la valeur retenue. Brute : avant charges non récupérables, taxe foncière, vacance, travaux et fiscalité. La fourchette reprend le même loyer sur la valeur au P90 (rendement bas) et au P10 (rendement haut).", 'loyer annuel ÷ valeur'],
   persp_modele:['Modèle de projection', "Le prix cible est proportionnel à la capacité d'emprunt d'un ménage à mensualité constante sur 20 ans (fonction du taux de crédit, avec deux trimestres de retard) multipliée par le niveau général des prix, augmenté de la croissance réelle des revenus. Les prix rejoignent la cible progressivement (vitesse d'ajustement). Coefficients imposés, pas ajustés : une seule constante est calée sur 2014–2025. Une régression libre ajustée sur 2014–2019 dérivait de +100 % en 2025.", 'cible = a + log K20(taux) + log IPCH'],
   persp_scen:['Scénarios', "Central : vos hypothèses. Bas : taux de crédit +1 point et inflation −0,5 point. Haut : taux −1 point et inflation +0,5 point. Le taux rejoint sa cible linéairement sur l'horizon choisi.", 'central · bas · haut'],
@@ -513,23 +527,30 @@ async function ensureLoyers(){ if (LOYERS || LOYERS_ERR) return; try { const r =
 function buildRef(meta){
   const qr = meta.quartiers_ref || {}, sr = meta.secteurs_ref || {}, zr = meta.zones_ref || {};
   const numOf = id => parseInt(String(id).replace(/\D/g,''))||0;
-  const arrs = []; for (let a=1;a<=20;a++) arrs.push({id:String(a), nom:`Paris ${a===1?'1er':a+'e'}`, meta:'', grp:'Paris'});
+  const cr = meta.communes_ref || {};
+  // Onglet « Arrond. / commune » : chaque entrée porte son niveau d'état (niv) — arrondissement pour Paris, commune ailleurs
+  const arrs = []; for (let a=1;a<=20;a++) arrs.push({id:String(a), niv:'arrondissement', nom:`Paris ${a===1?'1er':a+'e'}`, meta:'', grp:'Paris'});
+  Object.entries(cr).filter(([c]) => c !== PARIS).sort((a,b) => a[1].nom.localeCompare(b[1].nom, 'fr'))
+    .forEach(([c, v]) => arrs.push({id:c, niv:'commune', nom:v.nom, meta:`${v.quartiers.length} quartier${v.quartiers.length>1?'s':''}`, grp:'Communes', quartiers:v.quartiers, commune:c}));
   const quartierNom = id => qr[id]?.nom || id;
-  const secteurs = Object.entries(sr).map(([id,s]) => ({id, nom:s.nom, meta:s.arrLabel||'', grp:s.ville==='Boulogne'?'Boulogne-Billancourt':'Paris', quartiers:s.quartiers||[]}))
-    .sort((a,b)=> a.grp===b.grp ? numOf(a.id)-numOf(b.id) : (a.grp==='Paris'?-1:1));
+  const secteurs = Object.entries(sr).map(([id,s]) => ({id, nom:s.nom, meta:s.arrLabel||'', grp:'Paris', quartiers:s.quartiers||[]})).sort((a,b)=>numOf(a.id)-numOf(b.id));
   const zones = Object.entries(zr).map(([id,z]) => { const qs = z.quartiers||[]; const arrList = [...new Set(qs.map(q=>qr[q]?.arr).filter(Boolean))].sort((a,b)=>a-b);
     return {id, nom:`Zone ${id.slice(1)}`, meta:`${qs.length} quartiers · ${arrList.map(a=>a===1?'1er':a+'e').join(', ')}`, grp:'Paris', quartiers:qs}; }).sort((a,b)=>numOf(a.id)-numOf(b.id));
+  const communesOrdre = Object.keys(cr).filter(c => c !== PARIS).sort((a,b) => cr[a].nom.localeCompare(cr[b].nom, 'fr'));
   const quartiers = Object.entries(qr).map(([id,q]) => ({id, nom:q.nom, arr:q.arr, zone:q.zone, secteur:q.secteur, commune:q.commune,
-    meta: q.commune==='75056' ? `${sr[q.secteur]?.nom||''} · ${q.zone}` : 'Boulogne-Billancourt',
-    grp: q.commune==='75056' ? `Paris ${q.arr===1?'1er':q.arr+'e'}` : 'Boulogne-Billancourt', sortKey: q.commune==='75056' ? q.arr*1000+numOf(id) : 100000+numOf(id)})).sort((a,b)=>a.sortKey-b.sortKey);
-  return {arrondissement:arrs, secteur:secteurs, zone:zones, quartier:quartiers, quartierNom, sr, zr, qr};
+    meta: q.commune===PARIS ? `${sr[q.secteur]?.nom||''} · ${q.zone}` : (cr[q.commune]?.nom || q.commune),
+    grp: q.commune===PARIS ? `Paris ${q.arr===1?'1er':q.arr+'e'}` : (cr[q.commune]?.nom || q.commune),
+    sortKey: q.commune===PARIS ? q.arr*1000+numOf(id) : 100000 + (communesOrdre.indexOf(q.commune)+1)*1000 + numOf(id)})).sort((a,b)=>a.sortKey-b.sortKey);
+  return {arrondissement:arrs, secteur:secteurs, zone:zones, quartier:quartiers, quartierNom, sr, zr, qr, cr};
 }
-const itemsOf = n => REF[n]; const findItem = (n,id) => itemsOf(n).find(x=>x.id===id);
+const itemsOf = n => REF[TAB_OF(n)]; const findItem = (n,id) => itemsOf(n).find(x=>x.id===id && (x.niv||TAB_OF(n))===n);
 
 function readHash(){
   const h = new URLSearchParams(location.hash.slice(1));
   if (h.get('niveau') in NIVEAUX) S.niveau = h.get('niveau');
   if (h.get('id')) S.id = h.get('id');
+  // Lot 9 : les URL partagées avant le lot 9 désignaient Boulogne par des pseudo-secteurs (B0 = commune, B1–B10 = quartiers)
+  if (S.niveau === 'secteur' && /^B\d+$/.test(S.id||'')) { if (S.id === 'B0') { S.niveau = 'commune'; S.id = '92012'; } else S.niveau = 'quartier'; }
   if (h.get('per') in PERIODES) S.per = h.get('per');
   if (h.get('gran') in GRANS) S.gran = h.get('gran');
   if (['Appartement','Maison'].includes(h.get('type'))) S.type = h.get('type');
@@ -593,7 +614,7 @@ $('mbarVue').addEventListener('click', () => { S.vue = S.vue === 'carte' ? 'etud
 // (PDF sur téléphone : bouton « Exporter en PDF » de l'en-tête ; la barre du bas garde Vue · Valo · Filtres)
 function setSeg(id, v){ document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on', b.dataset.v===v)); }
 function renderSidebar(){
-  setSeg('segNiveau', S.niveau); setSeg('segPer', S.per); setSeg('segGran', S.gran); setSeg('segType', S.type);
+  setSeg('segNiveau', TAB_OF(S.niveau)); setSeg('segPer', S.per); setSeg('segGran', S.gran); setSeg('segType', S.type);
   $('niveauHint').textContent = NIVEAU_HINT[S.niveau]; $('searchWrap').hidden = S.niveau !== 'quartier';
   const ly = META.meta.last_year, y0 = META.meta.annees[0];
   $('perHint').textContent = S.per==='all' ? `${y0} → ${ly} (${META.meta.annees.length} années)` : `${ly-(+S.per)+1} → ${ly}` + (META.meta.last_year_complete ? '' : ` · ${ly} incomplète`);
@@ -603,10 +624,11 @@ function renderSidebar(){
   itemsOf(S.niveau).forEach(it => {
     if (q && !norm(it.nom+' '+(it.meta||'')+' '+it.grp).includes(q)) return;
     if (it.grp !== grp) { grp = it.grp; const g = document.createElement('div'); g.className='zgrp'; g.textContent = grp; list.appendChild(g); }
-    const b = document.createElement('button'); b.type='button'; b.className = 'zbtn' + (it.id===S.id?' on':'');
-    const idLabel = S.niveau==='secteur'&&/^\d+$/.test(it.id) ? 'S'+it.id : S.niveau==='arrondissement' ? (it.id==='1'?'1er':it.id+'e') : it.id;
+    const niv = it.niv || S.niveau;
+    const b = document.createElement('button'); b.type='button'; b.className = 'zbtn' + (it.id===S.id && niv===S.niveau?' on':'');
+    const idLabel = niv==='secteur'&&/^\d+$/.test(it.id) ? 'S'+it.id : niv==='arrondissement' ? (it.id==='1'?'1er':it.id+'e') : niv==='commune' ? it.id : it.id;
     b.innerHTML = `<span><span class="n">${esc(it.nom)}</span>${it.meta?`<span class="m">${esc(it.meta)}</span>`:''}</span><span class="id">${esc(idLabel)}</span>`;
-    b.onclick = () => { S.id = it.id; S.vue = 'etude'; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } }; list.appendChild(b); shown++;
+    b.onclick = () => { S.niveau = niv; S.id = it.id; S.vue = 'etude'; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } }; list.appendChild(b); shown++;
   });
   if (!shown) { const e = document.createElement('div'); e.className='hint'; e.style.padding='8px'; e.textContent='Aucun quartier ne correspond.'; list.appendChild(e); }
   // typologies éditables
@@ -621,7 +643,7 @@ function renderSidebar(){
 }
 ['segNiveau','segPer','segGran','segType'].forEach(id => $(id).addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return; const v = b.dataset.v;
-  if (id==='segNiveau') { if (v!==S.niveau) { S.niveau = v; S.id = null; S.q=''; $('search').value=''; if (S.vue!=='carte') S.vue='etude'; } }
+  if (id==='segNiveau') { if (v!==TAB_OF(S.niveau)) { S.niveau = v; S.id = null; S.q=''; $('search').value=''; if (S.vue!=='carte') S.vue='etude'; } }
   else if (id==='segPer') S.per = v; else if (id==='segGran') S.gran = v; else S.type = v;
   update();
 }));
@@ -735,14 +757,14 @@ function yearTable(st, nom){
 document.addEventListener('click', e => { const b = e.target.closest('button[data-csv]'); if (!b) return; const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(b.dataset.csv); a.download = `dvf_${b.dataset.name.replace(/[^\w]+/g,'_')}_${S.type}.csv`; a.click(); });
 
 function crumbsOf(item){
-  return S.niveau==='quartier' ? [item.commune==='75056'?'Paris':'Boulogne-Billancourt', item.commune==='75056'?`${item.arr===1?'1er':item.arr+'e'} arr.`:null, REF.sr[item.secteur]?.nom, item.zone ? `Zone ${item.zone.slice(1)} (encadrement)` : null].filter(Boolean)
-    : S.niveau==='secteur' ? [item.grp, `${item.quartiers.length} quartier${item.quartiers.length>1?'s':''} : ${item.quartiers.map(REF.quartierNom).join(', ')}`]
+  return S.niveau==='quartier' ? [communeNom(item.commune), item.commune===PARIS?`${item.arr===1?'1er':item.arr+'e'} arr.`:null, REF.sr[item.secteur]?.nom, item.zone ? `Zone ${item.zone.slice(1)} (encadrement)` : null].filter(Boolean)
+    : S.niveau==='secteur' || S.niveau==='commune' ? [S.niveau==='commune' ? 'Commune entière' : item.grp, `${item.quartiers.length} quartier${item.quartiers.length>1?'s':''} : ${item.quartiers.map(REF.quartierNom).join(', ')}`]
     : S.niveau==='zone' ? ['Paris', `${item.quartiers.length} quartiers : ${item.quartiers.map(REF.quartierNom).join(', ')}`] : ['Paris'];
 }
 function headerHtml(item, count){
   const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
   const pdf = item && lastEtude?.et ? `<button class="btn btn-ghost btn-sm" type="button" id="btnPdf"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 17h12"/></svg>Exporter en PDF</button>` : '';
-  if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune==='75056' ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, 'Boulogne-Billancourt'];
+  if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune===PARIS ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, communeNom(p.commune)];
     return `<div><h2>${esc(LAST_ADDR.label)}</h2><div class="crumbs">${cr.filter(Boolean).map(esc).join('<span class="sep">›</span>')}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Valorisation</span><span class="tag">12 derniers mois</span></div>`; }
   if (S.vue === 'persp') return `<div><h2>${item ? esc(item.nom) : 'Perspectives'}</h2><div class="crumbs">${item ? crumbsOf(item).map(esc).join('<span class="sep">›</span>') : 'Scénarios à 3, 5 et 10 ans à partir des taux, de l’inflation et des revenus.'}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Perspectives</span><span class="tag">3 · 5 · 10 ans</span></div>`;
   if (!item) return `<div><h2>${S.vue==='carte'?'Localisez une adresse':'Choisissez une zone'}</h2><div class="crumbs">${S.vue==='carte' ? 'Saisissez une adresse pour connaître son quartier, son secteur et sa zone, ou cliquez un polygone.' : esc(NIVEAU_HINT[S.niveau])}</div></div><div class="tags">${tabs}</div>`;
@@ -807,7 +829,7 @@ function computeRent(v){
 }
 const fmtPct2 = v => v==null ? '—' : (v*100).toFixed(2).replace('.',',') + ' %';
 function rentCard(v){
-  const paris = LAST_ADDR.props.commune === '75056';
+  const paris = LAST_ADDR.props.commune === PARIS;
   if (LOYERS_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Rentabilité brute</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Loyers indisponibles (${esc(LOYERS_ERR)}) — data/loyers.json est produit par le run mensuel.</p></div></div></div>`;
   if (!LOYERS) return `<div class="card glass"><div class="card-b"><div class="empty" style="padding:12px"><p>Chargement des loyers…</p></div></div></div>`;
   const rt = computeRent(v); const src = paris ? LOYERS.paris : LOYERS.carte;
@@ -820,7 +842,7 @@ function rentCard(v){
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Loyers de référence et rentabilité brute${ib(paris ? 'loy_paris' : 'loy_carte')}</div><span class="card-sub">${sub}</span></div>
     <div class="card-b" style="padding-top:12px">
       <div class="loy-ctl"><span><span class="lbl">Location</span></span><div class="seg seg-2" id="segMeuble"><button type="button" data-v="0" class="${S.valo.meuble?'':'on'}">Vide</button><button type="button" data-v="1" class="${S.valo.meuble?'on':''}">Meublé</button></div>
-        ${paris ? `<span><span class="lbl">Immeuble construit</span><select id="selEpoque" aria-label="Époque de construction">${EPOQUES.map((e,i)=>`<option value="${i}" ${i===(S.valo.epoque||0)?'selected':''}>${e.replace('Apres','Après')}</option>`).join('')}</select></span>` : `<span class="hint">Hors Paris : loyer d'annonce moyen de la commune (pas d'encadrement).</span>`}</div>
+        ${paris ? `<span><span class="lbl">Immeuble construit</span><select id="selEpoque" aria-label="Époque de construction">${EPOQUES.map((e,i)=>`<option value="${i}" ${i===(S.valo.epoque||0)?'selected':''}>${e.replace('Apres','Après')}</option>`).join('')}</select></span>` : `<span class="hint">${LAST_ADDR.props.commune === '93070' ? "Saint-Ouen est soumise à l'encadrement des loyers de Plaine Commune : plafonds non intégrés, loyer d'annonce moyen de la commune affiché." : "Hors Paris : loyer d'annonce moyen de la commune (pas d'encadrement)."}</span>`}</div>
       <div class="tbl-wrap"><table class="valo-tbl loy-tbl"><thead><tr><th>Typologie</th><th>Pièces</th><th>${paris ? 'Loyer majoré €/m²' : 'Loyer €/m²'}${ib(paris ? 'loy_paris' : 'loy_carte')}</th><th>Loyer / lot / mois</th><th>Loyer annuel</th><th>Rentabilité brute${ib('rendement')}</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td data-l="Total">Total</td><td class="delc"></td><td class="delc"></td><td data-l="Loyer / mois">${fmtEur(rt.loyerMensuel)}</td><td data-l="Loyer annuel">${fmtEur(rt.loyerAnnuel)}</td><td data-l="Rentabilité brute"><b>${fmtPct2(rt.rendement)}</b></td></tr></tfoot></table></div>
       <div class="valo-kpis"><div class="kpi med big"><div class="l">Rentabilité brute${ib('rendement')}</div><div class="v">${fmtPct2(rt.rendement)}</div><div class="u">${fmtEur(rt.loyerAnnuel)} de loyers par an sur ${fmtEur(rt.valeur)} (P${S.valo.pos})${rt.sansLoyer ? ` · ${rt.sansLoyer} ligne(s) sans loyer exclue(s)` : ''}</div></div>
@@ -830,11 +852,11 @@ function rentCard(v){
 async function renderValo(){
   const box = $('etude');
   if (!LAST_ADDR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Localisez d'abord une adresse</h3><p>Saisissez l'adresse de l'immeuble dans l'onglet Carte : la valorisation utilise les ventes de son quartier.</p><p style="margin-top:12px"><button class="btn btn-primary" type="button" data-vue="carte" style="width:auto">Ouvrir la carte</button></p></div></div>`; return; }
-  if (!LAST_ADDR.props) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Adresse hors périmètre</h3><p>${esc(LAST_ADDR.label)} n'est pas dans les communes couvertes (Paris, Boulogne-Billancourt).</p></div></div>`; return; }
+  if (!LAST_ADDR.props) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Adresse hors périmètre</h3><p>${esc(LAST_ADDR.label)} n'est pas dans les communes couvertes (${esc(communesCouvertes())}).</p></div></div>`; return; }
   const focus = document.activeElement?.dataset?.k ? {i: document.activeElement.dataset.i, k: document.activeElement.dataset.k, s: document.activeElement.selectionStart} : null;
   const v = computeValo(); const pos = S.valo.pos; const from = v.rows.find(r=>r.ref)?.ref;
   const posLabel = pos===50 ? 'médiane' : pos<50 ? (pos<=25?'bas de marché':'sous la médiane') : (pos>=75?'haut de marché':'au-dessus de la médiane');
-  const rows = v.rows.map((r,i) => { const ref = r.ref; const ech = !ref ? '<span class="warn">surface manquante</span>' : `${ref.n} ventes · ${NIV_COURT[ref.niveau]}${ref.niveau==='quartier'?'':' '+esc(ref.niveau==='arrondissement' ? (ref.id==='1'?'1er':ref.id+'e') : ref.niveau==='secteur' ? (REF.sr[ref.id]?.nom||ref.id) : 'Boulogne')}${ref.bande.id ? ` · ${ref.bande.id} ${ref.bande.surfMin}–${ref.bande.surfMax} m²` : ` · ${ref.bande.surfMin}–${ref.bande.surfMax} m² (±25 %)`}${ref.suffisant ? '' : ' · <b>insuffisant</b>'}`;
+  const rows = v.rows.map((r,i) => { const ref = r.ref; const ech = !ref ? '<span class="warn">surface manquante</span>' : `${ref.n} ventes · ${NIV_COURT[ref.niveau]}${ref.niveau==='quartier'?'':' '+esc(ref.niveau==='arrondissement' ? (ref.id==='1'?'1er':ref.id+'e') : ref.niveau==='secteur' ? (REF.sr[ref.id]?.nom||ref.id) : communeNom(ref.id))}${ref.bande.id ? ` · ${ref.bande.id} ${ref.bande.surfMin}–${ref.bande.surfMax} m²` : ` · ${ref.bande.surfMin}–${ref.bande.surfMax} m² (±25 %)`}${ref.suffisant ? '' : ' · <b>insuffisant</b>'}`;
     return `<tr class="${r.lots?'':'dim'}"><td data-l="Typologie"><input class="vi id" value="${esc(r.id)}" data-i="${i}" data-k="id" maxlength="8" aria-label="Typologie"></td>
       <td data-l="Lots"><input class="vi" type="number" min="0" step="1" value="${r.lots}" data-i="${i}" data-k="lots" aria-label="Nombre de lots"></td>
       <td data-l="Surf. m²"><input class="vi" type="number" min="1" step="1" value="${r.surf||''}" data-i="${i}" data-k="surf" aria-label="Surface moyenne"></td>
@@ -851,7 +873,7 @@ async function renderValo(){
       <div class="card-b"><div class="slider"><input type="range" id="valoPos" min="10" max="90" step="1" value="${pos}" aria-label="Positionnement"><div class="marks"><span>P10 · bas</span><span>Q1</span><b>Médiane</b><span>Q3</span><span>P90 · haut</span></div></div>
       <div class="valo-kpis"><div class="kpi med big"><div class="l">Valeur estimée${ib('valo_tot')}</div><div class="v">${fmtEur(v.valeur)}</div><div class="u">${v.lots} lot${v.lots>1?'s':''} · ${v.surfTot.toLocaleString('fr-FR')} m² · P${pos}</div></div>
         <div class="kpi"><div class="l">Fourchette basse</div><div class="v small">${fmtEur(v.valeurBas)}</div><div class="u">au P10 de chaque ligne</div></div><div class="kpi"><div class="l">Fourchette haute</div><div class="v small">${fmtEur(v.valeurHaut)}</div><div class="u">au P90 de chaque ligne</div></div></div>
-      <div class="valo-sub"><div class="kpi"><div class="l">€/m² moyen retenu</div><div class="v small">${fmt0(v.ppm2Moyen)}</div><div class="u">pondéré par les surfaces</div></div><div class="kpi"><div class="l">Quartier</div><div class="v small" style="font-family:var(--sans)">${esc(LAST_ADDR.props.nom)}</div><div class="u">${LAST_ADDR.props.commune==='75056' ? `Paris ${LAST_ADDR.props.arr===1?'1er':LAST_ADDR.props.arr+'e'} · ${esc(REF.sr[LAST_ADDR.props.secteur]?.nom||'')}` : 'Boulogne-Billancourt'}</div></div><div class="kpi"><div class="l">Référence</div><div class="v small" style="font-family:var(--sans)">${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '—'}</div><div class="u">12 derniers mois de ventes disponibles</div></div></div>
+      <div class="valo-sub"><div class="kpi"><div class="l">€/m² moyen retenu</div><div class="v small">${fmt0(v.ppm2Moyen)}</div><div class="u">pondéré par les surfaces</div></div><div class="kpi"><div class="l">Quartier</div><div class="v small" style="font-family:var(--sans)">${esc(LAST_ADDR.props.nom)}</div><div class="u">${LAST_ADDR.props.commune===PARIS ? `Paris ${LAST_ADDR.props.arr===1?'1er':LAST_ADDR.props.arr+'e'} · ${esc(REF.sr[LAST_ADDR.props.secteur]?.nom||'')}` : esc(communeNom(LAST_ADDR.props.commune))}</div></div><div class="kpi"><div class="l">Référence</div><div class="v small" style="font-family:var(--sans)">${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '—'}</div><div class="u">12 derniers mois de ventes disponibles</div></div></div>
       <div class="method"><b>Méthode.</b> ${esc(HELP.valo_ref[1])} ${esc(HELP.valo_ech[1])} ${esc(HELP.valo_pos[1])}</div></div></div>
     <div id="rentCard">${rentCard(v)}</div>`;
   if (focus) { const el = box.querySelector(`[data-i="${focus.i}"][data-k="${focus.k}"]`); if (el) { el.focus(); try { el.setSelectionRange(focus.s, focus.s); } catch(_){} } }
@@ -880,7 +902,7 @@ const moisLabel = k => { if (k.includes('-Q')) return `T${k.slice(-1)} ${k.slice
 async function ensureMacro(){
   if (MACRO || MACRO_ERR) return;
   try { const r = await fetch('data/macro.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); MACRO = await r.json();
-    SERIE_PARIS = E.serieTrimestrielle(SALES, E.select(SALES, {quartiers: E.masqueZone(META, 'commune', '75056'), type: 0}));
+    SERIE_PARIS = E.serieTrimestrielle(SALES, E.select(SALES, {quartiers: E.masqueZone(META, 'commune', PARIS), type: 0}));
     CAL = E.calibrer(MACRO, SERIE_PARIS); }
   catch(ex) { MACRO_ERR = ex.message; }
 }
@@ -926,7 +948,7 @@ async function renderPersp(item){
       <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
         ${horizons.map(([n,l]) => `<tr><td>${l}<small>${moisLabel(sc.central.at(n).q)}</small></td>${cell(sc.bas,n,'b')}${cell(sc.central,n,'c')}${cell(sc.haut,n,'h')}</tr>`).join('')}</tbody></table></div>
       <div class="chart"><div class="chart-t"><span>Trajectoire · Paris, base 100 au ${moisLabel(o.q)}</span><span class="legend"><span><i style="border-color:var(--bad)"></i>Bas</span><span><i></i>Central</span><span><i style="border-color:var(--good)"></i>Haut</span></span></div><div id="persp-chart"></div></div>
-      <div class="hint">Taux de crédit dans le scénario central : ${sc.central.at(12).taux?.toFixed(2).replace('.',',')} % à 3 ans, ${sc.central.at(40).taux?.toFixed(2).replace('.',',')} % à 10 ans. Zone de Boulogne : trajectoire parisienne appliquée (modèle calé sur Paris).</div></div></div>
+      <div class="hint">Taux de crédit dans le scénario central : ${sc.central.at(12).taux?.toFixed(2).replace('.',',')} % à 3 ans, ${sc.central.at(40).taux?.toFixed(2).replace('.',',')} % à 10 ans. Hors Paris : trajectoire parisienne appliquée à la zone (modèle calé sur Paris).</div></div></div>
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Sensibilité</span>Effet à 5 ans de chaque hypothèse${ib('persp_sens')}</div></div>
       <div class="card-b"><div class="sens">${sens.map(x => { const nom = {tauxH:'Taux de crédit', inflation:'Inflation', revenus:'Revenus réels', prime:'Prime locale', lam:'Vitesse'}[x.k]; const d = x.k==='lam' ? `${x.d>0?'+':''}${Math.round(x.d*100)} pts` : `${x.d>0?'+':''}${x.d} pt`; const w = Math.min(50, Math.abs(x.effet)*100*3);
         return `<span class="n">${nom} ${d}</span><span class="bar"><i class="${x.effet>=0?'up':'down'}" style="width:${w.toFixed(1)}%"></i></span><span class="v ${x.effet>=0?'up':'down'}">${fmtPctS(x.effet*100)}</span>`; }).join('')}</div></div></div>
@@ -966,14 +988,15 @@ const HUES = [212,28,152,42,332,95,265,190,12,60,300,170,230,0,120,280,35,205,32
 function colorOf(key, i){ const h = HUES[i % HUES.length]; const l = 58 + (Math.floor(i / HUES.length) % 2) * 12; return `hsl(${h} 62% ${l}%)`; }
 function groupOfFeature(props){
   if (S.niveau==='quartier') return props.id;
+  if (props.commune !== PARIS) return props.commune;   // hors Paris : la commune entière, quel que soit le niveau (lot 9)
   if (S.niveau==='secteur') return props.secteur;
-  if (S.niveau==='zone') return props.zone || (props.commune==='92012' ? props.secteur : null);
-  return props.commune==='75056' ? String(props.arr) : props.secteur;
+  if (S.niveau==='zone') return props.zone;
+  return String(props.arr);
 }
 // Groupes du niveau courant, triés (préfixe puis numéro) ; l'index sert de couleur — partagé carte / PDF
-function groupsSorted(){ const groups = [...new Set(GEO.features.map(f=>groupOfFeature(f.properties)).filter(Boolean))].sort((a,b)=>{ const na=parseInt(String(a).replace(/\D/g,''))||0, nb=parseInt(String(b).replace(/\D/g,''))||0; const pa=String(a).replace(/\d/g,''), pb=String(b).replace(/\d/g,''); return pa===pb ? na-nb : pa.localeCompare(pb); }); return {groups, colorIdx: Object.fromEntries(groups.map((g,i)=>[g,i]))}; }
-function groupLabel(g){ if (!g) return '—'; if (S.niveau==='quartier') return REF.qr[g]?.nom || g; if (S.niveau==='zone' && g.startsWith('Z')) return `Zone ${g.slice(1)}`; if (S.niveau==='arrondissement' && /^\d+$/.test(g)) return `Paris ${g==='1'?'1er':g+'e'}`; return REF.sr[g]?.nom || g; }
-function groupNiveau(g){ return S.niveau==='zone' && !String(g).startsWith('Z') ? 'secteur' : S.niveau==='arrondissement' && !/^\d+$/.test(g) ? 'secteur' : S.niveau; }
+function groupsSorted(){ const groups = [...new Set(GEO.features.map(f=>groupOfFeature(f.properties)).filter(Boolean))].sort((a,b)=>{ if (isCommune(a) !== isCommune(b)) return isCommune(a) ? 1 : -1; if (isCommune(a)) return communeNom(a).localeCompare(communeNom(b), 'fr'); const na=parseInt(String(a).replace(/\D/g,''))||0, nb=parseInt(String(b).replace(/\D/g,''))||0; const pa=String(a).replace(/\d/g,''), pb=String(b).replace(/\d/g,''); return pa===pb ? na-nb : pa.localeCompare(pb); }); return {groups, colorIdx: Object.fromEntries(groups.map((g,i)=>[g,i]))}; }   // Paris d'abord, puis les communes par nom
+function groupLabel(g){ if (!g) return '—'; if (S.niveau==='quartier') return REF.qr[g]?.nom || g; if (isCommune(g)) return communeNom(g); if (S.niveau==='zone' && g.startsWith('Z')) return `Zone ${g.slice(1)}`; if ((S.niveau==='arrondissement' || S.niveau==='commune') && /^\d+$/.test(g)) return `Paris ${g==='1'?'1er':g+'e'}`; return REF.sr[g]?.nom || g; }
+function groupNiveau(g){ return S.niveau !== 'quartier' && isCommune(g) ? 'commune' : S.niveau === 'commune' ? 'arrondissement' : S.niveau; }
 function pip(x, y, ring){ let inside=false; for (let i=0,j=ring.length-1;i<ring.length;j=i++){ const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1]; if ((yi>y)!==(yj>y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside; } return inside; }
 function quartierAt(lon, lat){ for (const f of GEO.features){ const g=f.geometry; const polys = g.type==='MultiPolygon'?g.coordinates:[g.coordinates]; for (const poly of polys){ if (pip(lon,lat,poly[0]) && !poly.slice(1).some(h=>pip(lon,lat,h))) return f.properties; } } return null; }
 async function showMap(item){
@@ -997,11 +1020,10 @@ async function showMap(item){
     }
   }).addTo(MAP);
   if (item) { const b = L.latLngBounds([]); LAYER.eachLayer(l => { if (groupOfFeature(l.feature.properties)===item.id) b.extend(l.getBounds()); }); if (b.isValid()) MAP.fitBounds(b.pad(0.15)); }
-  $('maplegend').innerHTML = `<div class="lt">${esc(NIVEAUX[S.niveau])}${S.niveau!=='quartier' && S.niveau!=='secteur' ? ' · Boulogne par quartier' : ''}</div>` + groups.map(g=>`<span class="li" data-g="${esc(g)}"><i style="background:${colorOf(g,colorIdx[g])}"></i>${esc(groupLabel(g))}</span>`).join('');
+  $('maplegend').innerHTML = `<div class="lt">${esc(NIVEAUX[S.niveau])}${S.niveau!=='quartier' ? ' · hors Paris : communes entières' : ''}</div>` + groups.map(g=>`<span class="li" data-g="${esc(g)}"><i style="background:${colorOf(g,colorIdx[g])}"></i>${esc(groupLabel(g))}</span>`).join('');
 }
 function popupHtml(p){
-  const rows = p.commune==='75056' ? [['Quartier', p.nom], ['Arrondissement', `Paris ${p.arr===1?'1er':p.arr+'e'}`], ['Secteur', REF.sr[p.secteur]?.nom], ['Zone encadrement', `Zone ${String(p.zone).slice(1)}`]] : [['Quartier', p.nom], ['Commune', 'Boulogne-Billancourt']];
-  const acts = p.commune==='75056' ? [['quartier', p.id, 'ce quartier'], ['arrondissement', String(p.arr), 'cet arrondissement'], ['secteur', p.secteur, 'ce secteur'], ['zone', p.zone, 'cette zone']] : [['quartier', p.id, 'ce quartier'], ['secteur', 'B0', 'Boulogne entier']];
+  const rows = locRows(p), acts = locActs(p);
   return `<div class="pn">${esc(p.nom)}</div><div class="pm">${rows.slice(1).map(r=>esc(r[1])).join(' · ')}</div><div class="acts">${acts.map(a=>`<button class="btn btn-ghost btn-sm" type="button" data-open="${a[0]}|${esc(a[1])}">Étudier ${a[2]}</button>`).join(' ')}</div>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-open]'); if (!b) return; const [niv, id] = b.dataset.open.split('|'); S.niveau = niv; S.id = id; S.vue = 'etude'; S.q=''; $('search').value=''; update(); });
@@ -1037,8 +1059,8 @@ function locate(f){
   LAST_ADDR = {label: f.properties.label, lon, lat, props: p}; writeHash();
   placeMarker(); MAP.setView([lat, lon], 15);
   $('hdr').innerHTML = headerHtml(S.id ? findItem(S.niveau, S.id) : null, lastEtude?.n || 0); renderMbar(S.id ? findItem(S.niveau, S.id) : null);
-  if (!p) { res.innerHTML = `<b>${esc(f.properties.label)}</b><br>Hors du périmètre couvert (Paris, Boulogne-Billancourt).`; return; }
-  res.innerHTML = `<b>${esc(f.properties.label)}</b><div class="rows">${(p.commune==='75056' ? [['Quartier', p.nom], ['Arrond.', `Paris ${p.arr===1?'1er':p.arr+'e'}`], ['Secteur', REF.sr[p.secteur]?.nom], ['Zone', `Zone ${String(p.zone).slice(1)} (encadrement)`]] : [['Quartier', p.nom], ['Commune', 'Boulogne-Billancourt']]).map(r=>`<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('')}</div><div class="acts"><button class="btn btn-primary btn-sm" type="button" data-valo="1" style="width:auto">Valoriser l'immeuble</button> ${popupHtml(p).split('<div class="acts">')[1].replace('</div>','')}</div>`;
+  if (!p) { res.innerHTML = `<b>${esc(f.properties.label)}</b><br>Hors du périmètre couvert (${esc(communesCouvertes())}).`; return; }
+  res.innerHTML = `<b>${esc(f.properties.label)}</b><div class="rows">${locRows(p, true).map(r=>`<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('')}</div><div class="acts"><button class="btn btn-primary btn-sm" type="button" data-valo="1" style="width:auto">Valoriser l'immeuble</button> ${popupHtml(p).split('<div class="acts">')[1].replace('</div>','')}</div>`;
 }
 function placeMarker(){ if (!MAP || !LAST_ADDR) return; if (MARKER) MARKER.remove(); MARKER = L.circleMarker([LAST_ADDR.lat, LAST_ADDR.lon], {radius:7, color:'#fff', weight:2, fillColor:'#B91C1C', fillOpacity:1}).addTo(MAP); }
 // Valoriser : l'étude passe sur le quartier de l'adresse (référence naturelle, et le PDF a une étude à joindre)
@@ -1058,7 +1080,7 @@ $('addrForm').addEventListener('submit', async e => {
 let pdfBusy = false;
 async function valoPourPdf(){
   if (!LAST_ADDR?.props || !S.valo) return null; await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
-  return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === '75056', src: LAST_ADDR.props.commune === '75056' ? LOYERS.paris : LOYERS.carte} : null};
+  return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === PARIS, src: LAST_ADDR.props.commune === PARIS ? LOYERS.paris : LOYERS.carte} : null};
 }
 async function perspPourPdf(item){   // scénarios avec les hypothèses courantes (ou par défaut), pour la page Perspectives du PDF
   await ensureMacro(); if (MACRO_ERR || !item) return null;
@@ -1076,7 +1098,7 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id,
+      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());

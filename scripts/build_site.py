@@ -35,7 +35,7 @@ ITER    = 200_000
 
 # Découpage : chaque entrée du manifest = un fichier, chargé à la demande par le dashboard.
 NIVEAUX = {
-    "meta": lambda d: {k: d[k] for k in ("meta", "global", "secteurs_ref", "zones_ref", "quartiers_ref", "quartier_index",
+    "meta": lambda d: {k: d[k] for k in ("meta", "global", "secteurs_ref", "communes_ref", "zones_ref", "quartiers_ref", "quartier_index",
                                          "typologies_ref", "fenetres_ref") if k in d},
 }
 

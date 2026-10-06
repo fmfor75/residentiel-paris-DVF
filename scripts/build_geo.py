@@ -11,9 +11,16 @@ Sources relevées le 17/09/2026 :
   - Zonage officiel de l'encadrement des loyers : opendata.paris.fr, jeu `logement-encadrement-des-loyers`
     (id_zone 1–14 ↔ id_quartier 1–80). Les zones regroupent les quartiers par niveau de loyer, pas par
     contiguïté : la zone 2 va du Palais-Royal à la Chaussée-d'Antin.
-  - Boulogne-Billancourt, 42 IRIS : IGN géoplateforme, WFS `STATISTICALUNITS.IRISGE:iris_ge`, filtre
-    code_insee. Les IRIS portent le nom de leur quartier suivi d'un numéro ("Trapèze 3") : on les
-    dissout par nom → 10 quartiers. Le même service donne les IRIS de toute commune (lot 4).
+  - Communes hors Paris : IRIS de l'IGN géoplateforme, WFS `STATISTICALUNITS.IRISGE:iris_ge`, filtre code_insee,
+    dissous en quartiers. Relevé du 06/10/2026 (lot 9) : la convention de nommage des IRIS varie d'une commune à
+    l'autre, aucune règle unique ne convient —
+      · « nom + numéro » (Boulogne « Trapèze 3 », Levallois « Eiffel 4 ») : dissolution par nom ;
+      · « grand quartier » INSEE (chiffres 5–6 du code IRIS) quand la commune en a plusieurs (Clichy 6, Asnières 7,
+        Puteaux 4, Saint-Maur 8, Vincennes 4) ; les noms d'IRIS d'Asnières portent des chiffres romains ;
+      · ni l'un ni l'autre (Bois-Colombes 12 noms composés, Saint-Mandé 9, Saint-Ouen « Secteur 1 » à « Secteur 18 »,
+        un seul grand quartier chacune) : chaque IRIS est un quartier.
+    La méthode est choisie explicitement par commune dans COMMUNES (pas d'automatisme : Boulogne doit rester
+    identique au lot 4) ; le relevé (IRIS lus, méthode, quartiers) est consigné dans referentiel.json.
 
 Incident à l'origine de ce fichier : les « secteurs DRIHL S1–S14 » du dashboard n'étaient pas le zonage
 officiel mais un découpage par arrondissements avec des seuils de latitude qui coupaient des quartiers
@@ -22,9 +29,10 @@ les Ternes dans « Épinettes – Batignolles »). Ici, un secteur maison = une 
 
 Sorties :
   data/geo/quartiers.geojson  — un polygone par quartier, propriétés : id, nom, commune, arr, zone, secteur
-  data/geo/referentiel.json   — libellés des groupes (zones, secteurs, arrondissements, communes) et relevé
+  data/geo/referentiel.json   — libellés des groupes (zones, secteurs, arrondissements), communes (nom, préfixe,
+                                quartiers) et relevé par commune
 """
-import os, re, sys, json, math, requests
+import os, re, sys, json, math, time, requests
 from collections import defaultdict, Counter
 
 OUT_DIR = "data/geo"
@@ -53,13 +61,59 @@ SECTEURS_PARIS = {
     14: ("Ivry – Tolbiac – Gobelins",   {"quartiers": ["Salpêtrière", "Gare", "Croulebarbe"]}),
 }
 
+# methode : "nom" = dissolution des IRIS par nom sans numéro final ; "gq" = grand quartier INSEE (code IRIS[5:7]) ;
+# "iris" = un quartier par IRIS. Les préfixes sont à deux lettres (sauf P et B, antérieurs : les URL partagées les portent).
 COMMUNES = {
     "75056": {"nom": "Paris", "prefix": "P"},
-    "92012": {"nom": "Boulogne-Billancourt", "prefix": "B"},
+    "92012": {"nom": "Boulogne-Billancourt", "prefix": "B", "methode": "nom"},
+    # noms : libellé imposé par code de grand quartier quand la composition automatique tombe mal (01 à Clichy :
+    # l'IRIS « SNCF » — les emprises ferroviaires — est le plus étendu, mais le quartier est le centre-ville)
+    "92024": {"nom": "Clichy", "prefix": "CL", "methode": "gq", "noms": {"01": "Centre Ville – Vendôme"}},
+    "92044": {"nom": "Levallois-Perret", "prefix": "LV", "methode": "nom"},
+    "92004": {"nom": "Asnières-sur-Seine", "prefix": "AS", "methode": "gq"},
+    "92009": {"nom": "Bois-Colombes", "prefix": "BC", "methode": "iris"},
+    "92062": {"nom": "Puteaux", "prefix": "PU", "methode": "gq"},
+    "93070": {"nom": "Saint-Ouen-sur-Seine", "prefix": "SO", "methode": "iris"},
+    "94068": {"nom": "Saint-Maur-des-Fossés", "prefix": "SM", "methode": "gq"},
+    "94067": {"nom": "Saint-Mandé", "prefix": "SD", "methode": "iris"},
+    "94080": {"nom": "Vincennes", "prefix": "VI", "methode": "gq"},
 }
+STEM = re.compile(r"\s+(\d+|[IVX]+)$")   # « Trapèze 3 », « Flachat II » → « Trapèze », « Flachat »
 
-def get(url, timeout=120):
-    r = requests.get(url, timeout=timeout); r.raise_for_status(); return r
+def grouper_iris(iris, methode, noms=None):
+    """Regroupe les IRIS d'une commune en quartiers selon la méthode. Renvoie [(nom, [geometries])] dans
+    l'ordre des identifiants : nom → effectif décroissant (ordre du lot 4), gq → code du grand quartier, iris → code IRIS."""
+    def stem(f): return STEM.sub("", f["properties"]["nom_iris"])
+    if methode == "nom":
+        g = defaultdict(list)
+        for f in iris: g[stem(f)].append(f)
+        noms = sorted(g, key=lambda n: -len(g[n]))
+        return [(n, g[n]) for n in noms]
+    if methode == "gq":
+        g = defaultdict(list)
+        for f in iris: g[f["properties"]["code_iris"][5:7]].append(f)
+        assert len(g) >= 2, f"un seul grand quartier : méthode gq inapplicable"
+        out = []
+        for code in sorted(g):
+            # nom du grand quartier : la racine commune des noms d'IRIS si elle est unique, sinon les deux racines
+            # les plus étendues (l'INSEE ne publie pas de libellé de grand quartier dans ce flux)
+            racines = defaultdict(float)
+            for f in g[code]: racines[stem(f)] += area_geom(f["geometry"])
+            top = sorted(racines, key=lambda r: -racines[r])
+            out.append(((noms or {}).get(code) or (top[0] if len(top) == 1 else " – ".join(top[:2])), g[code]))
+        return out
+    if methode == "iris":
+        return [(f["properties"]["nom_iris"], [f]) for f in sorted(iris, key=lambda f: f["properties"]["code_iris"])]
+    raise ValueError(methode)
+
+def get(url, timeout=120, essais=4):
+    # Le WFS IGN coupe la connexion quand on l'enchaîne commune après commune (constaté le 06/10/2026) : reprises espacées.
+    for k in range(essais):
+        try:
+            r = requests.get(url, timeout=timeout); r.raise_for_status(); return r
+        except requests.exceptions.ConnectionError:
+            if k == essais - 1: raise
+            time.sleep(2 + 2 * k)
 
 # ── Dissolution d'IRIS par annulation des arêtes partagées (pas de dépendance shapely) ──────────
 def rings_of(geom):
@@ -133,22 +187,28 @@ def main():
                          "properties": {"id": f"P{cq}", "nom": p["l_qu"], "commune": "75056", "arr": p["c_ar"],
                                         "zone": f"Z{zones[cq]}", "secteur": str(sect_of[cq])}})
     releve["paris"] = {"quartiers": 80, "source_quartiers": URL_QUARTIERS, "source_zones": URL_ZONES.split("?")[0]}
-    # ── Boulogne : IRIS → quartiers par nom
-    iris = get(URL_IRIS.format(insee="92012")).json()["features"]
-    groupes = defaultdict(list)
-    for f in iris: groupes[re.sub(r"\s+\d+$", "", f["properties"]["nom_iris"])].append(f["geometry"])
-    noms = sorted(groupes, key=lambda n: -len(groupes[n]))
-    for i, nom in enumerate(noms, 1):
-        g = dissolve(groupes[nom])
-        a_src = sum(area_geom(x) for x in groupes[nom]); a_dst = area_geom(g)
-        assert abs(a_src - a_dst) / a_src < 0.01, f"{nom}: aire dissoute {a_dst:.3e} ≠ somme IRIS {a_src:.3e}"
-        features.append({"type": "Feature", "geometry": g,
-                         "properties": {"id": f"B{i}", "nom": nom, "commune": "92012", "arr": None,
-                                        "zone": None, "secteur": f"B{i}"}})
-    releve["boulogne"] = {"iris": len(iris), "quartiers": len(noms), "source": URL_IRIS.split("?")[0]}
+    # ── Communes hors Paris : IRIS → quartiers selon la méthode déclarée. Pas de secteur ni d'arrondissement :
+    # le niveau au-dessus du quartier est la commune (lot 9 ; avant, Boulogne avait un pseudo-secteur par quartier).
+    communes_ref = {"75056": {"nom": "Paris", "prefix": "P", "quartiers": [f["properties"]["id"] for f in features]}}
+    for insee, cfg in COMMUNES.items():
+        if insee == "75056": continue
+        iris = get(URL_IRIS.format(insee=insee)).json()["features"]
+        assert iris and all(f["properties"]["code_insee"] == insee for f in iris), f"{insee} : IRIS inattendus"
+        groupes = grouper_iris(iris, cfg["methode"], cfg.get("noms")); ids = []
+        for i, (nom, fs) in enumerate(groupes, 1):
+            geoms = [f["geometry"] for f in fs]
+            g = dissolve(geoms) if len(geoms) > 1 else geoms[0]
+            a_src = sum(area_geom(x) for x in geoms); a_dst = area_geom(g)
+            assert abs(a_src - a_dst) / a_src < 0.01, f"{insee} {nom}: aire dissoute {a_dst:.3e} ≠ somme IRIS {a_src:.3e}"
+            qid = f"{cfg['prefix']}{i}"; ids.append(qid)
+            features.append({"type": "Feature", "geometry": g,
+                             "properties": {"id": qid, "nom": nom, "commune": insee, "arr": None, "zone": None, "secteur": None}})
+        communes_ref[insee] = {"nom": cfg["nom"], "prefix": cfg["prefix"], "quartiers": ids}
+        releve[insee] = {"nom": cfg["nom"], "iris": len(iris), "methode": cfg["methode"], "quartiers": len(ids), "source": URL_IRIS.split("?")[0]}
+        print(f"  {cfg['nom']:<24} {len(iris):>3} IRIS → {len(ids):>2} quartiers ({cfg['methode']})")
     # ── Référentiel des groupes
     ref = {
-        "communes": {k: v["nom"] for k, v in COMMUNES.items()},
+        "communes": communes_ref,
         "zones": {f"Z{z}": {"nom": f"Zone {z} (encadrement des loyers)", "commune": "75056",
                             "quartiers": sorted(f"P{cq}" for cq, zz in zones.items() if zz == z)} for z in range(1, 15)},
         "secteurs": {**{str(s): {"nom": nom, "commune": "75056",
@@ -156,11 +216,7 @@ def main():
                                  "arrLabel": ", ".join(f"{a}e" if a > 1 else "1er" for a in regle.get("arr", []))
                                              + (" + " if regle.get("arr") and regle.get("quartiers") else "")
                                              + ", ".join(regle.get("quartiers", []))}
-                        for s, (nom, regle) in SECTEURS_PARIS.items()},
-                     **{f"B{i}": {"nom": nom, "commune": "92012", "quartiers": [f"B{i}"], "arrLabel": "Boulogne-Billancourt"}
-                        for i, nom in enumerate(noms, 1)},
-                     "B0": {"nom": "Boulogne-Billancourt (commune entière)", "commune": "92012",
-                            "quartiers": [f"B{i}" for i in range(1, len(noms) + 1)], "arrLabel": "92100"}},
+                        for s, (nom, regle) in SECTEURS_PARIS.items()}},
         "arrondissements": {str(a): {"nom": f"Paris {'1er' if a == 1 else str(a) + 'e'} arr.", "commune": "75056"} for a in range(1, 21)},
         "releve": releve,
     }
@@ -170,13 +226,27 @@ def main():
         json.dump(ref, f, ensure_ascii=False, indent=1)
     print(f"✓ {len(features)} quartiers ({OUT_DIR}/quartiers.geojson, {os.path.getsize(f'{OUT_DIR}/quartiers.geojson')/1e3:.0f} Ko)")
     for s in ref["secteurs"].values(): print(f"  {s['nom']:<40} {len(s['quartiers']):>2} quartiers  {s['arrLabel']}")
-    # Contrôle : un point par quartier (centroïde approx.) retombe dans son propre polygone et dans aucun autre
-    for f in features:
-        ring = (f["geometry"]["coordinates"][0] if f["geometry"]["type"] == "Polygon" else f["geometry"]["coordinates"][0][0])
-        cx = sum(p[0] for p in ring) / len(ring); cy = sum(p[1] for p in ring) / len(ring)
-        hits = [g["properties"]["id"] for g in features if g["properties"]["commune"] == f["properties"]["commune"]
-                and any(pip(cx, cy, r[0]) for r in ([g["geometry"]["coordinates"]] if g["geometry"]["type"] == "Polygon" else g["geometry"]["coordinates"]))]
-        if hits != [f["properties"]["id"]]: print(f"  ⚠ centroïde de {f['properties']['id']} {f['properties']['nom']} → {hits}")
+    # Contrôle par grille (lot 9) : dans chaque commune, tout point intérieur tombe dans exactement un quartier et chaque
+    # quartier contient au moins un point. L'ancien contrôle par centroïde moyen signalait à tort les polygones concaves
+    # (La Pie à Saint-Maur, Grésillons à Asnières) : un contrôle qui crie au loup finit ignoré.
+    def inside(g, x, y):
+        polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+        return any(pip(x, y, p[0]) and not any(pip(x, y, h) for h in p[1:]) for p in polys)
+    par_commune = defaultdict(list)
+    for f in features: par_commune[f["properties"]["commune"]].append(f)
+    for com, fs in par_commune.items():
+        pts = [pt for f in fs for poly in (f["geometry"]["coordinates"] if f["geometry"]["type"] == "MultiPolygon" else [f["geometry"]["coordinates"]]) for pt in poly[0]]
+        x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts); y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
+        N = 40 if com != "75056" else 80; multi = 0; vus = Counter()
+        for i in range(N):
+            for j in range(N):
+                x = x0 + (x1 - x0) * (i + .5) / N; y = y0 + (y1 - y0) * (j + .5) / N
+                hits = [f["properties"]["id"] for f in fs if inside(f["geometry"], x, y)]
+                if len(hits) > 1: multi += 1
+                for h in hits: vus[h] += 1
+        vides = [f["properties"]["id"] for f in fs if not vus[f["properties"]["id"]]]
+        assert multi == 0 and not vides, f"{com} : {multi} points dans plusieurs quartiers, quartiers sans point {vides}"
+    print(f"  ✓ contrôle par grille : aucun chevauchement, aucun quartier vide ({len(par_commune)} communes)")
     return 0
 
 if __name__ == "__main__":

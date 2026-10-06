@@ -1,7 +1,8 @@
 # Data Marché Résidentiel · DVF
 
-Plateforme d'étude du marché résidentiel (Paris + Boulogne-Billancourt) alimentée par les données DVF de la DGFiP,
-servie par GitHub Pages, protégée par un code d'accès.
+Plateforme d'étude du marché résidentiel (Paris et dix communes limitrophes : Boulogne-Billancourt, Clichy,
+Levallois-Perret, Asnières-sur-Seine, Bois-Colombes, Puteaux, Saint-Ouen-sur-Seine, Saint-Maur-des-Fossés, Saint-Mandé,
+Vincennes) alimentée par les données DVF de la DGFiP, servie par GitHub Pages, protégée par un code d'accès.
 
 ## Architecture
 
@@ -17,7 +18,7 @@ data/geo/                     ← référentiel géographique versionné (quarti
 data/dvf_cache.json.gz        ← cache des mutations consolidées par (département, année), avec empreinte de source
 scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (dvf_paris.json + dvf_sales.bin, non commités)
 scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
-scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN)
+scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN) ; table des communes
 scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
 scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run mensuel
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
@@ -26,8 +27,8 @@ tests/                        ← pipeline sur fixtures HTTP locales · chiffrem
 
 ## Fonctionnement du dashboard (lot 4)
 
-Le navigateur déchiffre `sales.bin` (≈ 200 000 ventes) et calcule lui-même toutes les statistiques : niveau
-(commune, arrondissement, secteur, zone d'encadrement, quartier), période, type de bien et **typologies dont les
+Le navigateur déchiffre `sales.bin` (≈ 280 000 ventes) et calcule lui-même toutes les statistiques : niveau
+(arrondissement ou commune entière, secteur, zone d'encadrement, quartier), période, type de bien et **typologies dont les
 bornes de surface sont modifiables à chaque étude** (préremplies avec T1 9–30, T2 30–50, T3 50–70, T4 70–100,
 T5 100–400 m²). L'étude complète est encodée dans l'URL (`#…&typos=T1:9-30:1,…`), donc partageable.
 
@@ -74,6 +75,19 @@ IRS, IPCH) et INSEE BDM sans jeton (indice Paris 010567013, loyers 010600352, lo
 série en échec est conservée et marquée `stale`, un dernier point ancien est marqué `retard` (l'IPCH base 2015 s'arrête à
 déc. 2025 : changement de base). Tests : `python -m unittest tests.test_macro`.
 
+**Communes (lot 9).** Le périmètre est porté par `data/geo/referentiel.json` (`communes` : nom, préfixe d'identifiant,
+quartiers) : `process_dvf.py` en déduit les départements à télécharger (75, 92, 93, 94) et les communes retenues, et le
+dashboard n'a plus aucun nom de commune en dur. Hors Paris, le niveau au-dessus du quartier est la commune entière (onglet
+« Arrond. / commune », état `niveau=commune&id=<INSEE>`) ; les anciennes URL de Boulogne (`niveau=secteur&id=B0` / `B3`)
+sont redirigées. Les quartiers hors Paris sont des IRIS INSEE regroupés selon une méthode choisie par commune dans
+`build_geo.py` (relevé du 06/10/2026 : la convention de nommage varie) — par nom sans numéro (Boulogne 10, Levallois 13),
+par grand quartier INSEE (Clichy 6, Asnières 7, Puteaux 4, Saint-Maur 8, Vincennes 4), ou IRIS individuels quand rien ne
+les regroupe (Bois-Colombes 12, Saint-Mandé 9, Saint-Ouen 18) ; 171 quartiers au total (format binaire : 256 max). Les
+ventes sans coordonnées sont comptées par commune (`meta.geo.sans_quartier_commune` ; Bois-Colombes ≈ 21 % en 2024).
+Le cache porte le périmètre de communes de chaque entrée : élargir le périmètre force le retraitement. Les millésimes
+2014–2020 n'existent qu'en fichier national : il est lu une fois pour tous les départements. Saint-Ouen est soumise à
+l'encadrement des loyers de Plaine Commune : non intégré (loyer d'annonce affiché, mention explicite ; lot 9b).
+
 Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
 iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).
 
@@ -99,9 +113,9 @@ Bornes : 1 000–40 000 €/m², 9–400 m². Chaque exclusion est comptée (`me
 creuse, source partielle, rétention < 25 %, colonnes manquantes, > 2 % de ventes sans quartier. Les ventes sans
 quartier (hors polygones) ne sont comptées dans aucun niveau, pas même l'arrondissement.
 
-Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 10 quartiers de Boulogne (IRIS IGN dissous),
-affectation par point-dans-polygone. Niveaux : arrondissements (celui du polygone, pas celui déclaré dans DVF),
-secteurs (listes de quartiers), zones officielles d'encadrement des loyers, quartiers.
+Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 91 quartiers IRIS (IGN) dans dix communes,
+affectation par point-dans-polygone. Niveaux : arrondissements (celui du polygone, pas celui déclaré dans DVF) et
+communes entières, secteurs (listes de quartiers, Paris), zones officielles d'encadrement des loyers (Paris), quartiers.
 
 ## Sources
 

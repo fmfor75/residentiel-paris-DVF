@@ -15,11 +15,12 @@ const cmpSeries = (a, b, where) => { near(Object.keys(a || {}).length, Object.ke
 const cmpBloc = (a, b, where) => { cmpStats(a, b, where); cmpSeries(a?.by_year, b?.by_year, `${where}.by_year`); if (b?.by_quarter) cmpSeries(a?.by_quarter, b.by_quarter, `${where}.by_quarter`); if (b?.by_month) cmpSeries(a?.by_month, b.by_month, `${where}.by_month`); for (const w of Object.keys(b?.windows || {})) cmpStats(a?.windows?.[w], b.windows[w], `${where}.windows[${w}]`); };
 
 const cas = [
-  ['secteur', '5', 'Appartement'], ['secteur', '11', 'Appartement'], ['secteur', 'B10', 'Appartement'], ['secteur', 'B0', 'Maison'],
+  ['secteur', '5', 'Appartement'], ['secteur', '11', 'Appartement'], ['quartier', 'B10', 'Appartement'], ['commune', '92012', 'Maison'],
+  ['commune', '92024', 'Appartement'], ['commune', '94068', 'Appartement'], ['commune', '93070', 'Maison'], ['quartier', 'SO1', 'Appartement'], ['quartier', 'AS5', 'Appartement'],
   ['arrondissement', '17', 'Appartement'], ['arrondissement', '1', 'Maison'], ['zone', 'Z1', 'Appartement'], ['zone', 'Z13', 'Appartement'],
   ['quartier', 'P31', 'Appartement'], ['quartier', 'B10', 'Appartement'], ['quartier', 'P1', 'Appartement'],
 ];
-const niveauKey = { secteur: 'secteurs', arrondissement: 'arrondissements', zone: 'zones', quartier: 'quartiers' };
+const niveauKey = { secteur: 'secteurs', arrondissement: 'arrondissements', zone: 'zones', quartier: 'quartiers', commune: 'communes' };
 console.log(`${S.n.toLocaleString('fr-FR')} ventes décodées · dernière année ${lastYear}`);
 for (const [niveau, id, type] of cas) {
   const ref = D[niveauKey[niveau]][id]?.by_type?.[type];

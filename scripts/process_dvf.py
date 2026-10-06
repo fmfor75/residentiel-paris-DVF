@@ -3,8 +3,9 @@
 """
 process_dvf.py v13 — pipeline DVF → dvf_paris.json
 
-Périmètre (lot 1) : Paris (75101–75120 → 14 secteurs) + Boulogne-Billancourt (92012 → quartiers).
-Le référentiel ZONES est prêt à recevoir d'autres communes (lot 4).
+Périmètre : Paris (75101–75120 → 14 secteurs, 14 zones, 80 quartiers) + les communes de data/geo/referentiel.json
+(lot 1 : Boulogne-Billancourt ; lot 9 : Clichy, Levallois, Asnières, Bois-Colombes, Puteaux, Saint-Ouen, Saint-Maur,
+Saint-Mandé, Vincennes → quartiers IRIS). Les départements à télécharger et les communes retenues en découlent.
 
 Historique des incidents qui ont façonné ce fichier (v12 → v13) :
   - v12 définissait `download_recent` deux fois ; la seconde déballait 3 valeurs
@@ -28,7 +29,7 @@ from datetime import datetime, date
 from collections import Counter, defaultdict
 import requests
 
-PARSER_VERSION = 13   # incrémenter à chaque changement de RÈGLE (pas de format de cache) → invalide le cache
+PARSER_VERSION = 13   # incrémenter à chaque changement de RÈGLE (pas de format de cache) → invalide le cache ; le périmètre de communes est porté par chaque entrée
 
 # ══════════════════════════════════════════════════════════════════
 # CONFIG SOURCES
@@ -97,10 +98,11 @@ PAUSE_ENTRE_FICHIERS = 1.0  # secondes, courtoisie envers les serveurs (0 dans l
 # Boulogne par bbox dont un restait vide. Désormais : point-dans-polygone sur les quartiers officiels.
 CODE_TO_ARR = {f"751{str(i).zfill(2)}": i for i in range(1, 21)}
 ARR_LABELS  = {i: ("1er" if i == 1 else f"{i}e") for i in range(1, 21)}
-CODE_BOULOGNE = "92012"
 GEO_FILE = "data/geo/quartiers.geojson"
 REF_FILE = "data/geo/referentiel.json"
-DEP_TO_COMMUNE = {"75": "75056", "92": "92012"}   # lot 4 : une commune par code, plusieurs communes par dep
+def commune_de(m):
+    """Code commune de rattachement d'une mutation : Paris entier pour un arrondissement, sinon le code DVF."""
+    return "75056" if m["dep"] == "75" else m.get("code")
 
 class Geo:
     """Index des polygones de quartiers, affectation d'un point à son quartier."""
@@ -136,7 +138,7 @@ class Geo:
 def affecter_quartiers(muts, geo):
     """Pose m['q'] (id quartier), m['zone'], m['sect'] sur chaque mutation. Compte les échecs."""
     for m in muts:
-        q = geo.quartier(DEP_TO_COMMUNE.get(m["dep"], m.get("code")), m.get("lon"), m.get("lat"))
+        q = geo.quartier(commune_de(m), m.get("lon"), m.get("lat"))
         m["q"] = q
         if q:
             pr = geo.quartiers[q]; m["zone"] = pr.get("zone"); m["sect"] = pr.get("secteur")
@@ -144,12 +146,19 @@ def affecter_quartiers(muts, geo):
         else:
             m["zone"] = None; m["sect"] = None
             CPT.add(m["dep"], m["annee"], "sans_quartier")
+            CPT.add(m["dep"], m["annee"], f"sans_quartier:{commune_de(m)}")   # lot 9 : Bois-Colombes a 21 % de lignes sans coordonnées (relevé 2024)
 
-# Départements à télécharger et communes retenues dans chacun.
-DEPS = {
-    "75": set(CODE_TO_ARR.keys()),
-    "92": {CODE_BOULOGNE},
-}
+# Départements à télécharger et communes retenues dans chacun : dérivés du référentiel géographique versionné
+# (une seule source de vérité ; avant le lot 9, « 92 → Boulogne » était recopié ici).
+def deps_du_referentiel(ref_path=None):
+    with open(ref_path or REF_FILE, encoding="utf-8") as f: communes = json.load(f)["communes"]
+    deps = defaultdict(set)
+    for code in communes:
+        if code == "75056": deps["75"] |= set(CODE_TO_ARR.keys())
+        else: deps[code[:2]].add(code)
+    return dict(sorted(deps.items()))
+_REF_DEPOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", REF_FILE)   # import hors du dépôt (tests)
+DEPS = deps_du_referentiel(REF_FILE if os.path.exists(REF_FILE) else _REF_DEPOT)
 
 # ══════════════════════════════════════════════════════════════════
 # COMPTEURS
@@ -246,32 +255,39 @@ def to_f(s):
 def parse_csv(fh, annee, dep, communes, journal=None):
     """Lit le flux CSV, regroupe par mutation, applique les règles, renvoie la liste des mutations retenues.
     `journal` (dict) reçoit le relevé : colonnes réelles, échantillon, compteurs."""
+    return parse_csv_multi(fh, annee, {dep: communes}, journal)[dep]
+
+def parse_csv_multi(fh, annee, par_dep, journal=None):
+    """Même chose pour plusieurs départements lus dans UN flux : les millésimes opendatarchives 2014–2020 n'existent
+    qu'en fichier national (full.csv.gz, 83 Mo compressés) ; avant le lot 9 il était parcouru une fois par département
+    (2 passes), avec 4 départements ce serait 4 passes de 3,5 millions de lignes par année. Renvoie {dep: retenues}."""
     reader = csv.DictReader(fh)
     cols = reader.fieldnames or []
     manquantes = [c for c in COLS_REQUISES if c not in cols]
     if manquantes:
-        raise RuntimeError(f"{dep}/{annee}: colonnes manquantes {manquantes} — colonnes lues : {cols}")
+        raise RuntimeError(f"{'/'.join(par_dep)}/{annee}: colonnes manquantes {manquantes} — colonnes lues : {cols}")
     carrez_cols = [c for c in COLS_CARREZ if c in cols]
     if journal is not None:
         journal["colonnes"] = cols
         journal["echantillon"] = []
-
+    dep_de = {code: dep for dep, communes in par_dep.items() for code in communes}   # code commune → dep demandeur
     muts = {}     # id_mutation → {val, date, code, rows:[...]}
-    n_lignes = 0; n_perimetre = 0
-    natures = Counter()
+    n_lignes = 0; n_perimetre = Counter()
+    natures = defaultdict(Counter)
     for row in reader:
         n_lignes += 1
         code = row["code_commune"]
-        if code not in communes: continue
-        n_perimetre += 1
+        dep = dep_de.get(code)
+        if dep is None: continue
+        n_perimetre[dep] += 1
         if journal is not None and len(journal["echantillon"]) < 3: journal["echantillon"].append(row)
         nat = row["nature_mutation"].strip()
-        natures[nat] += 1
+        natures[dep][nat] += 1
         mid = f"{dep}_{row['id_mutation']}"
         m = muts.get(mid)
         if m is None:
             m = muts[mid] = {"id": mid, "nature": nat.lower(), "val": to_f(row["valeur_fonciere"]),
-                             "date": row["date_mutation"][:10], "code": code, "rows": []}
+                             "date": row["date_mutation"][:10], "code": code, "dep": dep, "rows": []}
         tl = row["type_local"].strip()
         carrez = max((to_f(row[c]) for c in carrez_cols), default=0.0)
         m["rows"].append({
@@ -281,14 +297,18 @@ def parse_csv(fh, annee, dep, communes, journal=None):
             "lat": to_f(row["latitude"]), "lon": to_f(row["longitude"]),
         })
 
-    CPT.add(dep, annee, "lignes_lues", n_lignes)
-    CPT.add(dep, annee, "lignes_perimetre", n_perimetre)
-    for nat, n in natures.items(): CPT.add(dep, annee, f"nature:{nat}", n)
-    retenues = [r for r in (consolider(m, annee, dep) for m in muts.values()) if r]
-    CPT.add(dep, annee, "mutations_perimetre", len(muts))
-    CPT.add(dep, annee, "mutations_retenues", len(retenues))
-    if journal is not None: journal["compteurs"] = dict(CPT.par_motif(dep, annee))
-    return retenues
+    out = {}
+    for dep in par_dep:
+        CPT.add(dep, annee, "lignes_lues", n_lignes)
+        CPT.add(dep, annee, "lignes_perimetre", n_perimetre[dep])
+        for nat, n in natures[dep].items(): CPT.add(dep, annee, f"nature:{nat}", n)
+        muts_dep = [m for m in muts.values() if m["dep"] == dep]
+        retenues = [r for r in (consolider(m, annee, dep) for m in muts_dep) if r]
+        CPT.add(dep, annee, "mutations_perimetre", len(muts_dep))
+        CPT.add(dep, annee, "mutations_retenues", len(retenues))
+        if journal is not None: journal["compteurs"] = dict(CPT.par_motif(dep, annee))
+        out[dep] = retenues
+    return out
 
 def consolider(m, annee, dep):
     """Applique les règles à une mutation. Renvoie un dict ou None (motif compté)."""
@@ -359,6 +379,8 @@ def cache_valide(ent, src):
     distant (Last-Modified + taille) n'a pas bougé. Sans empreinte côté serveur, on ne cache que les
     millésimes figés (opendatarchives), jamais geo-dvf/latest qui est régénéré."""
     if not ent or ent.get("url") != src["url"]: return False
+    # lot 9 : une entrée parsée avec un autre périmètre de communes (ex. 92 = Boulogne seule) est périmée, même source
+    if set(ent.get("communes", [])) != set(src.get("communes", [])): return False
     if src["empreinte"]: return ent.get("empreinte") == src["empreinte"]
     return "opendatarchives" in (src["tag"] or "")
 
@@ -518,6 +540,7 @@ def main():
     ap.add_argument("--allow-partial", type=str, default=os.environ.get("DVF_ALLOW_PARTIAL", ""))
     args = ap.parse_args()
     years = [int(y) for y in args.years.split(",") if y] or YEARS
+    global DEPS; DEPS = deps_du_referentiel(REF_FILE)   # REF_FILE peut avoir été redirigé (tests)
     allow_partial = {int(y) for y in args.allow_partial.split(",") if y}
 
     print(f"=== process_dvf v{PARSER_VERSION} — {TODAY} — années {years[0]}–{years[-1]} ===")
@@ -527,7 +550,7 @@ def main():
         for dep in DEPS:
             url, tag, complet = choisir_source(annee, dep)
             sources[f"{dep}_{annee}"] = {"url": url, "tag": tag, "complet": complet, "mb": HEAD_CACHE.get(url, (0, 0))[1] if url else 0,
-                                         "empreinte": HEAD_INFO.get(url, "") if url else ""}
+                                         "empreinte": HEAD_INFO.get(url, "") if url else "", "communes": sorted(DEPS[dep])}
             print(f"  {dep}/{annee}: {tag or '— AUCUNE —'}{'' if complet else ' (PARTIEL)'} {url or ''}")
     if args.probe:
         # Relevé détaillé sur la dernière année trouvée pour chaque dep : colonnes réelles + échantillon + compteurs
@@ -546,6 +569,7 @@ def main():
     cache = {} if args.no_cache else load_cache()
     all_muts = []; sources_used = {}; telecharges = 0
     for annee in years:
+        a_lire = defaultdict(list)   # url → deps à (re)télécharger : un fichier national n'est parcouru qu'une fois
         for dep in DEPS:
             key = f"{dep}_{annee}"; src = sources[key]
             if not src["url"]:
@@ -555,16 +579,22 @@ def main():
                 print(f"  ✓ {key}: cache ({len(ent['mutations']):,} mutations, source inchangée)")
                 for motif, n in ent.get("compteurs", {}).items(): CPT.add(dep, annee, motif, n)  # les exclusions cachées restent comptées
             else:
-                t0 = time.time()
-                muts = parse_csv(stream_csv(src["url"]), annee, dep, DEPS[dep])
-                c = CPT.par_motif(dep, annee)
+                a_lire[src["url"]].append(dep)
+        for url, deps in a_lire.items():
+            t0 = time.time()
+            par_dep = parse_csv_multi(stream_csv(url), annee, {dep: DEPS[dep] for dep in deps})
+            for dep in deps:
+                key = f"{dep}_{annee}"; src = sources[key]; muts = par_dep[dep]; c = CPT.par_motif(dep, annee)
                 print(f"  ↓ {key}: {src['tag']} {src['mb']:.0f} Mo → {len(muts):,} retenues / {c['mutations_perimetre']:,} mutations "
-                      f"({time.time()-t0:.0f}s) | excl. plusieurs logements {c.get('excl_plusieurs_logements',0):,}, "
+                      f"({time.time()-t0:.0f}s{', flux partagé ' + '+'.join(deps) if len(deps) > 1 else ''}) | excl. plusieurs logements {c.get('excl_plusieurs_logements',0):,}, "
                       f"non-vente {c.get('excl_nature_non_vente',0):,}, ppm2 hors bornes {c.get('excl_ppm2_hors_bornes',0):,}")
-                ent = {"url": src["url"], "tag": src["tag"], "complet": src["complet"], "empreinte": src["empreinte"],
-                       "mutations": muts, "compteurs": dict(c)}
-                cache[key] = ent; telecharges += 1
-                time.sleep(PAUSE_ENTRE_FICHIERS)
+                cache[key] = {"url": src["url"], "tag": src["tag"], "complet": src["complet"], "empreinte": src["empreinte"],
+                              "communes": src["communes"], "mutations": muts, "compteurs": dict(c)}
+                telecharges += 1
+            time.sleep(PAUSE_ENTRE_FICHIERS)
+        for dep in DEPS:
+            key = f"{dep}_{annee}"; src = sources[key]; ent = cache.get(key)
+            if not src["url"] or not ent: continue
             sources_used[key] = {"url": ent["url"], "tag": ent["tag"], "complet": src["complet"], "count": len(ent["mutations"]),
                                  "empreinte": ent.get("empreinte", "")}
             all_muts.extend(ent["mutations"])
@@ -595,7 +625,12 @@ def main():
     print("\n=== Affectation géographique ===")
     geo = Geo(); affecter_quartiers(all_muts, geo)
     sans_q = Counter((m["dep"]) for m in all_muts if not m["q"])
+    sans_q_commune = Counter(commune_de(m) for m in all_muts if not m["q"])
     print(f"  {len(geo.quartiers)} quartiers · sans quartier : " + ", ".join(f"{d}: {n:,}" for d, n in sans_q.items()) if sans_q else f"  {len(geo.quartiers)} quartiers · toutes les mutations affectées")
+    # Part sans quartier par commune : affichée dans meta.geo, le seuil global de 2 % ne la voit pas (Bois-Colombes ≈ 21 %)
+    par_commune = Counter(commune_de(m) for m in all_muts)
+    for c, n in sorted(sans_q_commune.items(), key=lambda x: -x[1] / max(1, par_commune[x[0]])):
+        if n / max(1, par_commune[c]) > 0.05: print(f"  ⚠ {c} : {n:,} / {par_commune[c]:,} sans quartier ({n / par_commune[c]:.0%})")
     part_sans_q = sum(sans_q.values()) / max(1, len(all_muts))
     if part_sans_q > 0.02:
         print(f"\n✗ RUN REFUSÉ — {part_sans_q:.1%} des mutations sans quartier (référentiel ou géolocalisation cassés)"); return 2
@@ -607,24 +642,26 @@ def main():
     # (arrondissement et commune compris). Avant, 463 ventes sans coordonnées comptaient dans les arrondissements
     # et dans Boulogne entière mais pas dans les secteurs/zones/quartiers : deux définitions pour un même chiffre.
     all_muts = [m for m in all_muts if m.get("q")]
-    paris = [m for m in all_muts if m["dep"] == "75"]; boul = [m for m in all_muts if m["dep"] == "92"]
-    apparts75 = [m for m in paris if m["type"] == "Appartement"]; apparts92 = [m for m in boul if m["type"] == "Appartement"]
+    paris = [m for m in all_muts if m["dep"] == "75"]; hors_paris = [m for m in all_muts if m["dep"] != "75"]
+    apparts75 = [m for m in paris if m["type"] == "Appartement"]; apparts_hp = [m for m in hors_paris if m["type"] == "Appartement"]
     ref = geo.ref
+    communes_ref = {k: {"nom": v["nom"], "prefix": v.get("prefix", ""), "quartiers": v["quartiers"]} for k, v in ref["communes"].items()}
     lab = lambda d: {k: v["nom"] for k, v in d.items()}
 
     # Arrondissement = celui du polygone du quartier (cohérent avec tous les autres niveaux), pas le code
     # commune déclaré dans DVF : 19 ventes diffèrent, comptées dans meta.exclusions (arr_dvf_differe_du_polygone).
     arr_s   = group_stats(paris, lambda m: geo.quartiers[m["q"]]["arr"], {int(k): v["nom"] for k, v in ref["arrondissements"].items()}, last_year)
-    sect_s  = group_stats(all_muts, lambda m: m["sect"], lab(ref["secteurs"]), last_year)
-    sect_s["B0"] = group_stats(boul, lambda m: "B0", lab(ref["secteurs"]), last_year).get("B0", {})
+    sect_s  = group_stats(paris, lambda m: m["sect"], lab(ref["secteurs"]), last_year)
+    # Lot 9 : un niveau « commune » pour les communes hors Paris (Paris = bloc global). Avant, Boulogne était un
+    # pseudo-secteur B0 et chacun de ses quartiers un secteur B1–B10 ; les URL anciennes sont redirigées côté client.
+    comm_s  = group_stats(hors_paris, commune_de, lab(communes_ref), last_year)
     zone_s  = group_stats(paris, lambda m: m["zone"], lab(ref["zones"]), last_year)
     quart_s = group_stats(all_muts, lambda m: m["q"], {k: v["nom"] for k, v in geo.quartiers.items()}, last_year, detail="leger")
     for qid, pr in geo.quartiers.items():
         if qid in quart_s: quart_s[qid].update({"commune": pr["commune"], "arr": pr["arr"], "zone": pr["zone"], "secteur": pr["secteur"]})
 
     # Référentiels exposés au dashboard (une seule source : data/geo/referentiel.json)
-    ville = lambda c: ref["communes"].get(c, c)
-    secteurs_ref = {k: {"nom": v["nom"], "arrLabel": v.get("arrLabel", ""), "ville": "Boulogne" if v["commune"] == "92012" else ville(v["commune"]),
+    secteurs_ref = {k: {"nom": v["nom"], "arrLabel": v.get("arrLabel", ""), "ville": communes_ref[v["commune"]]["nom"],
                         "quartiers": v["quartiers"]} for k, v in ref["secteurs"].items()}
 
     output = {
@@ -633,10 +670,12 @@ def main():
             "annees": annees_ok, "periode": f"{annees_ok[0]}–{last_year}",
             "last_year": last_year, "last_date": last_date,
             "last_year_complete": last_date >= f"{last_year}-12-15",
-            "total_mutations": len(all_muts), "total_apparts": len(apparts75) + len(apparts92),
-            "total_apparts_paris": len(apparts75), "total_apparts_boulogne": len(apparts92),
+            "total_mutations": len(all_muts), "total_apparts": len(apparts75) + len(apparts_hp),
+            "total_apparts_paris": len(apparts75), "total_apparts_hors_paris": len(apparts_hp),
+            "apparts_par_commune": {c: sum(1 for m in all_muts if m["type"] == "Appartement" and commune_de(m) == c) for c in communes_ref},
             "sources_used": sources_used, "exclusions": CPT.export(), "fichiers_telecharges": telecharges,
-            "geo": {"quartiers": len(geo.quartiers), "sans_quartier": dict(sans_q), "releve": ref.get("releve", {})},
+            "geo": {"quartiers": len(geo.quartiers), "sans_quartier": dict(sans_q), "sans_quartier_commune": dict(sans_q_commune),
+                    "mutations_commune": dict(par_commune), "releve": ref.get("releve", {})},
             "regles": {"ppm2": [PPM2_MIN, PPM2_MAX], "surface": [SURF_MIN, SURF_MAX],
                        "natures": sorted(NATURES_RETENUES), "un_logement_par_mutation": True},
             "cache_hist": os.path.exists(CACHE_FILE),
@@ -645,16 +684,16 @@ def main():
                    "by_typo": typo_stats(apparts75, last_year), "windows": windows(apparts75, last_year)},
         "arrondissements": arr_s,
         "secteurs":        sect_s,
+        "communes":        comm_s,
         "zones":           zone_s,
         "quartiers":       quart_s,
         "secteurs_ref":    secteurs_ref,
+        "communes_ref":    communes_ref,
         "zones_ref":       ref["zones"],
         "quartiers_ref":   {k: {"nom": v["nom"], "commune": v["commune"], "arr": v["arr"], "zone": v["zone"], "secteur": v["secteur"]} for k, v in geo.quartiers.items()},
         "quartier_index":  sorted(geo.quartiers),   # ordre des index dans dvf_sales.bin
         "typologies_ref":  TYPOLOGIES,
         "fenetres_ref":    FENETRES,
-        "boulogne": {"total_mutations": len(boul), "total_apparts": len(apparts92),
-                     "by_year": by_year(apparts92), "by_quarter": by_quarter(apparts92)},
     }
     os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
     with open(OUTPUT, "w", encoding="utf-8") as f:

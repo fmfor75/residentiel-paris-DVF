@@ -57,14 +57,27 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(c["mutations_retenues"], c["mutations_perimetre"] - sum(v for k, v in c.items() if k.startswith("excl_")))
         # Le doublon est retenu une fois ; le sans-géoloc est compté sans quartier
         self.assertGreaterEqual(c["surface_source:carrez"], att["surface_source:carrez_speciaux"])
-        self.assertIn("6", d["secteurs"]); self.assertIn("B0", d["secteurs"])
-        # Géographie : 90 quartiers, 14 zones, secteurs par polygones ; presque tout affecté
-        self.assertEqual(m["geo"]["quartiers"], 90)
+        self.assertIn("6", d["secteurs"]); self.assertNotIn("B0", d["secteurs"])   # lot 9 : plus de pseudo-secteur Boulogne
+        # Géographie : 171 quartiers (80 Paris + 91 dans 10 communes), 14 zones, secteurs par polygones ; presque tout affecté
+        self.assertEqual(m["geo"]["quartiers"], 171)
         self.assertLess(sum(m["geo"]["sans_quartier"].values()), 0.02 * m["total_mutations"])
-        self.assertEqual(len(d["zones"]), 14); self.assertGreaterEqual(len(d["quartiers"]), 60)
-        self.assertEqual(set(k for k in d["secteurs"] if k.startswith("B")), {f"B{i}" for i in range(0, 11)})
+        self.assertEqual(len(d["zones"]), 14); self.assertGreaterEqual(len(d["quartiers"]), 100)
+        self.assertEqual(set(d["secteurs"]), {str(i) for i in range(1, 15)})
+        # Communes : les 10 hors Paris ont des statistiques, Sèvres (dans le CSV du 92) est ignorée, Paris n'y figure pas
+        self.assertEqual(set(d["communes"]), set(d["communes_ref"]) - {"75056"}); self.assertEqual(len(d["communes"]), 10)
+        self.assertNotIn("92072", d["communes"]); self.assertEqual(d["communes_ref"]["93070"]["nom"], "Saint-Ouen-sur-Seine")
+        self.assertEqual(d["communes_ref"]["92012"]["quartiers"], [f"B{i}" for i in range(1, 11)])
+        self.assertTrue(all(d["quartiers_ref"][q]["secteur"] is None for q in d["communes_ref"]["92024"]["quartiers"]))
+        # Chaque commune : total = somme de ses quartiers ; et toutes les ventes hors Paris retenues sont dans une commune
+        for com, cr in d["communes_ref"].items():
+            if com == "75056": continue
+            self.assertEqual(d["communes"][com]["total"], sum(d["quartiers"].get(q, {}).get("total", 0) for q in cr["quartiers"]), com)
+        # (pas de test sur la première lettre : « PU1 » est Puteaux, pas Paris — le préfixe ne porte pas la commune, quartiers_ref si)
+        self.assertEqual(sum(v["total"] for v in d["communes"].values()), sum(v["total"] for k, v in d["quartiers"].items() if d["quartiers_ref"][k]["commune"] != "75056"))
+        self.assertEqual(sum(m["apparts_par_commune"].values()), m["total_apparts"]); self.assertIn("mutations_commune", m["geo"])
+        self.assertIn("sans_quartier:75056", m["exclusions"]["75"]["2024"])
         q = next(iter(d["quartiers"].values())); self.assertIn("by_typo", q["by_type"]["Appartement"]); self.assertNotIn("by_month", q["by_type"]["Appartement"])
-        self.assertEqual(sum(v["total"] for v in d["zones"].values()), sum(v["total"] for k, v in d["quartiers"].items() if k.startswith("P")))
+        self.assertEqual(sum(v["total"] for v in d["zones"].values()), sum(v["total"] for k, v in d["quartiers"].items() if d["quartiers_ref"][k]["commune"] == "75056"))
         # Le sans-géoloc n'a pas de quartier : compté, absent des secteurs, présent dans son arrondissement
         self.assertEqual(c["sans_quartier"], att["sans_geoloc"])
         # Schéma consommé par index.html (rétro-compatibilité)
@@ -80,9 +93,10 @@ class Pipeline(unittest.TestCase):
         import gzip
         cache = json.load(gzip.open("data/dvf_cache.json.gz", "rt", encoding="utf-8"))
         self.assertEqual(cache["parser_version"], P.PARSER_VERSION)
-        self.assertEqual(len(cache["entries"]), 13 * 2)
+        self.assertEqual(len(cache["entries"]), 13 * 4)
         self.assertIn("compteurs", cache["entries"]["75_2020"]); self.assertTrue(cache["entries"]["75_2025"]["empreinte"])
-        self.assertEqual(m["fichiers_telecharges"], 26)
+        self.assertEqual(sorted(cache["entries"]["92_2024"]["communes"]), sorted(P.DEPS["92"]))
+        self.assertEqual(m["fichiers_telecharges"], 52)
 
     def test_cache_reutilise_et_compteurs_conserves(self):
         code, _ = self.run_pipeline(); self.assertEqual(code, 0)
@@ -102,6 +116,20 @@ class Pipeline(unittest.TestCase):
         # --force recalcule même sans changement
         P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py", "--force"]
         self.assertEqual(P.main(), 0); self.assertEqual(json.load(open("data/dvf_paris.json", encoding="utf-8"))["meta"]["fichiers_telecharges"], 0)
+
+    def test_cache_perime_si_perimetre_change(self):
+        # Lot 9 : le 92 était en cache avec Boulogne seule ; ajouter des communes doit forcer le retéléchargement du 92,
+        # sinon les nouvelles communes manqueraient en silence (source inchangée, cache « valide »).
+        code, _ = self.run_pipeline(); self.assertEqual(code, 0)
+        import gzip
+        cache = json.load(gzip.open("data/dvf_cache.json.gz", "rt", encoding="utf-8"))
+        for k, e in cache["entries"].items():
+            if k.startswith("92_"): e["communes"] = ["92012"]; e["mutations"] = [m for m in e["mutations"] if m["code"] == "92012"]
+        with gzip.open("data/dvf_cache.json.gz", "wt", encoding="utf-8") as f: json.dump(cache, f)
+        P.HEAD_CACHE.clear(); P.HEAD_INFO.clear(); P.CPT = P.Compteurs(); sys.argv = ["process_dvf.py"]
+        self.assertEqual(P.main(), 0)
+        d = json.load(open("data/dvf_paris.json", encoding="utf-8"))
+        self.assertEqual(d["meta"]["fichiers_telecharges"], 13); self.assertIn("92024", d["communes"])
 
     def test_garde_annee_creuse(self):
         code, _ = self.run_pipeline("annee_creuse")

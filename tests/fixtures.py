@@ -9,7 +9,7 @@ effectifs exacts, pour que les compteurs du pipeline soient vérifiés à l'unit
 Les en-têtes sont ceux du format geo-dvf ; le relevé réel (`--probe`) confirmera au premier run
 qu'ils correspondent — si non, c'est ce fichier qu'il faut corriger, pas le parseur qui sait échouer.
 """
-import os, csv, gzip, random, threading, functools
+import os, csv, gzip, json, random, threading, functools
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 HEADER = ("id_mutation,date_mutation,numero_disposition,nature_mutation,valeur_fonciere,adresse_numero,"
@@ -27,13 +27,48 @@ def row(mid, date, nature, val, code, parcelle, type_local, surf, nbpp, lon, lat
     r.update({"id_mutation": mid, "date_mutation": date, "numero_disposition": "1", "nature_mutation": nature,
               "valeur_fonciere": f"{val:.2f}", "adresse_nom_voie": "RUE DE, LA VIRGULE",   # virgule volontaire : teste le csv quoté
               "code_postal": "75008" if code.startswith("75") else "92100",
-              "code_commune": code, "nom_commune": "Paris" if code.startswith("75") else "Boulogne-Billancourt",
+              "code_commune": code, "nom_commune": "Paris" if code.startswith("75") else COMMUNES.get(code, ("Ailleurs",))[0],
               "code_departement": code[:2], "id_parcelle": parcelle,
               "lot1_surface_carrez": f"{carrez1:.2f}" if carrez1 else "", "lot2_surface_carrez": f"{carrez2:.2f}" if carrez2 else "",
               "nombre_lots": "1", "code_type_local": TYPE_CODES.get(type_local, ""), "type_local": type_local,
               "surface_reelle_bati": f"{surf:.0f}" if surf else "", "nombre_pieces_principales": str(nbpp) if nbpp else "",
               "longitude": f"{lon:.6f}" if lon else "", "latitude": f"{lat:.6f}" if lat else ""})
     return r
+
+# Communes hors Paris (lot 9) : point intérieur central et demi-étendue (lat, lon) relevés sur data/geo/quartiers.geojson,
+# pour que les ventes générées tombent dans les polygones réels. Le 92 contient aussi une commune hors périmètre (Sèvres)
+# qui doit être ignorée par le filtre code_commune.
+COMMUNES = {"92012": ("Boulogne-Billancourt", 48.8371, 2.2424, 0.012, 0.015), "92024": ("Clichy", 48.9043, 2.3037, 0.007, 0.012),
+            "92044": ("Levallois-Perret", 48.8944, 2.287, 0.006, 0.011), "92004": ("Asnières-sur-Seine", 48.9177, 2.2942, 0.011, 0.02),
+            "92009": ("Bois-Colombes", 48.9148, 2.2686, 0.008, 0.008), "92062": ("Puteaux", 48.882, 2.238, 0.009, 0.011),
+            "93070": ("Saint-Ouen-sur-Seine", 48.9115, 2.3324, 0.008, 0.013), "94068": ("Saint-Maur-des-Fossés", 48.8003, 2.4913, 0.011, 0.022),
+            "94067": ("Saint-Mandé", 48.8417, 2.4193, 0.005, 0.005), "94080": ("Vincennes", 48.847, 2.4388, 0.004, 0.014),
+            "92072": ("Sèvres (hors périmètre)", 48.8238, 2.2096, 0.005, 0.005)}
+_GEO = None
+def point_dans_commune(code, rng, centre=None):
+    """Point tiré au hasard DANS les polygones réels de la commune (data/geo/quartiers.geojson) ; les communes ne sont
+    pas des rectangles : un tirage dans la bbox mettait 14 % des ventes hors quartier et faisait refuser le run.
+    Sèvres (hors référentiel) garde un tirage dans sa bbox : ses lignes sont filtrées avant la géographie."""
+    global _GEO
+    if _GEO is None:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        feats = json.load(open(os.path.join(root, "data/geo/quartiers.geojson"), encoding="utf-8"))["features"]
+        _GEO = {}
+        for f in feats:
+            g = f["geometry"]; polys = g["coordinates"] if g["type"] == "MultiPolygon" else [g["coordinates"]]
+            _GEO.setdefault(f["properties"]["commune"], []).extend(polys)
+    def pip(x, y, ring):
+        inside = False; j = len(ring) - 1
+        for i in range(len(ring)):
+            xi, yi = ring[i]; xj, yj = ring[j]
+            if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi: inside = not inside
+            j = i
+        return inside
+    clat, clon, dlat, dlon = centre or COMMUNES[code][1:]
+    for _ in range(200):
+        lat = clat + rng.uniform(-dlat, dlat); lon = clon + rng.uniform(-dlon, dlon)
+        if code not in _GEO or any(pip(lon, lat, p[0]) and not any(pip(lon, lat, h) for h in p[1:]) for p in _GEO[code]): return lat, lon
+    return clat, clon
 
 # Centres approximatifs par arrondissement (lat, lon) pour une géoloc plausible
 ARR_CENTRE = {1:(48.862,2.336),2:(48.868,2.342),3:(48.863,2.360),4:(48.854,2.357),5:(48.844,2.350),6:(48.849,2.333),
@@ -46,10 +81,10 @@ def gen_year(dep, annee, n, rng, prix_base):
     rows = []
     for i in range(n):
         if dep == "75":
-            arr = rng.randint(1, 20); code = f"751{arr:02d}"; lat, lon = ARR_CENTRE[arr]
+            arr = rng.randint(1, 20); code = f"751{arr:02d}"
+            lat, lon = point_dans_commune("75056", rng, (*ARR_CENTRE[arr], 0.008, 0.01))   # dans Paris (un point du 16e peut sortir de la ville)
         else:
-            code = "92012"; lat, lon = 48.838, 2.240
-        lat += rng.uniform(-0.008, 0.008); lon += rng.uniform(-0.01, 0.01)
+            code = rng.choice([c for c in COMMUNES if c.startswith(dep)]); lat, lon = point_dans_commune(code, rng)
         surf = max(10, int(rng.lognormvariate(3.8, 0.45)))
         ppm2 = prix_base * (1 + 0.04 * (annee - 2014)) * rng.lognormvariate(0, 0.18)
         tl = "Maison" if rng.random() < 0.08 else "Appartement"
@@ -102,13 +137,13 @@ def write_gz(path, rows):
     with gzip.open(path, "wt", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=HEADER); w.writeheader(); w.writerows(rows)
 
-def build(root, variant="normal", n75=600, n92=500, seed=1):
+def build(root, variant="normal", n75=600, n92=500, n93=500, n94=500, seed=1):
     """Construit l'arborescence de sources dans `root`.
     variant : 'normal' | 'annee_creuse' (2018 quasi vide) | 'partiel_2019' (2019 seulement dans un millésime d'octobre 2019)."""
     rng = random.Random(seed); attendus = {}
     for annee in range(2014, 2027):
         r75 = gen_year("75", annee, n75 if not (variant == "annee_creuse" and annee == 2018) else 120, rng, 8000)
-        r92 = gen_year("92", annee, n92, rng, 7000)
+        r92 = gen_year("92", annee, n92, rng, 7000); r93 = gen_year("93", annee, n93, rng, 5000); r94 = gen_year("94", annee, n94, rng, 6000)
         if annee == 2024:
             spec, attendus = cas_speciaux(annee); r75 += spec
         if annee >= 2021:
@@ -119,8 +154,8 @@ def build(root, variant="normal", n75=600, n92=500, seed=1):
             base = f"oda/2019-04/csv/{annee}/departements"
         if variant == "partiel_2019" and annee == 2019:
             base = f"oda/2019-10/csv/{annee}/departements"; r75 = r75[: len(r75) // 2]; r92 = r92[: len(r92) // 2]
-        write_gz(os.path.join(root, base, "75.csv.gz"), r75)
-        write_gz(os.path.join(root, base, "92.csv.gz"), r92)
+        for dep, rows in (("75", r75), ("92", r92), ("93", r93), ("94", r94)):
+            write_gz(os.path.join(root, base, f"{dep}.csv.gz"), rows)
     return attendus
 
 class QuietHandler(SimpleHTTPRequestHandler):
