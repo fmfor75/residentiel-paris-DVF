@@ -11,7 +11,8 @@ def paris_rows():
                 for m in ("meublé", "non meublé"):
                     rows.append({"id_quartier": q, "nom_quartier": f"Q{q}", "id_zone": 1 + q % 14, "piece": p, "epoque": e, "meuble_txt": m, "ref": 30.0 + p, "max": 36.0 + p, "min": 21.0 + p})
     return rows
-CSV = "INSEE_C;LIBGEO;loypredm2;lwr.IPm2;upr.IPm2;nbobs_com\n92012;Boulogne-Billancourt;29,73;23,95;36,91;20474\n75108;Paris 8e;38,1;30,2;47,0;5000\n69123;Lyon;16,5;12,1;21,0;9000\n"
+# Latin-1 et virgules décimales, comme les vrais fichiers DHUP (les deux ont fait échouer ou corrompu un run réel)
+CSV = "INSEE_C;LIBGEO;loypredm2;lwr.IPm2;upr.IPm2;nbobs_com\n92012;Boulogne-Billancourt;29,73;23,95;36,91;20474\n92004;Asnières-sur-Seine;24,55;20,1;29,9;8000\n75108;Paris 8e;38,1;30,2;47,0;5000\n69123;Lyon;16,5;12,1;21,0;9000\n"
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -25,14 +26,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
               {"title": "Indicateur de loyer appartement de 1 ou 2 pièces", "format": "csv", "url": f"http://127.0.0.1:{srv.server_address[1]}/app12.csv"},
               {"title": "Indicateur de loyer appartement de 3 pièces ou plus", "format": "csv", "url": f"http://127.0.0.1:{srv.server_address[1]}/app3.csv"},
               {"title": "Indicateurs de loyer maison", "format": "csv", "url": "http://127.0.0.1:1/maison.csv"}]}]})
-        elif u.path.endswith(".csv"): body = CSV if srv.csv_ok else "<html>erreur</html>"          # virgules décimales, comme les vrais fichiers
+        elif u.path.endswith(".csv"):
+            self.send_response(200); self.send_header("Content-Type", "text/csv"); self.end_headers()
+            self.wfile.write((CSV if srv.csv_ok else "<html>erreur</html>").encode("cp1252")); return
         else: self.send_response(404); self.end_headers(); return
         self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body.encode("utf-8"))
 
 class FetchLoyers(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(); self.out = os.path.join(self.tmp, "loyers.json"); self.ref = os.path.join(self.tmp, "ref.json")
-        json.dump({"communes": {"75056": "Paris", "92012": "Boulogne-Billancourt"}}, open(self.ref, "w"))
+        json.dump({"communes": {"75056": "Paris", "92012": "Boulogne-Billancourt", "92004": "Asnières-sur-Seine"}}, open(self.ref, "w"))
         self.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler); self.srv.paris_n = 2560; self.srv.csv_ok = True
         threading.Thread(target=self.srv.serve_forever, daemon=True).start(); self.base = f"http://127.0.0.1:{self.srv.server_address[1]}"
     def tearDown(self): self.srv.shutdown(); shutil.rmtree(self.tmp, ignore_errors=True)
@@ -45,6 +48,7 @@ class FetchLoyers(unittest.TestCase):
         self.assertEqual(d["paris"]["annee"], 2025); self.assertTrue(d["paris"]["complet"]); self.assertEqual(d["paris"]["n"], 2560)
         self.assertEqual(d["paris"]["quartiers"]["P31"]["loyers"]["2|Avant 1946|vide"], [32.0, 38.0, 23.0])
         self.assertEqual(d["carte"]["edition"], 2025); self.assertEqual(d["carte"]["communes"]["92012"]["app12"]["loyer"], 29.73)
+        self.assertEqual(d["carte"]["communes"]["92004"]["nom"], "Asnières-sur-Seine")   # Latin-1 décodé, pas de « \ufffd »
         self.assertIn("75108", d["carte"]["communes"]); self.assertNotIn("69123", d["carte"]["communes"])      # hors référentiel : écarté
         mt = os.path.getmtime(self.out); r = self.run_fetch(); self.assertIn("inchangé", r.stdout); self.assertEqual(os.path.getmtime(self.out), mt)
 

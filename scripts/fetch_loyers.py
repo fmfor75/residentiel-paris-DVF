@@ -53,9 +53,18 @@ def dernier_jeu_carte(api=DATAGOUV, timeout=60):
     if not cands: raise ValueError("aucun jeu « Carte des loyers » trouvé")
     return max(cands, key=lambda c: c[0])
 
+def decoder(raw):
+    """Les CSV DHUP sont en Latin-1 (cp1252), pas en UTF-8 : décodés en UTF-8 avec remplacement, les noms accentués
+    sortaient en « Asni\ufffdres » — vu au premier run avec des communes accentuées (06/10/2026 ; Paris et Boulogne n'en ont
+    pas). UTF-8 strict d'abord, cp1252 sinon ; un caractère de remplacement restant est une erreur, pas un détail."""
+    try: txt = raw.decode("utf-8-sig")
+    except UnicodeDecodeError: txt = raw.decode("cp1252", errors="replace")
+    if "\ufffd" in txt: raise ValueError(f"{txt.count(chr(0xfffd))} caractères indécodables dans le CSV")
+    return txt
+
 def lire_csv(url, timeout=120):
     r = requests.get(url, timeout=timeout); r.raise_for_status()
-    txt = r.content.decode("utf-8-sig", errors="replace"); delim = ";" if txt[:2000].count(";") > txt[:2000].count(",") else ","
+    txt = decoder(r.content); delim = ";" if txt[:2000].count(";") > txt[:2000].count(",") else ","
     rows = list(csv.DictReader(io.StringIO(txt), delimiter=delim))
     if not rows or "INSEE_C" not in rows[0] or "loypredm2" not in rows[0]: raise ValueError(f"colonnes inattendues : {list(rows[0].keys())[:6] if rows else 'vide'}")
     return rows
