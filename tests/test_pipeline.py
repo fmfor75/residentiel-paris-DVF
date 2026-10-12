@@ -76,6 +76,16 @@ class Pipeline(unittest.TestCase):
         self.assertEqual(sum(v["total"] for v in d["communes"].values()), sum(v["total"] for k, v in d["quartiers"].items() if d["quartiers_ref"][k]["commune"] != "75056"))
         self.assertEqual(sum(m["apparts_par_commune"].values()), m["total_apparts"]); self.assertIn("mutations_commune", m["geo"])
         self.assertIn("sans_quartier:75056", m["exclusions"]["75"]["2024"])
+        # Lot 10 : ventes compactes DVS2 avec coordonnées — chaque vente relue retombe dans le polygone de son quartier
+        import struct
+        raw = open("data/dvf_sales.bin", "rb").read(); self.assertEqual(raw[:4], b"DVS2")
+        n = struct.unpack("<I", raw[4:8])[0]; lon0, lat0, dlon, dlat = struct.unpack("<dddd", raw[8:40]); self.assertEqual(len(raw), 40 + 14 * n)
+        geo = P.Geo(); qids = d["quartier_index"]; hors = 0
+        for i in range(0, n, max(1, n // 400)):
+            qi, t, ym, s100, val, lq, laq = struct.unpack("<BBHHIHH", raw[40 + 14 * i: 54 + 14 * i])
+            lon, lat = lon0 + lq / 65535 * dlon, lat0 + laq / 65535 * dlat
+            if geo.quartier(d["quartiers_ref"][qids[qi]]["commune"], lon, lat) != qids[qi]: hors += 1
+        self.assertEqual(hors, 0, "coordonnées relues hors du quartier (inversion lat/lon ou emprise fausse ?)")
         q = next(iter(d["quartiers"].values())); self.assertIn("by_typo", q["by_type"]["Appartement"]); self.assertNotIn("by_month", q["by_type"]["Appartement"])
         self.assertEqual(sum(v["total"] for v in d["zones"].values()), sum(v["total"] for k, v in d["quartiers"].items() if d["quartiers_ref"][k]["commune"] == "75056"))
         # Le sans-géoloc n'a pas de quartier : compté, absent des secteurs, présent dans son arrondissement

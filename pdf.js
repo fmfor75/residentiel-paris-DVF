@@ -225,6 +225,52 @@ export async function exportPdf(ctx){
     st.para(`Méthode. ${h.HELP.valo_ref[1]} ${h.HELP.valo_ech[1]} ${h.HELP.valo_pos[1]} ${h.HELP.valo_tot[1]} Cette valorisation est une lecture statistique des ventes enregistrées (DVF), pas une expertise : elle ne tient compte ni de l'état du bâti, ni des charges, ni des situations locatives.`, M, CW, { s: 7.6 });
     st.newPage();
   }
+  // ── Proximité (lot 10) : ventes dans un rayon autour de l'adresse, visuel du deck en vectoriel ──
+  const RY = ctx.rayon;
+  if (RY && address?.props) {
+    const { st: rs, years, opts, couv } = RY; const an = rs.annees; const ys = years.filter(y => an[y]);
+    st.caps('Proximité', M, st.y + 2, { s: 6, c: C.green }); st.text(`Rayon ${h.fmt0(opts.rayon)} m · ${years[0]} → ${years[years.length - 1]}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+    st.text(st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : "d'appartements"} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    const last = ys.length ? ys[ys.length - 1] : null;
+    const tiles = [['Ventes dans le rayon', h.fmt0(rs.nTotal), `${opts.type.toLowerCase()}s · ${years[0]} → ${years[years.length - 1]}`, true],
+      ['Médiane ' + (last || '—'), last ? h.fmt0(an[last].median) + ' €/m²' : '—', last ? `P10 ${h.fmt0(an[last].p10)} · P90 ${h.fmt0(an[last].p90)}` : 'moins de 5 ventes'],
+      ['Couverture', `${Math.round(couv.couverte * 100)} %`, couv.couverte >= 0.999 ? 'rayon dans les communes couvertes' : 'rayon partiellement hors périmètre'],
+      ['Prix de comparaison', opts.libre > 0 ? h.fmt0(opts.libre) + ' €/m²' : '—', opts.libre > 0 ? `sortie libre HD${opts.acq > 0 ? ` · acquisition ${h.fmt0(opts.acq)}` : ''}` : 'aucun prix saisi']];
+    const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
+      st.caps(l, cx + 4, st.y + 6.5, { s: 5.2 }); st.text(v, cx + 4, st.y + 15, { s: acc ? 13 : 11, w: 'bold', c: C.navy }); st.text(u, cx + 4, st.y + 20.5, { s: 5.6, c: C.grey }); }); st.y += 30;
+    // graphique : barres de médiane, moustaches P10–P90, lignes de référence (palette du deck)
+    const DG = [74, 80, 88], LG = [184, 188, 194], GR = [46, 125, 79], INK = [31, 36, 41], MU = [107, 112, 120], GRID = [227, 230, 234];
+    const gx = M, gw = CW, gh = 92, pl = 17, pr = 12, pt = 16, pb = 7; const iw = gw - pl - pr, ih = gh - pt - pb; const gy = st.y;
+    let lo = Math.max(0, Math.min(...ys.map(y => an[y].p10), ...(opts.acq > 0 ? [opts.acq] : [])) - 1200), hi = Math.max(...ys.map(y => an[y].p90), ...(opts.libre > 0 ? [opts.libre] : [])) + 500;
+    if (!ys.length) { lo = 0; hi = 10000; }
+    const brut = (hi - lo) / 6, p10 = Math.pow(10, Math.floor(Math.log10(brut))), step = [1, 2, 2.5, 5, 10].map(m => m * p10).find(v => v >= brut);
+    const Y = v => gy + pt + ih - (v - lo) / (hi - lo) * ih, slot = iw / years.length, X = i => gx + pl + slot * (i + .5);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) { st.line(gx + pl, Y(v), gx + gw - pr, Y(v), GRID, 0.2); st.text(h.fmt0(v) + ' €', gx + pl - 1.5, Y(v) + 0.9, { s: 5.6, c: DG, align: 'right' }); }
+    st.line(gx + pl, gy + pt + ih, gx + gw - pr, gy + pt + ih, LG, 0.25);
+    const ref = (v, col, w, dash) => { if (!(v > 0)) return; doc.setLineDashPattern(dash, 0); st.line(gx + pl, Y(v), gx + gw - pr, Y(v), col, w); doc.setLineDashPattern([], 0); };
+    ref(opts.acq, DG, 0.4, [2.2, 1.5]); ref(opts.libre, GR, 0.6, [2.2, 1.5]); ref(opts.occupe, GR, 0.5, [0.5, 1.1]);
+    years.forEach((y, i) => { const s = an[y], x = X(i); st.text(String(y), x, gy + gh - 1, { s: 7, c: DG, align: 'center' });
+      if (!s) { st.text(`moins de ${rs.minN} ventes`, x, Y(lo) - 3, { s: 5, c: MU, align: 'center' }); return; }
+      const bw = slot * 0.5; doc.setFillColor(...LG); doc.rect(x - bw / 2, Y(s.median), bw, Y(lo) - Y(s.median), 'F');
+      let yl = s.median + 120; const bande = (hi - lo) * 4.5 / ih; for (const v of [opts.acq, opts.libre, opts.occupe]) if (v > 0 && v > yl - bande * .3 && v < yl + bande) yl = v + bande * .35;
+      st.text(h.fmt0(s.median), x, Y(yl) - 0.8, { s: years.length <= 8 ? 7.2 : 5.6, w: 'bold', c: INK, align: 'center' });
+      const xw = x + slot * 0.34, cap = slot * 0.03; st.line(xw, Y(s.p10), xw, Y(s.p90), DG, 0.35);
+      for (const v of [s.p10, s.p90]) { st.line(xw - cap, Y(v), xw + cap, Y(v), DG, 0.35); if (years.length <= 8) st.text(h.fmt0(v), x + slot * 0.4, Y(v) + 0.8, { s: 5, c: MU }); } });   // > 8 ans : les étiquettes de déciles se chevauchaient (vu sur 2014–2025)
+    // légende
+    const items = [['patch', LG, 'Médiane'], ['line', DG, '1er et 9e déciles', [], 0.35]];
+    if (opts.acq > 0) items.push(['line', DG, `Acquisition : logements à ${h.fmt0(opts.acq)} € / m² HD`, [2.2, 1.5], 0.4]);
+    if (opts.libre > 0) items.push(['line', GR, `Sortie : ${h.fmt0(opts.libre)} € / m² HD libre (logements rénovés)`, [2.2, 1.5], 0.6]);
+    if (opts.occupe > 0) items.push(['line', GR, `Sortie : ${h.fmt0(opts.occupe)} € / m² HD occupé${opts.decote > 0 ? ` (décote ${Math.round(opts.decote)} %)` : ''}`, [0.5, 1.1], 0.5]);
+    const nrow = Math.ceil(items.length / 2), colW = iw / 2; items.forEach((it, k) => { const col = Math.floor(k / nrow), row = k % nrow; const x = gx + pl + col * colW + 2, y = gy + 2 + row * 4.2;
+      if (it[0] === 'patch') { doc.setFillColor(...it[1]); doc.rect(x, y - 1.2, 7, 2.4, 'F'); } else { doc.setLineDashPattern(it[3], 0); st.line(x, y, x + 7, y, it[1], it[4]); doc.setLineDashPattern([], 0); }
+      st.text(it[2], x + 9, y + 1, { s: 5.6, c: DG }); });
+    st.y = gy + gh + 4;
+    st.text(`Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}, rayon de ${h.fmt0(opts.rayon)} m à vol d'oiseau ; ${h.fmt0(rs.nTotal)} ventes${last ? ` dont ${h.fmt0(an[last].n)} en ${last}` : ''}.`, M, st.y, { s: 6, c: MU }); st.y += 7;
+    table(st, [{ l: 'Année', w: 20 }, { l: 'Ventes', w: 22, align: 'right' }, { l: '1er décile', w: 32, align: 'right' }, { l: 'Médiane', w: 32, align: 'right' }, { l: '9e décile', w: 32, align: 'right' }],
+      years.map(y => { const s = an[y]; return { cells: [String(y), s ? h.fmt0(s.n) : { t: 'moins de 5 ventes', c: MU }, s ? h.fmt0(s.p10) : '—', s ? { t: h.fmt0(s.median), w: 'bold', c: C.navy } : '—', s ? h.fmt0(s.p90) : '—'] }; }), M, CW, { rh: years.length > 8 ? 5 : 6.2 });
+    st.y += 4; st.para(`${h.HELP.rayon_med[1]} ${h.HELP.rayon_dec[1]}`, M, CW, { s: 7 });
+    st.newPage();
+  }
   // ── Perspectives (lot 7) : scénarios conditionnels, sensibilité, rétrospectif ─────────────────
   const PP = ctx.persp;
   if (PP) {

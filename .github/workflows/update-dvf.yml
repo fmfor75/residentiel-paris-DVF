@@ -96,7 +96,7 @@ jobs:
       # donne les mêmes chiffres que le pipeline (28 000 comparaisons) et que la valorisation est cohérente.
       - name: Parité moteur navigateur / pipeline (Node)
         if: ${{ github.event.inputs.mode != 'probe' }}
-        run: node tests/test_engine.mjs && node tests/test_valo.mjs
+        run: node tests/test_engine.mjs && node tests/test_valo.mjs && node tests/test_rayon.mjs
 
       # Lot 3 : les statistiques servies au dashboard sont chiffrées avec le code d'accès (secret DVF_CODE).
       # dvf_paris.json n'est plus commité ; seuls data/enc/*.bin et le manifest le sont.

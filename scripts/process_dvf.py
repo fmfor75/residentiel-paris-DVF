@@ -502,29 +502,39 @@ def verifier(all_muts, sources_used, allow_partial, years):
 # EXPORT COMPACT DES VENTES (lot 4)
 # ══════════════════════════════════════════════════════════════════
 # Le navigateur calcule lui-même percentiles, séries et typologies à fourchettes libres : il lui faut
-# les ventes, pas des statistiques figées. Format binaire little-endian, 10 octets par vente :
+# les ventes, pas des statistiques figées. Format binaire little-endian « DVS2 » (lot 10) :
+#   en-tête : b"DVS2" · uint32 n · float64 lon0 · float64 lat0 · float64 dlon · float64 dlat (emprise des ventes)
+#   puis n enregistrements de 14 octets :
 #   uint8  index du quartier dans meta.quartier_index (ordre trié des ids)
 #   uint8  type : 0 appartement, 1 maison
 #   uint16 mois depuis 2000-01 (année = 2000 + ym // 12, mois = ym % 12 + 1)
 #   uint16 surface × 100 (m²)
 #   uint32 valeur foncière (€, arrondie)
+#   uint16 longitude quantifiée : lon = lon0 + q / 65535 × dlon  (pas ≈ 0,34 m sur l'emprise actuelle)
+#   uint16 latitude quantifiée  : lat = lat0 + q / 65535 × dlat  (pas ≈ 0,25 m)
+# Les coordonnées servent à l'analyse de proximité (rayon autour d'une adresse) ; DVF donne le centre de la parcelle,
+# la quantification est sans effet. DVS1 (10 octets, sans coordonnées) reste lisible par engine.js.
 # prix/m² = valeur / surface, comme dans compute_stats : les chiffres du navigateur doivent être identiques
 # à ceux de ce pipeline (tests/test_engine.mjs le vérifie à l'unité près).
 import struct
-SALES_MAGIC = b"DVS1"
+SALES_MAGIC = b"DVS2"
 def ecrire_ventes_compactes(all_muts, geo):
     qids = sorted(geo.quartiers); qidx = {q: i for i, q in enumerate(qids)}
+    muts = [m for m in all_muts if m.get("q")]
+    lon0, lon1 = min(m["lon"] for m in muts), max(m["lon"] for m in muts)
+    lat0, lat1 = min(m["lat"] for m in muts), max(m["lat"] for m in muts)
+    dlon, dlat = max(lon1 - lon0, 1e-6), max(lat1 - lat0, 1e-6)
     rows = []
-    for m in all_muts:
-        if not m.get("q"): continue
+    for m in muts:
         y, mo = int(m["date"][:4]), int(m["date"][5:7])
         rows.append((qidx[m["q"]], 1 if m["type"] == "Maison" else 0, (y - 2000) * 12 + mo - 1,
-                     min(65535, round(m["surf"] * 100)), min(4_294_967_295, round(m["val"]))))
+                     min(65535, round(m["surf"] * 100)), min(4_294_967_295, round(m["val"])),
+                     round((m["lon"] - lon0) / dlon * 65535), round((m["lat"] - lat0) / dlat * 65535)))
     rows.sort()   # tri par quartier puis date : meilleure compression, aucune information perdue
     with open(SALES, "wb") as f:
-        f.write(SALES_MAGIC + struct.pack("<I", len(rows)))
-        for r in rows: f.write(struct.pack("<BBHHI", *r))
-    print(f"  ✓ {SALES} : {len(rows):,} ventes, {os.path.getsize(SALES)/1e6:.1f} Mo (quartier_index : {len(qids)})")
+        f.write(SALES_MAGIC + struct.pack("<I", len(rows)) + struct.pack("<dddd", lon0, lat0, dlon, dlat))
+        for r in rows: f.write(struct.pack("<BBHHIHH", *r))
+    print(f"  ✓ {SALES} : {len(rows):,} ventes, {os.path.getsize(SALES)/1e6:.1f} Mo (quartier_index : {len(qids)}, emprise {lon0:.4f}→{lon1:.4f} / {lat0:.4f}→{lat1:.4f})")
     return qids
 
 # ══════════════════════════════════════════════════════════════════

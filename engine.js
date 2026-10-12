@@ -5,25 +5,30 @@
 // tests/test_engine.mjs compare ses résultats au JSON du pipeline sur données réelles, à ±1 €/m² près
 // (la surface est stockée au centième et la valeur à l'euro dans dvf_sales.bin).
 //
-// Format de sales.bin (déchiffré) : "DVS1" + uint32 n, puis n enregistrements de 10 octets little-endian :
-//   uint8 quartier (index dans meta.quartier_index) · uint8 type (0 appartement, 1 maison) · uint16 mois depuis 2000-01
-//   uint16 surface×100 · uint32 valeur (€)
+// Format de sales.bin (déchiffré) : "DVS2" + uint32 n + 4 × float64 (lon0, lat0, dlon, dlat), puis n enregistrements de
+// 14 octets little-endian : uint8 quartier (index dans meta.quartier_index) · uint8 type (0 appartement, 1 maison) ·
+// uint16 mois depuis 2000-01 · uint16 surface×100 · uint32 valeur (€) · uint16 lon quantifiée · uint16 lat quantifiée
+// (lot 10 : coordonnées pour l'analyse de proximité). L'ancien "DVS1" (10 octets, sans coordonnées) est encore lu.
 
 export const FENETRES = [1, 3, 5, 10];
 
 export function decodeSales(buf) {
   const dv = new DataView(buf);
   const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
-  if (magic !== 'DVS1') throw new Error('format de ventes inconnu : ' + magic);
-  const n = dv.getUint32(4, true);
+  if (magic !== 'DVS1' && magic !== 'DVS2') throw new Error('format de ventes inconnu : ' + magic);
+  const v2 = magic === 'DVS2', n = dv.getUint32(4, true);
   const q = new Uint8Array(n), t = new Uint8Array(n), ym = new Uint16Array(n), surf = new Float64Array(n), val = new Float64Array(n), ppm2 = new Float64Array(n), year = new Uint16Array(n);
-  let o = 8;
-  for (let i = 0; i < n; i++, o += 10) {
+  const lon = v2 ? new Float64Array(n) : null, lat = v2 ? new Float64Array(n) : null;
+  let o = 8, lon0 = 0, lat0 = 0, dlon = 0, dlat = 0;
+  if (v2) { lon0 = dv.getFloat64(8, true); lat0 = dv.getFloat64(16, true); dlon = dv.getFloat64(24, true); dlat = dv.getFloat64(32, true); o = 40; }
+  const rec = v2 ? 14 : 10;
+  for (let i = 0; i < n; i++, o += rec) {
     q[i] = dv.getUint8(o); t[i] = dv.getUint8(o + 1); ym[i] = dv.getUint16(o + 2, true);
     surf[i] = dv.getUint16(o + 4, true) / 100; val[i] = dv.getUint32(o + 6, true); ppm2[i] = val[i] / surf[i];
     year[i] = 2000 + Math.floor(ym[i] / 12);
+    if (v2) { lon[i] = lon0 + dv.getUint16(o + 10, true) / 65535 * dlon; lat[i] = lat0 + dv.getUint16(o + 12, true) / 65535 * dlat; }
   }
-  return { n, q, t, ym, surf, val, ppm2, year };
+  return { n, q, t, ym, surf, val, ppm2, year, lon, lat, format: magic };
 }
 
 // round() de Python 3 : demi vers le pair. Math.round arrondit 0.5 vers le haut → écarts d'1 € sur les moyennes.
@@ -274,4 +279,60 @@ export function rentabilite(loyers, props, valo, opts = {}){
   const sansLoyer = valo.rows.filter(r => r.lots > 0 && r.valeur != null && !rows.find(x => x.id === r.id && x.loyerAnnuel != null)).length;
   return { rows, loyerAnnuel, loyerMensuel: loyerAnnuel / 12, valeur: valeurAct, rendement: valeurAct ? loyerAnnuel / valeurAct : null,
            rendementHaut: basAct ? loyerAnnuel / basAct : null, rendementBas: hautAct ? loyerAnnuel / hautAct : null, sansLoyer };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Proximité (lot 10) : ventes dans un rayon autour d'une adresse, médiane et déciles par année.
+// Reprend le visuel « outils_marche_dvf.py » de Jadero (barres de médiane, moustaches P10–P90, lignes d'acquisition et
+// de sortie) sur les ventes de la plateforme (règles v13), et non sur un retraitement DVF à part : un seul jeu de règles.
+// Différences assumées avec le script : surface Carrez quand elle est cohérente (le script prend la surface bâtie),
+// bornes fixes 1 000–40 000 €/m² et 9–400 m² (le script : ¼ à 3 × la médiane communale).
+// ═══════════════════════════════════════════════════════════════════════════════
+const R_TERRE = 6371000;
+export function haversine(lon1, lat1, lon2, lat2){
+  const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
+  const d = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin((lon2 - lon1) * Math.PI / 360) ** 2;
+  return 2 * R_TERRE * Math.asin(Math.sqrt(d));
+}
+// Indices des ventes à moins de `rayon` m de (lon, lat), du type demandé (null = tous). Pré-filtre par boîte englobante
+// (le calcul exact n'est fait que sur les ventes plausibles), puis distance à vol d'oiseau.
+export function selectRayon(S, lon, lat, rayon, { type = 0 } = {}){
+  if (!S.lon) throw new Error('ventes sans coordonnées (format DVS1) : relancer le pipeline');
+  const dLat = rayon / 111320, dLon = rayon / (111320 * Math.cos(lat * Math.PI / 180));
+  const out = new Int32Array(S.n); let k = 0;
+  for (let i = 0; i < S.n; i++) {
+    if (type != null && S.t[i] !== type) continue;
+    const la = S.lat[i], lo = S.lon[i];
+    if (la < lat - dLat || la > lat + dLat || lo < lon - dLon || lo > lon + dLon) continue;
+    if (haversine(lon, lat, lo, la) <= rayon) out[k++] = i;
+  }
+  return out.subarray(0, k);
+}
+// Statistiques par année sur une sélection : médiane, P10, P90, effectif ; une année sous minN ventes n'est pas tracée
+// (le script de Jadero prend 5). Renvoie aussi l'effectif total des années demandées et la liste des années sans courbe.
+export function statsRayon(S, idx, { years, minN = 5 } = {}){
+  const par = {}; for (const y of years) par[y] = [];
+  for (let j = 0; j < idx.length; j++) { const i = idx[j]; const y = S.year[i]; if (par[y]) par[y].push(S.ppm2[i]); }
+  const annees = {}, insuffisantes = []; let nTotal = 0;
+  for (const y of years) {
+    const v = Float64Array.from(par[y]).sort(); nTotal += v.length;
+    if (v.length >= minN) annees[y] = { median: pyround(percentile(v, .5)), p10: pyround(percentile(v, .10)), p90: pyround(percentile(v, .90)), n: v.length };
+    else insuffisantes.push(y);
+  }
+  return { annees, nTotal, insuffisantes, minN };
+}
+// Part du cercle hors du périmètre couvert : échantillon de points sur le disque (anneaux concentriques), testés contre
+// les polygones via `quartierAt(lon, lat)` fourni par l'appelant. Une adresse en bordure de commune aurait sinon un rayon
+// silencieusement tronqué.
+export function couvertureRayon(lon, lat, rayon, quartierAt, { anneaux = 4, parAnneau = 24 } = {}){
+  let dedans = 0, total = 0;
+  for (let a = 1; a <= anneaux; a++) {
+    const r = rayon * a / anneaux;
+    for (let k = 0; k < parAnneau; k++) {
+      const th = 2 * Math.PI * k / parAnneau;
+      const la = lat + r * Math.cos(th) / 111320, lo = lon + r * Math.sin(th) / (111320 * Math.cos(lat * Math.PI / 180));
+      total++; if (quartierAt(lo, la)) dedans++;
+    }
+  }
+  return { couverte: dedans / total, points: total };
 }

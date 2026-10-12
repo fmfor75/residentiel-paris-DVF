@@ -161,6 +161,7 @@ input{font-family:inherit;color:inherit}
 .ib:hover,.ib.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .kpi .l,.evo .l{display:flex;align-items:center;gap:0}.evo .l{justify-content:center}
 th .ib{margin-left:4px;width:13px;height:13px;font-size:8.5px}
+.rayon-svg{width:100%;max-width:900px;margin:0 auto}.rayon-svg svg{width:100%;height:auto;display:block}
 #tipbox{position:fixed;z-index:9999;max-width:300px;background:rgba(11,18,32,.94);color:#fff;border-radius:12px;padding:11px 13px;font-size:12px;line-height:1.55;box-shadow:0 24px 60px -16px rgba(15,23,42,.7),0 0 0 1px rgba(255,255,255,.08) inset;backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
 #tipbox.show{opacity:1;transform:none}#tipbox b{font-weight:600;display:block;margin-bottom:3px;color:#fff}#tipbox .f{color:rgba(255,255,255,.62);font-family:var(--mono);font-size:10.5px;margin-top:6px}
 #tipbox::after{content:'';position:absolute;left:var(--ax,50%);top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:rgba(11,18,32,.94)}#tipbox.below::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:rgba(11,18,32,.94)}
@@ -290,7 +291,7 @@ footer a{color:var(--text3)}
   .mbar button.primary{background:var(--navy);color:#fff;border-color:var(--navy)}
   .zlist{max-height:38vh;max-height:38dvh}.kpis{grid-template-columns:repeat(2,1fr)}.evos{grid-template-columns:repeat(3,1fr)}
   .topbar{padding:0 14px}.brand-sub{display:none}.brand-title{white-space:nowrap}#statusPill{display:none}.hdr h2{font-size:21px}.hdr{padding:2px 2px 0}.card-h,.card-b{padding-left:14px;padding-right:14px}
-  .viewtabs{display:inline-grid;width:100%}.viewtabs button{padding:6px 4px;font-size:11.5px}#mbarVue,#mbarValo{display:none}
+  .viewtabs{display:inline-grid;width:100%}.viewtabs button{padding:6px 4px;font-size:11.5px}#mbarVue,#mbarValo,#mbarRayon{display:none}
   #map{height:calc(100vh - 290px);height:calc(100dvh - 290px);min-height:360px}
   .mapbar{top:10px;left:10px;right:10px}.addr{max-width:none;min-width:0}.addr-res{max-width:none}
   .maplegend{left:10px;right:10px;max-width:none;max-height:42%}.leaflet-control-zoom{display:none}
@@ -389,7 +390,7 @@ footer a{color:var(--text3)}
 </main>
 </div>
 <div class="scrim" id="scrim"></div>
-<nav class="mbar" id="mbar"><div class="sum"><b id="mbarT">—</b><span id="mbarS"></span></div><button type="button" id="mbarVue">Carte</button><button type="button" id="mbarValo" hidden>Valo</button><button type="button" class="primary" id="mbarFiltres">Filtres</button></nav>
+<nav class="mbar" id="mbar"><div class="sum"><b id="mbarT">—</b><span id="mbarS"></span></div><button type="button" id="mbarVue">Carte</button><button type="button" id="mbarValo" hidden>Valo</button><button type="button" id="mbarRayon" hidden>Prox.</button><button type="button" class="primary" id="mbarFiltres">Filtres</button></nav>
 <div id="tipbox" role="tooltip"></div>
 
 <footer id="foot" hidden>
@@ -401,6 +402,7 @@ footer a{color:var(--text3)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
 import * as E from './engine.js';
+import * as RY from './rayon.js';
 'use strict';
 // ═══════════════════════════════════════════════════════════════════════════════
 const ENC_DIR = 'data/enc/', GEO_URL = 'data/geo/quartiers.geojson';
@@ -449,6 +451,10 @@ const HELP = {
   valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 ← 50 → P90'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
   loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
+  rayon_med:['Médiane dans le rayon', "Prix au m² médian des ventes situées à moins de la distance choisie (à vol d'oiseau, depuis le point géocodé de l'adresse ; DVF donne le centre de la parcelle vendue). Ventes de la plateforme : un logement par mutation, surface Carrez si cohérente sinon bâtie, 1 000–40 000 €/m², 9–400 m². Une année de moins de 5 ventes n'est pas tracée.", '€/m²'],
+  rayon_dec:['1er et 9e déciles', "10 % des ventes de l'année sont en dessous du 1er décile, 10 % au-dessus du 9e (percentiles interpolés, même méthode que le reste de la plateforme). Les moustaches donnent l'étendue du marché local hors extrêmes.", '€/m²'],
+  rayon_prix:['Prix de comparaison', "Lignes facultatives : prix d'acquisition hors droits au m², prix de sortie libre (logements rénovés) et prix de sortie occupé — saisi, ou déduit de la sortie libre par la décote. Ils ne modifient aucun calcul : ils situent l'opération dans la distribution des ventes.", '€/m² HD'],
+  rayon_couv:['Couverture du rayon', "Part du disque qui tombe dans les communes couvertes par la plateforme (points échantillonnés sur le disque). En dessous de 100 %, une partie du voisinage réel n'est pas comptée : les ventes des communes voisines non couvertes manquent.", '%'],
   loy_carte:['Loyer d’annonce (carte des loyers)', "Hors Paris, loyer moyen des annonces de la commune (indicateurs DHUP / ANIL, charges comprises), pour les appartements de 1–2 pièces ou de 3 pièces et plus. Ce n'est pas un plafond : un loyer observé sur le marché. À Saint-Ouen, soumise à l'encadrement de Plaine Commune, les plafonds réglementaires ne sont pas intégrés (lot 9b).", '€/m²/mois charges comprises'],
   rendement:['Rentabilité brute', "Loyer annuel (loyer au m² × surface × 12 × nombre de lots) divisé par la valeur retenue. Brute : avant charges non récupérables, taxe foncière, vacance, travaux et fiscalité. La fourchette reprend le même loyer sur la valeur au P90 (rendement bas) et au P10 (rendement haut).", 'loyer annuel ÷ valeur'],
   persp_modele:['Modèle de projection', "Le prix cible est proportionnel à la capacité d'emprunt d'un ménage à mensualité constante sur 20 ans (fonction du taux de crédit, avec deux trimestres de retard) multipliée par le niveau général des prix, augmenté de la croissance réelle des revenus. Les prix rejoignent la cible progressivement (vitesse d'ajustement). Coefficients imposés, pas ajustés : une seule constante est calée sur 2014–2025. Une régression libre ajustée sur 2014–2019 dérivait de +100 % en 2025.", 'cible = a + log K20(taux) + log IPCH'],
@@ -555,7 +561,9 @@ function readHash(){
   if (h.get('gran') in GRANS) S.gran = h.get('gran');
   if (['Appartement','Maison'].includes(h.get('type'))) S.type = h.get('type');
   if (h.get('global')!=null) S.global = h.get('global')==='1';
-  if (['etude','carte','valo','persp'].includes(h.get('vue'))) S.vue = h.get('vue');
+  if (['etude','carte','valo','persp','rayon'].includes(h.get('vue'))) S.vue = h.get('vue');
+  const ry = h.get('rayon');   // r:y0-y1:acq:libre:occupe:decote (prix vides autorisés)
+  if (ry) { const m = ry.match(/^(\d+):(\d{4})-(\d{4}):(\d*):(\d*):(\d*):(\d*(?:\.\d+)?)$/); if (m) S.rayon = {r: Math.min(5000, Math.max(50, +m[1])), y0: +m[2], y1: +m[3], acq: +m[4]||0, libre: +m[5]||0, occupe: +m[6]||0, decote: m[7]==='' ? 20 : +m[7]}; }
   const pp = h.get('persp');   // tauxH:hz:inflation:revenus:prime:lam
   if (pp) { const m = pp.split(':').map(Number); if (m.length === 6 && m.every(x => !isNaN(x))) S.persp = {tauxH: m[0], hz: m[1], inflation: m[2], revenus: m[3], prime: m[4], lam: m[5]}; }
   const v = h.get('valo');   // pos;T1:lots:surf:adj,…
@@ -572,6 +580,7 @@ function writeHash(){
   const p = new URLSearchParams({niveau:S.niveau, id:S.id||'', per:S.per, gran:S.gran, type:S.type, global:S.global?'1':'0', vue:S.vue,
     typos:S.typos.map(t=>`${t.id}:${t.surfMin}-${t.surfMax}:${t.on?1:0}`).join(',')});
   if (S.valo) p.set('valo', `${S.valo.pos}|${S.valo.meuble?1:0}|${S.valo.epoque||0};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}:${l.pieces||E.piecesDefaut(l.id)}`).join(',')}`);
+  if (S.rayon) p.set('rayon', `${S.rayon.r}:${S.rayon.y0}-${S.rayon.y1}:${S.rayon.acq||''}:${S.rayon.libre||''}:${S.rayon.occupe||''}:${S.rayon.decote ?? ''}`);
   if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam].join(':'));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
   history.replaceState(null, '', '#'+p.toString());
@@ -762,10 +771,12 @@ function crumbsOf(item){
     : S.niveau==='zone' ? ['Paris', `${item.quartiers.length} quartiers : ${item.quartiers.map(REF.quartierNom).join(', ')}`] : ['Paris'];
 }
 function headerHtml(item, count){
-  const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
+  const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button><button type="button" data-vue="rayon" class="${S.vue==='rayon'?'on':''}">Proximité</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
   const pdf = item && lastEtude?.et ? `<button class="btn btn-ghost btn-sm" type="button" id="btnPdf"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 17h12"/></svg>Exporter en PDF</button>` : '';
   if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune===PARIS ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, communeNom(p.commune)];
     return `<div><h2>${esc(LAST_ADDR.label)}</h2><div class="crumbs">${cr.filter(Boolean).map(esc).join('<span class="sep">›</span>')}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Valorisation</span><span class="tag">12 derniers mois</span></div>`; }
+  if (S.vue === 'rayon' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune===PARIS ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom] : [p.nom, communeNom(p.commune)];
+    return `<div><h2>${esc(LAST_ADDR.label)}</h2><div class="crumbs">${cr.filter(Boolean).map(esc).join('<span class="sep">›</span>')}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Proximité</span><span class="tag">rayon ${S.rayon ? S.rayon.r : 300} m</span></div>`; }
   if (S.vue === 'persp') return `<div><h2>${item ? esc(item.nom) : 'Perspectives'}</h2><div class="crumbs">${item ? crumbsOf(item).map(esc).join('<span class="sep">›</span>') : 'Scénarios à 3, 5 et 10 ans à partir des taux, de l’inflation et des revenus.'}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Perspectives</span><span class="tag">3 · 5 · 10 ans</span></div>`;
   if (!item) return `<div><h2>${S.vue==='carte'?'Localisez une adresse':'Choisissez une zone'}</h2><div class="crumbs">${S.vue==='carte' ? 'Saisissez une adresse pour connaître son quartier, son secteur et sa zone, ou cliquez un polygone.' : esc(NIVEAU_HINT[S.niveau])}</div></div><div class="tags">${tabs}</div>`;
   return `<div><h2>${esc(item.nom)}</h2><div class="crumbs">${crumbsOf(item).map(esc).join('<span class="sep">›</span>')}</div></div>
@@ -775,11 +786,13 @@ $('hdr').addEventListener('click', e => { if (e.target.closest('#btnPdf')) { exp
 function renderMbar(item){
   $('mbarT').textContent = item ? item.nom : 'Choisissez une zone';
   $('mbarS').textContent = item ? `${NIVEAUX[S.niveau]} · ${PERIODES[S.per]} · ${S.type}s` : NIVEAUX[S.niveau];
-  $('mbarVue').textContent = S.vue === 'carte' ? 'Étude' : 'Carte'; $('mbarValo').hidden = !LAST_ADDR?.props; $('mbarValo').classList.toggle('primary', S.vue==='valo');
+  $('mbarVue').textContent = S.vue === 'carte' ? 'Étude' : 'Carte'; $('mbarValo').hidden = !LAST_ADDR?.props; $('mbarValo').classList.toggle('primary', S.vue==='valo'); $('mbarRayon').hidden = !LAST_ADDR?.props; $('mbarRayon').classList.toggle('primary', S.vue==='rayon');
   if (S.vue === 'valo') { $('mbarT').textContent = LAST_ADDR.label; $('mbarS').textContent = 'Valorisation · 12 derniers mois'; }
   if (S.vue === 'persp') { $('mbarS').textContent = 'Perspectives · 3, 5, 10 ans'; }
+  if (S.vue === 'rayon') { $('mbarT').textContent = LAST_ADDR.label; $('mbarS').textContent = `Proximité · ${S.rayon ? S.rayon.r : 300} m`; }
 }
 $('mbarValo').addEventListener('click', () => { S.vue = 'valo'; update(); scrollTo({top:0}); });
+$('mbarRayon').addEventListener('click', () => { S.vue = 'rayon'; update(); scrollTo({top:0}); });
 
 let lastEtude = null;
 function update(soft=false){
@@ -800,6 +813,7 @@ function update(soft=false){
   mapv.hidden = true; box.hidden = false;
   if (S.vue === 'valo') { renderValo(); setStatus('ok', statusLine()); return; }
   if (S.vue === 'persp') { renderPersp(item); return; }
+  if (S.vue === 'rayon') { renderRayon(); setStatus('ok', statusLine()); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Sélectionnez un ${NIVEAUX[S.niveau].toLowerCase()} dans les filtres, ou ouvrez la carte pour localiser une adresse. Tout se recalcule immédiatement dans votre navigateur.</p></div></div>`; setStatus('ok', statusLine()); return; }
   if (!et) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Aucune vente de ${S.type.toLowerCase()} retenue</h3><p>Moins de 3 ventes de ce type sur ${esc(item.nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; setStatus('ok', statusLine()); return; }
   let html = ''; const charts = [];
@@ -980,6 +994,70 @@ const statusLine = () => `${META.meta.periode} · MàJ ${new Date(META.meta.gene
 function setStatus(t, txt){ const p = $('statusPill'); p.className = 'pill' + (t==='busy'?' busy':t==='err'?' err':''); $('statusTxt').textContent = txt; }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Proximité (lot 10) : ventes dans un rayon autour de l'adresse, visuel du deck, PNG / SVG pour les présentations
+// ═══════════════════════════════════════════════════════════════════════════════
+const RAYON_DEFAUT = () => ({r: 300, y0: META.meta.last_year - 4, y1: META.meta.last_year, acq: 0, libre: 0, occupe: 0, decote: 20});
+function computeRayon(){
+  if (!LAST_ADDR?.props) return null; if (!S.rayon) S.rayon = RAYON_DEFAUT();
+  const R = S.rayon; const years = []; for (let y = R.y0; y <= R.y1; y++) years.push(y);
+  const t0 = performance.now(); const idx = E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, R.r, {type: S.type==='Maison'?1:0});
+  const st = E.statsRayon(SALES, idx, {years, minN: 5}); const couv = E.couvertureRayon(LAST_ADDR.lon, LAST_ADDR.lat, R.r, quartierAt);
+  const occupe = R.occupe > 0 ? R.occupe : (R.libre > 0 && R.decote > 0 ? Math.round(R.libre * (1 - R.decote / 100)) : 0);
+  const titre = LAST_ADDR.label.replace(/\s+\d{5}\s+.*$/, '');   // « 13 Rue de Penthièvre 75008 Paris » → « 13 Rue de Penthièvre »
+  const opts = {rayon: R.r, titre, acq: R.acq, libre: R.libre, occupe, decote: R.occupe > 0 ? 0 : R.decote, type: S.type, minN: 5};
+  return {years, idx, st, couv, opts, svg: RY.rayonSvg(st, years, opts), ms: performance.now() - t0, nTous: idx.length};
+}
+let lastRayon = null;
+function renderRayon(){
+  const box = $('etude');
+  if (!LAST_ADDR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Localisez d'abord une adresse</h3><p>Saisissez l'adresse de l'immeuble dans l'onglet Carte : l'analyse de proximité compte les ventes autour de ce point.</p><p style="margin-top:12px"><button class="btn btn-primary" type="button" data-vue="carte" style="width:auto">Ouvrir la carte</button></p></div></div>`; return; }
+  if (!LAST_ADDR.props) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Adresse hors périmètre</h3><p>${esc(LAST_ADDR.label)} n'est pas dans les communes couvertes (${esc(communesCouvertes())}).</p></div></div>`; return; }
+  if (!SALES.lon) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Coordonnées absentes</h3><p>Les ventes servies n'ont pas encore de coordonnées (format DVS1) : l'analyse de proximité sera disponible après le prochain run de mise à jour.</p></div></div>`; return; }
+  const focus = document.activeElement?.dataset?.rk ? {k: document.activeElement.dataset.rk, s: document.activeElement.selectionStart} : null;
+  const d = computeRayon(); lastRayon = d; const R = S.rayon; placeCircle();
+  const yrs = []; for (let y = META.meta.annees[0]; y <= META.meta.last_year; y++) yrs.push(y);
+  const sel = (k, v) => `<select data-rk="${k}" aria-label="${k==='y0'?'Première année':'Dernière année'}">${yrs.map(y=>`<option value="${y}" ${y===v?'selected':''}>${y}</option>`).join('')}</select>`;
+  const num = (k, v, ph, step=1) => `<input class="vi" type="number" min="0" step="${step}" value="${v||''}" placeholder="${ph}" data-rk="${k}" aria-label="${ph}" style="width:96px">`;
+  const rows = d.years.map(y => { const s = d.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td><td data-l="Ventes">${s ? s.n : `<span class="warn">${(d.st.insuffisantes.includes(y) ? 'moins de 5 ventes' : '—')}</span>`}</td><td data-l="1er décile">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="9e décile">${s ? fmt0(s.p90) : '—'}</td></tr>`; }).join('');
+  const couvTxt = d.couv.couverte >= 0.999 ? 'rayon entièrement dans les communes couvertes' : `<span class="warn">${Math.round(d.couv.couverte*100)} % du rayon dans les communes couvertes</span>`;
+  box.innerHTML = `
+  <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Proximité</span>Ventes autour de l'adresse${ib('rayon_med')}</div><span class="card-sub">${S.type.toLowerCase()}s · ${d.years[0]} → ${d.years[d.years.length-1]} · ${d.ms.toFixed(0)} ms</span></div>
+    <div class="card-b" style="padding-top:12px">
+      <div class="loy-ctl"><span><span class="lbl">Rayon</span></span><div class="seg seg-3" id="segRayon"><button type="button" data-v="300" class="${R.r===300?'on':''}">300 m</button><button type="button" data-v="500" class="${R.r===500?'on':''}">500 m</button><button type="button" data-v="libre" class="${R.r!==300&&R.r!==500?'on':''}">Libre</button></div>
+        <span><span class="lbl">Distance</span>${num('r', R.r, 'mètres', 50)}</span>
+        <span><span class="lbl">Années</span>${sel('y0', R.y0)} <span class="sep">→</span> ${sel('y1', R.y1)}</span></div>
+      <div class="loy-ctl" style="margin-top:10px"><span><span class="lbl">Acquisition €/m² HD${ib('rayon_prix')}</span>${num('acq', R.acq, 'ex. 8 650', 10)}</span>
+        <span><span class="lbl">Sortie libre €/m² HD</span>${num('libre', R.libre, 'ex. 12 600', 10)}</span>
+        <span><span class="lbl">Sortie occupé €/m² HD</span>${num('occupe', R.occupe, 'ou décote', 10)}</span>
+        <span><span class="lbl">Décote occupé %</span>${num('decote', R.decote, '20', 1)}</span></div>
+      <div class="valo-kpis" style="margin-top:14px"><div class="kpi med big"><div class="l">Ventes dans le rayon${ib('rayon_med')}</div><div class="v">${fmt0(d.st.nTotal)}</div><div class="u">${S.type.toLowerCase()}s à moins de ${fmt0(R.r)} m, ${d.years[0]} → ${d.years[d.years.length-1]} · ${fmt0(d.nTous)} sur toute la période</div></div>
+        <div class="kpi"><div class="l">Médiane ${d.years[d.years.length-1]}${ib('rayon_med')}</div><div class="v small">${d.st.annees[d.years[d.years.length-1]] ? fmt0(d.st.annees[d.years[d.years.length-1]].median) + ' €/m²' : '—'}</div><div class="u">${d.st.annees[d.years[d.years.length-1]] ? `P10 ${fmt0(d.st.annees[d.years[d.years.length-1]].p10)} · P90 ${fmt0(d.st.annees[d.years[d.years.length-1]].p90)}` : 'moins de 5 ventes'}</div></div>
+        <div class="kpi"><div class="l">Couverture${ib('rayon_couv')}</div><div class="v small">${Math.round(d.couv.couverte*100)} %</div><div class="u">${couvTxt}</div></div></div>
+    </div></div>
+  <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Visuel</span>Prix au m² autour de l'immeuble${ib('rayon_dec')}</div><span class="card-sub"><button class="btn btn-primary btn-sm" type="button" id="btnRayonPng" style="width:auto">Télécharger PNG (présentation)</button> <button class="btn btn-ghost btn-sm" type="button" id="btnRayonSvg" style="width:auto">SVG</button></span></div>
+    <div class="card-b" style="padding-top:12px"><div class="rayon-svg" id="rayonSvg">${d.svg}</div>
+      <div class="hint" style="margin-top:8px">Visuel au format du deck Jadero (8,38 × 5,11 pouces, 200 dpi, fond transparent) : le PNG se glisse directement dans une présentation.</div></div></div>
+  <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Détail</span>Par année</div></div>
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes</th><th>1er décile${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>9e décile${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="method"><b>Méthode.</b> ${esc(HELP.rayon_med[1])} ${esc(HELP.rayon_dec[1])} Distance à vol d'oiseau depuis le point géocodé (IGN) de l'adresse.</div></div></div>`;
+  if (focus) { const el = box.querySelector(`[data-rk="${focus.k}"]`); if (el) { el.focus(); try { el.setSelectionRange(focus.s, focus.s); } catch(_){} } }
+}
+let rayonTimer = null;
+$('etude').addEventListener('input', e => { const el = e.target; const k = el.dataset.rk; if (!k || !S.rayon) return;
+  const v = el.value === '' ? 0 : +el.value; if (isNaN(v)) return;
+  if (k === 'r') { if (v < 50) return; S.rayon.r = Math.min(5000, Math.round(v)); } else if (k === 'y0' || k === 'y1') { S.rayon[k] = v; if (S.rayon.y0 > S.rayon.y1) S.rayon[k === 'y0' ? 'y1' : 'y0'] = v; } else S.rayon[k] = Math.max(0, v);
+  clearTimeout(rayonTimer); rayonTimer = setTimeout(() => { writeHash(); renderRayon(); }, el.tagName === 'SELECT' ? 0 : 350); });
+$('etude').addEventListener('click', async e => {
+  const b = e.target.closest('#segRayon button'); if (b && S.rayon) { if (b.dataset.v !== 'libre') S.rayon.r = +b.dataset.v; writeHash(); renderRayon(); if (b.dataset.v === 'libre') $('etude').querySelector('[data-rk="r"]')?.focus(); return; }
+  const png = e.target.closest('#btnRayonPng'), svg = e.target.closest('#btnRayonSvg'); if (!png && !svg || !lastRayon) return;
+  const base = `Jadero_Marche_${lastRayon.opts.titre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]+/g,'_')}_${lastRayon.opts.rayon}m_${lastRayon.years[0]}-${lastRayon.years[lastRayon.years.length-1]}`;
+  try {
+    const blob = png ? await RY.svgToPng(lastRayon.svg) : new Blob([lastRayon.svg], {type:'image/svg+xml;charset=utf-8'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = base + (png ? '.png' : '.svg'); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch(ex) { setStatus('err', `Export impossible : ${ex.message}`); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Carte : polygones exacts du référentiel, colorés par niveau ; adresse → quartier / secteur / zone
 // ═══════════════════════════════════════════════════════════════════════════════
 let MAP = null, LAYER = null, MARKER = null, LAST_ADDR = null, ADDR_HASH = null;   // LAST_ADDR : dernière adresse localisée (valorisation, PDF, hash)
@@ -1006,7 +1084,7 @@ async function showMap(item){
     L.control.zoom({position:'topright'}).addTo(MAP);   // en haut à gauche, les +/− passaient sous le champ d'adresse (vu sur capture)
     L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {attribution:'© IGN – Géoplateforme', maxZoom:19, opacity:.85}).addTo(MAP);
   }
-  setTimeout(() => MAP.invalidateSize(), 50); if (LAST_ADDR && !MARKER) placeMarker();
+  setTimeout(() => MAP.invalidateSize(), 50); if (LAST_ADDR && !MARKER) placeMarker(); placeCircle();
   const {groups, colorIdx} = groupsSorted();
   const selectedGroup = item ? item.id : null;
   if (LAYER) LAYER.remove();
@@ -1060,9 +1138,13 @@ function locate(f){
   placeMarker(); MAP.setView([lat, lon], 15);
   $('hdr').innerHTML = headerHtml(S.id ? findItem(S.niveau, S.id) : null, lastEtude?.n || 0); renderMbar(S.id ? findItem(S.niveau, S.id) : null);
   if (!p) { res.innerHTML = `<b>${esc(f.properties.label)}</b><br>Hors du périmètre couvert (${esc(communesCouvertes())}).`; return; }
-  res.innerHTML = `<b>${esc(f.properties.label)}</b><div class="rows">${locRows(p, true).map(r=>`<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('')}</div><div class="acts"><button class="btn btn-primary btn-sm" type="button" data-valo="1" style="width:auto">Valoriser l'immeuble</button> ${popupHtml(p).split('<div class="acts">')[1].replace('</div>','')}</div>`;
+  res.innerHTML = `<b>${esc(f.properties.label)}</b><div class="rows">${locRows(p, true).map(r=>`<span>${r[0]}</span><span>${esc(r[1])}</span>`).join('')}</div><div class="acts"><button class="btn btn-primary btn-sm" type="button" data-valo="1" style="width:auto">Valoriser l'immeuble</button> <button class="btn btn-ghost btn-sm" type="button" data-rayon="1" style="width:auto">Analyser le voisinage</button> ${popupHtml(p).split('<div class="acts">')[1].replace('</div>','')}</div>`;
 }
-function placeMarker(){ if (!MAP || !LAST_ADDR) return; if (MARKER) MARKER.remove(); MARKER = L.circleMarker([LAST_ADDR.lat, LAST_ADDR.lon], {radius:7, color:'#fff', weight:2, fillColor:'#B91C1C', fillOpacity:1}).addTo(MAP); }
+function placeMarker(){ if (!MAP || !LAST_ADDR) return; if (MARKER) MARKER.remove(); MARKER = L.circleMarker([LAST_ADDR.lat, LAST_ADDR.lon], {radius:7, color:'#fff', weight:2, fillColor:'#B91C1C', fillOpacity:1}).addTo(MAP); placeCircle(); }
+// Cercle du rayon de proximité (lot 10) : affiché dès qu'un rayon a été étudié pour l'adresse localisée
+let CIRCLE = null;
+function placeCircle(){ if (CIRCLE) { CIRCLE.remove(); CIRCLE = null; } if (!MAP || !LAST_ADDR?.props || !S.rayon) return; CIRCLE = L.circle([LAST_ADDR.lat, LAST_ADDR.lon], {radius: S.rayon.r, color:'#B91C1C', weight:1.5, dashArray:'6 4', fillColor:'#B91C1C', fillOpacity:.06, interactive:false}).addTo(MAP); if (MARKER) MARKER.bringToFront(); }
+document.addEventListener('click', e => { if (!e.target.closest('button[data-rayon]')) return; const p = LAST_ADDR?.props; if (!p) return; if (!S.id) { S.niveau = 'quartier'; S.id = p.id; } S.vue = 'rayon'; if (!S.rayon) S.rayon = RAYON_DEFAUT(); update(); scrollTo({top:0}); });
 // Valoriser : l'étude passe sur le quartier de l'adresse (référence naturelle, et le PDF a une étude à joindre)
 document.addEventListener('click', e => { if (!e.target.closest('button[data-valo]')) return; const p = LAST_ADDR?.props; if (!p) return; S.niveau = 'quartier'; S.id = p.id; S.q=''; $('search').value=''; S.vue = 'valo'; if (!S.valo) S.valo = VALO_DEFAUT(); update(); scrollTo({top:0}); });
 $('addrForm').addEventListener('submit', async e => {
@@ -1098,7 +1180,7 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
+      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: (LAST_ADDR?.props && S.rayon && SALES.lon) ? computeRayon() : null, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
