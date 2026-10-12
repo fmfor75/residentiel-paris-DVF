@@ -52,6 +52,9 @@ async function renderMap(ctx, W, H){
   for (const f of order) { const sel = selected(f), col = colorOf(groupOfFeature(f.properties));
     for (const poly of ringsOf(f)) { path(poly); g2.fillStyle = col; g2.globalAlpha = sel ? .55 : .3; g2.fill('evenodd'); g2.globalAlpha = 1; g2.lineWidth = sel ? 4 : 1.2; g2.strokeStyle = sel ? '#0B1220' : 'rgba(11,18,32,.5)'; g2.stroke(); } }
   if (address) { const [x, y] = proj(address.lon, address.lat, z); const px = x - ox, py = y - oy;
+    if (ctx.rayonM > 0) {   // niveau rayon : le disque étudié (rayon en pixels à ce zoom : mètres par pixel = 40 075 016 × cos(lat) / 2^(z+8))
+      const mpp = 40075016.686 * Math.cos(address.lat * Math.PI / 180) / Math.pow(2, z + 8); const rp = ctx.rayonM / mpp;
+      g2.beginPath(); g2.arc(px, py, rp, 0, 7); g2.fillStyle = 'rgba(185,28,28,.08)'; g2.fill(); g2.setLineDash([14, 9]); g2.lineWidth = 4; g2.strokeStyle = '#B91C1C'; g2.stroke(); g2.setLineDash([]); }
     g2.beginPath(); g2.arc(px, py, 22, 0, 7); g2.fillStyle = 'rgba(185,28,28,.18)'; g2.fill();
     g2.beginPath(); g2.arc(px, py, 10, 0, 7); g2.fillStyle = '#B91C1C'; g2.fill(); g2.lineWidth = 3.5; g2.strokeStyle = '#fff'; g2.stroke(); }
   // attribution (obligation IGN) + note si des tuiles manquent
@@ -230,7 +233,9 @@ export async function exportPdf(ctx){
   if (RY && address?.props) {
     const { st: rs, years, opts, couv } = RY; const an = rs.annees; const ys = years.filter(y => an[y]);
     st.caps('Proximité', M, st.y + 2, { s: 6, c: C.green }); st.text(`Rayon ${h.fmt0(opts.rayon)} m · ${years[0]} → ${years[years.length - 1]}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    st.text(st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : "d'appartements"} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    // titre sur une ou deux lignes (avec une typologie il dépassait la largeur et était tronqué, vu sur le rendu du 12/10)
+    const tl = st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : "d'appartements"}${opts.typo ? ` ${opts.typo.id} (${opts.typo.surfMin}–${opts.typo.surfMax} m²)` : ''} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 12, 'bold').slice(0, 2);
+    tl.forEach((l, i) => st.text(l, M, st.y + 8.5 + i * 5.5, { s: 12, w: 'bold', c: C.navy })); st.line(M, st.y + 12 + (tl.length - 1) * 5.5, PW - M, st.y + 12 + (tl.length - 1) * 5.5, C.line); st.y += 16 + (tl.length - 1) * 5.5;
     const last = ys.length ? ys[ys.length - 1] : null;
     const tiles = [['Ventes dans le rayon', h.fmt0(rs.nTotal), `${opts.type.toLowerCase()}s · ${years[0]} → ${years[years.length - 1]}`, true],
       ['Médiane ' + (last || '—'), last ? h.fmt0(an[last].median) + ' €/m²' : '—', last ? `P10 ${h.fmt0(an[last].p10)} · P90 ${h.fmt0(an[last].p90)}` : 'moins de 5 ventes'],
@@ -253,9 +258,9 @@ export async function exportPdf(ctx){
       if (!s) { st.text(`moins de ${rs.minN} ventes`, x, Y(lo) - 3, { s: 5, c: MU, align: 'center' }); return; }
       const bw = slot * 0.5; doc.setFillColor(...LG); doc.rect(x - bw / 2, Y(s.median), bw, Y(lo) - Y(s.median), 'F');
       let yl = s.median + 120; const bande = (hi - lo) * 4.5 / ih; for (const v of [opts.acq, opts.libre, opts.occupe]) if (v > 0 && v > yl - bande * .3 && v < yl + bande) yl = v + bande * .35;
-      st.text(h.fmt0(s.median), x, Y(yl) - 0.8, { s: years.length <= 8 ? 7.2 : 5.6, w: 'bold', c: INK, align: 'center' });
+      st.text(h.fmt0(s.median), x, Y(yl) - 0.8, { s: years.length <= 6 ? 7.2 : 6, w: 'bold', c: INK, align: 'center' });
       const xw = x + slot * 0.34, cap = slot * 0.03; st.line(xw, Y(s.p10), xw, Y(s.p90), DG, 0.35);
-      for (const v of [s.p10, s.p90]) { st.line(xw - cap, Y(v), xw + cap, Y(v), DG, 0.35); if (years.length <= 8) st.text(h.fmt0(v), x + slot * 0.4, Y(v) + 0.8, { s: 5, c: MU }); } });   // > 8 ans : les étiquettes de déciles se chevauchaient (vu sur 2014–2025)
+      for (const v of [s.p10, s.p90]) { st.line(xw - cap, Y(v), xw + cap, Y(v), DG, 0.35); if (years.length <= 10) st.text(h.fmt0(v), x + slot * 0.4, Y(v) + 0.8, { s: years.length > 6 ? 4.4 : 5, c: MU }); } });   // > 10 ans : les étiquettes de déciles se chevauchaient (vu sur 2014–2025)
     // légende
     const items = [['patch', LG, 'Médiane'], ['line', DG, '1er et 9e déciles', [], 0.35]];
     if (opts.acq > 0) items.push(['line', DG, `Acquisition : logements à ${h.fmt0(opts.acq)} € / m² HD`, [2.2, 1.5], 0.4]);
@@ -265,7 +270,7 @@ export async function exportPdf(ctx){
       if (it[0] === 'patch') { doc.setFillColor(...it[1]); doc.rect(x, y - 1.2, 7, 2.4, 'F'); } else { doc.setLineDashPattern(it[3], 0); st.line(x, y, x + 7, y, it[1], it[4]); doc.setLineDashPattern([], 0); }
       st.text(it[2], x + 9, y + 1, { s: 5.6, c: DG }); });
     st.y = gy + gh + 4;
-    st.text(`Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}, rayon de ${h.fmt0(opts.rayon)} m à vol d'oiseau ; ${h.fmt0(rs.nTotal)} ventes${last ? ` dont ${h.fmt0(an[last].n)} en ${last}` : ''}.`, M, st.y, { s: 6, c: MU }); st.y += 7;
+    st.text(`Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}${opts.typo ? ` de ${opts.typo.surfMin} à ${opts.typo.surfMax} m²` : ''}, rayon de ${h.fmt0(opts.rayon)} m à vol d'oiseau ; ${h.fmt0(rs.nTotal)} ventes${last ? ` dont ${h.fmt0(an[last].n)} en ${last}` : ''}.`, M, st.y, { s: 6, c: MU }); st.y += 7;
     table(st, [{ l: 'Année', w: 20 }, { l: 'Ventes', w: 22, align: 'right' }, { l: '1er décile', w: 32, align: 'right' }, { l: 'Médiane', w: 32, align: 'right' }, { l: '9e décile', w: 32, align: 'right' }],
       years.map(y => { const s = an[y]; return { cells: [String(y), s ? h.fmt0(s.n) : { t: 'moins de 5 ventes', c: MU }, s ? h.fmt0(s.p10) : '—', s ? { t: h.fmt0(s.median), w: 'bold', c: C.navy } : '—', s ? h.fmt0(s.p90) : '—'] }; }), M, CW, { rh: years.length > 8 ? 5 : 6.2 });
     st.y += 4; st.para(`${h.HELP.rayon_med[1]} ${h.HELP.rayon_dec[1]}`, M, CW, { s: 7 });

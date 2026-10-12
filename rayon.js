@@ -29,8 +29,9 @@ export function rayonSvg(data, years, opts){
   const out = [];
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${FONT}">`);
   // titre
-  const typeLbl = opts.type === 'Maison' ? 'maisons' : "d'appartements";
-  out.push(`<text x="${0.01 * W}" y="${(1 - 0.965) * H + 6}" font-size="16.7" fill="${INK}">${esc(`Ventes ${typeLbl} à moins de ${fmtN(opts.rayon)} m du ${opts.titre} : prix au m² (DVF, ${years[0]} à ${years[years.length - 1]})`)}</text>`);
+  const typeLbl = (opts.type === 'Maison' ? 'de maisons' : "d'appartements") + (opts.typo ? ` ${opts.typo.id} (${opts.typo.surfMin}–${opts.typo.surfMax} m²)` : '');
+  const titre = `Ventes ${typeLbl} à moins de ${fmtN(opts.rayon)} m du ${opts.titre} : prix au m² (DVF, ${years[0]} à ${years[years.length - 1]})`;
+  out.push(`<text x="${0.01 * W}" y="${(1 - 0.965) * H + 6}" font-size="${titre.length > 95 ? 14.5 : 16.7}" fill="${INK}">${esc(titre)}</text>`);
   // grille + axe Y
   const pas = pasAxe(hi - lo); const y0 = Math.ceil(lo / pas) * pas;
   for (let v = y0; v <= hi; v += pas) {
@@ -54,12 +55,12 @@ export function rayonSvg(data, years, opts){
     // (constaté sur le PNG du 13 rue de Penthièvre : « 12 199 » barré par la ligne de sortie à 12 600)
     let yLab = s.median + 120; const bande = (hi - lo) * 17 / (bottom - top);
     for (const v of [opts.acq, opts.libre, opts.occupe]) if (v > 0 && v > yLab - bande * 0.3 && v < yLab + bande) yLab = v + bande * 0.35;
-    out.push(`<text x="${x}" y="${Y(yLab) - 3}" text-anchor="middle" font-size="${years.length <= 8 ? 15.3 : 11.5}" font-weight="700" fill="${INK}">${esc(fmtN(s.median))}</text>`);
+    out.push(`<text x="${x}" y="${Y(yLab) - 3}" text-anchor="middle" font-size="${years.length <= 6 ? 15.3 : years.length <= 10 ? 12.5 : 11}" font-weight="700" fill="${INK}">${esc(fmtN(s.median))}</text>`);
     const xw = x + slot * 0.34, cap = slot * 0.03;
     out.push(`<line x1="${xw}" x2="${xw}" y1="${Y(s.p10)}" y2="${Y(s.p90)}" stroke="${GREY}" stroke-width="1.8"/>`);
     for (const v of [s.p10, s.p90]) {
       out.push(`<line x1="${xw - cap}" x2="${xw + cap}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GREY}" stroke-width="1.8"/>`);
-      if (years.length <= 8) out.push(`<text x="${x + slot * 0.4}" y="${Y(v) + 4}" font-size="11.1" fill="${MUTED}">${esc(fmtN(v))}</text>`);   // > 8 ans : étiquettes de déciles illisibles, moustaches seules
+      if (years.length <= 10) out.push(`<text x="${x + slot * 0.4}" y="${Y(v) + 4}" font-size="${years.length > 6 ? 9.6 : 11.1}" fill="${MUTED}">${esc(fmtN(v))}</text>`);   // > 10 ans : étiquettes de déciles illisibles, moustaches seules
     }
   });
   // légende (deux colonnes au-dessus du graphique, comme loc='lower center' / bbox 1.02 / ncol=2)
@@ -77,7 +78,7 @@ export function rayonSvg(data, years, opts){
   });
   // source
   const last = ys.length ? ys[ys.length - 1] : null;
-  const src = `Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}, rayon de ${fmtN(opts.rayon)} m ; ${fmtN(data.nTotal)} ventes${last ? ` dont ${fmtN(st[last].n)} en ${last}` : ''}.`;
+  const src = `Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}${opts.typo ? ` de ${opts.typo.surfMin} à ${opts.typo.surfMax} m²` : ''}, rayon de ${fmtN(opts.rayon)} m ; ${fmtN(data.nTotal)} ventes${last ? ` dont ${fmtN(st[last].n)} en ${last}` : ''}.`;
   out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 2}" font-size="11.1" fill="${MUTED}">${esc(src)}</text>`);
   out.push('</svg>');
   return out.join('');

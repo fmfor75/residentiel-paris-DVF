@@ -10,7 +10,7 @@ Vincennes) alimentée par les données DVF de la DGFiP, servie par GitHub Pages,
 index.html                    ← dashboard (écran de code → déchiffrement local → étude / carte), infobulles « i », mobile
 engine.js                     ← moteur de calcul exécuté dans le navigateur (mêmes règles que le pipeline Python)
 pdf.js                        ← export PDF de l'étude (jsPDF, chargé à la demande) ; assets/inter-pdf.js = police Inter embarquée
-rayon.js                      ← visuel « marché autour de l'immeuble » (SVG écran + PNG 200 dpi pour les présentations)
+rayon.js                      ← visuel « marché autour de l'immeuble » (SVG écran + PNG 200 dpi pour les présentations, niveau rayon)
 assets/logo-jadero.png        ← logo (page de connexion, PDF)
 data/enc/meta.bin             ← méta, référentiels (secteurs, zones, quartiers, typologies par défaut) — chiffré
 data/enc/sales.bin            ← toutes les ventes retenues, 14 octets par vente avec coordonnées (format DVS2) — chiffré
@@ -76,18 +76,23 @@ IRS, IPCH) et INSEE BDM sans jeton (indice Paris 010567013, loyers 010600352, lo
 série en échec est conservée et marquée `stale`, un dernier point ancien est marqué `retard` (l'IPCH base 2015 s'arrête à
 déc. 2025 : changement de base). Tests : `python -m unittest tests.test_macro`.
 
-**Proximité (lot 10).** Onglet disponible dès qu'une adresse est localisée (« Analyser le voisinage ») : ventes à moins de
-300 m, 500 m ou d'une distance libre (à vol d'oiseau depuis le point géocodé), médiane et 1er / 9e déciles par année (une
-année sous 5 ventes n'est pas tracée), prix de comparaison facultatifs (acquisition HD, sortie libre, sortie occupé saisie
-ou déduite par décote), couverture du disque par les communes couvertes, cercle sur la carte. Le visuel reprend celui du
-script `outils_marche_dvf.py` de Jadero (palette du deck, 8,38 × 5,11 pouces) ; un seul dessin SVG (`rayon.js`) sert
-l'écran, le PNG à 200 dpi à fond transparent et le SVG ; une page vectorielle équivalente entre dans le PDF. Les ventes
-sont celles de la plateforme (règles v13 : Carrez si cohérente, bornes fixes), pas celles du script (surface bâtie,
-bornes relatives) : sur le 13 rue de Penthièvre, 256 ventes à 300 m en 2021–2025 contre 257 pour le script, 50 en 2025
-dans les deux cas, médianes à ±3 %. Pour cela `sales.bin` est passé au format **DVS2** (14 octets par vente : longitude et
-latitude quantifiées sur deux octets par rapport à l'emprise, pas ≈ 0,3 m ; DVS1 reste lisible). Fonctions `selectRayon`,
-`statsRayon`, `couvertureRayon` dans engine.js, testées par `node tests/test_rayon.mjs` sur données réelles ; le test du
-pipeline vérifie que chaque coordonnée relue retombe dans le polygone de son quartier. Hash `rayon=r:y0-y1:acq:libre:occupe:decote`.
+**Rayon autour d'une adresse (lot 10).** Dès qu'une adresse est localisée, la fiche propose « Étudier à 300 m » / « à 500 m »
+et le panneau un onglet « Rayon » (200, 300, 500, 750, 1 000 m ou rayon libre) : le rayon est un niveau d'étude comme le
+quartier (`niveau=rayon&id=300`), toute l'étude se calcule sur les ventes à moins de cette distance, à vol d'oiseau depuis le
+point géocodé — chiffres clés, typologies avec les bornes du panneau, tableau annuel — et le disque apparaît sur la carte et
+sur la couverture du PDF ; le fil d'Ariane indique la part du disque couverte par les communes de la plateforme. Au bas de
+l'étude, la carte « Marché autour de l'immeuble » reprend le visuel du script `outils_marche_dvf.py` de Jadero (médiane et
+1er / 9e déciles par année, lignes d'acquisition, de sortie libre et de sortie occupé saisie ou déduite par décote ; palette
+du deck, 8,38 × 5,11 pouces) avec ses paramètres : historique 2 / 5 / 10 ans, surfaces (toutes ou une typologie du panneau),
+case « Intégrer le visuel au rapport PDF » ; un seul dessin SVG (`rayon.js`) sert l'écran, le PNG à 200 dpi à fond
+transparent et le SVG ; une page vectorielle équivalente entre dans le PDF quand la case est cochée. Hash
+`rprix=acq:libre:occupe:decote:hist:typo:pdf`. Les ventes sont celles de la plateforme (règles v13 : Carrez si cohérente,
+bornes fixes), pas celles du script (surface bâtie, bornes relatives) : sur le 13 rue de Penthièvre, 256 ventes à 300 m en
+2021–2025 contre 257 pour le script, 50 en 2025 dans les deux cas, médianes à ±3 %. Pour cela `sales.bin` est passé au
+format **DVS2** (14 octets par vente : longitude et latitude quantifiées sur deux octets par rapport à l'emprise, pas
+≈ 0,3 m ; DVS1 reste lisible). Fonctions `selectRayon`, `statsRayon`, `couvertureRayon` dans engine.js, testées par
+`node tests/test_rayon.mjs` sur données réelles ; le test du pipeline vérifie que chaque coordonnée relue retombe dans le
+polygone de son quartier.
 
 **Communes (lot 9).** Le périmètre est porté par `data/geo/referentiel.json` (`communes` : nom, préfixe d'identifiant,
 quartiers) : `process_dvf.py` en déduit les départements à télécharger (75, 92, 93, 94) et les communes retenues, et le
