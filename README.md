@@ -83,9 +83,12 @@ point géocodé — chiffres clés, typologies avec les bornes du panneau, table
 sur la couverture du PDF ; le fil d'Ariane indique la part du disque couverte par les communes de la plateforme. Au bas de
 l'étude, la carte « Marché autour de l'immeuble » reprend le visuel du script `outils_marche_dvf.py` de Jadero (médiane et
 1er / 9e déciles par année, lignes d'acquisition, de sortie libre et de sortie occupé saisie ou déduite par décote ; palette
-du deck, 8,38 × 5,11 pouces) avec ses paramètres : historique 2 / 5 / 10 ans, surfaces (toutes ou une typologie du panneau),
-case « Intégrer le visuel au rapport PDF » ; un seul dessin SVG (`rayon.js`) sert l'écran, le PNG à 200 dpi à fond
-transparent et le SVG ; une page vectorielle équivalente entre dans le PDF quand la case est cochée. Hash
+du deck, 8,38 × 5,11 pouces) avec ses paramètres : historique 2 / 5 / 10 ans, surfaces (toutes, ou une ou plusieurs typologies du panneau cochées —
+une série par typologie, barres groupées, bornes modifiables dans le panneau), case « Intégrer le visuel au rapport
+PDF » ; un seul dessin SVG (`rayon.js`) sert l'écran, le PNG à 200 dpi à fond transparent, le SVG et la page du PDF (qui
+embarque la même image). Les étiquettes de déciles sont au-dessus et en dessous des moustaches, l'axe est en €/m², une
+ligne de lecture explique médiane et déciles sous le graphique ; la carte ne re-rend que le visuel et le tableau quand un
+paramètre change (les champs de saisie gardent le focus). Hash
 `rprix=acq:libre:occupe:decote:hist:typo:pdf`. Les ventes sont celles de la plateforme (règles v13 : Carrez si cohérente,
 bornes fixes), pas celles du script (surface bâtie, bornes relatives) : sur le 13 rue de Penthièvre, 256 ventes à 300 m en
 2021–2025 contre 257 pour le script, 50 en 2025 dans les deux cas, médianes à ±3 %. Pour cela `sales.bin` est passé au

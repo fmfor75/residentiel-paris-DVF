@@ -115,4 +115,7 @@ jobs:
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
           git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"
+          # Un push concurrent pendant le run (lot 10b poussé pendant le run du 12/10) faisait rejeter le push du bot et perdre
+          # le run entier : on rebase sur l'état courant de main avant de pousser (les fichiers du bot n'y sont modifiés que par lui).
+          git pull --rebase origin main
           git push

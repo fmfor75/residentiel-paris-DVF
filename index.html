@@ -163,6 +163,7 @@ input{font-family:inherit;color:inherit}
 .ib:hover,.ib.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .kpi .l,.evo .l{display:flex;align-items:center;gap:0}.evo .l{justify-content:center}
 th .ib{margin-left:4px;width:13px;height:13px;font-size:8.5px}
+.typo-checks{display:inline-flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.typo-checks label{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;font-weight:500;white-space:nowrap}.typo-checks small{color:var(--text4);font-weight:400}.typo-checks .hint{flex-basis:100%}
 .rayon-svg{width:100%;max-width:900px;margin:0 auto}.rayon-svg svg{width:100%;height:auto;display:block}
 #tipbox{position:fixed;z-index:9999;max-width:300px;background:rgba(11,18,32,.94);color:#fff;border-radius:12px;padding:11px 13px;font-size:12px;line-height:1.55;box-shadow:0 24px 60px -16px rgba(15,23,42,.7),0 0 0 1px rgba(255,255,255,.08) inset;backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s}
 #tipbox.show{opacity:1;transform:none}#tipbox b{font-weight:600;display:block;margin-bottom:3px;color:#fff}#tipbox .f{color:rgba(255,255,255,.62);font-family:var(--mono);font-size:10.5px;margin-top:6px}
@@ -1008,50 +1009,61 @@ function setStatus(t, txt){ const p = $('statusPill'); p.className = 'pill' + (t
 // ═══════════════════════════════════════════════════════════════════════════════
 const RPRIX_DEFAUT = () => ({acq: 0, libre: 0, occupe: 0, decote: 20, hist: 5, typo: '', pdf: true});
 // Visuel « marché autour de l'immeuble » : années = historique choisi (2 / 5 / 10 ans) jusqu'à la dernière année disponible,
-// surfaces = toutes ou une typologie du panneau (bornes du moment), ventes du rayon de l'étude (même sélection que les chiffres clés)
+// surfaces = toutes, ou une ou plusieurs typologies du panneau (bornes du moment, une série par typologie — lot 10c), ventes du
+// rayon de l'étude (même sélection que les chiffres clés)
 function computeRayon(item, idx){
   if (!item || S.niveau !== 'rayon' || !LAST_ADDR?.props) return null; if (!S.rprix) S.rprix = RPRIX_DEFAUT();
   const R = S.rprix; const years = []; for (let y = META.meta.last_year - R.hist + 1; y <= META.meta.last_year; y++) years.push(y);
-  const t0 = performance.now(); const typo = R.typo ? S.typos.find(t => t.id === R.typo && t.surfMax > t.surfMin) : null;
-  const sel = typo ? idx.filter(i => SALES.surf[i] >= typo.surfMin && SALES.surf[i] < typo.surfMax) : idx;
-  const st = E.statsRayon(SALES, sel, {years, minN: 5}); const couv = E.couvertureRayon(LAST_ADDR.lon, LAST_ADDR.lat, item.r, quartierAt);
+  const t0 = performance.now();
+  const ids = (R.typo || '').split(',').filter(Boolean); const typos = ids.map(id => S.typos.find(t => t.id === id && t.surfMax > t.surfMin)).filter(Boolean);
+  const series = (typos.length ? typos : [null]).map(t => { const sel = t ? idx.filter(i => SALES.surf[i] >= t.surfMin && SALES.surf[i] < t.surfMax) : idx;
+    return {typo: t ? {id: t.id, surfMin: t.surfMin, surfMax: t.surfMax} : null, st: E.statsRayon(SALES, sel, {years, minN: 5}), n: sel.length}; });
+  const couv = E.couvertureRayon(LAST_ADDR.lon, LAST_ADDR.lat, item.r, quartierAt);
   const occupe = R.occupe > 0 ? R.occupe : (R.libre > 0 && R.decote > 0 ? Math.round(R.libre * (1 - R.decote / 100)) : 0);
-  const opts = {rayon: item.r, titre: rayonTitre(), acq: R.acq, libre: R.libre, occupe, decote: R.occupe > 0 ? 0 : R.decote, type: S.type, minN: 5, typo: typo ? {id: typo.id, surfMin: typo.surfMin, surfMax: typo.surfMax} : null};
-  return {years, idx: sel, st, couv, opts, svg: RY.rayonSvg(st, years, opts), ms: performance.now() - t0, nTous: sel.length, pdf: R.pdf};
+  const opts = {rayon: item.r, titre: rayonTitre(), acq: R.acq, libre: R.libre, occupe, decote: R.occupe > 0 ? 0 : R.decote, type: S.type, minN: 5};
+  return {years, series, couv, opts, svg: RY.rayonSvg(series, years, opts), ms: performance.now() - t0, pdf: R.pdf};
 }
 let lastRayon = null;
+// Partie « vivante » de la carte (visuel, note, tableau) : re-rendue seule quand un paramètre change, pour ne jamais toucher aux
+// champs de saisie — le re-rendu de toute la carte faisait perdre le curseur au premier chiffre tapé (retour de Franck du 13/10)
+function rayonLive(d){
+  const multi = d.series.length > 1;
+  const rows = d.series.flatMap(se => d.years.map(y => { const s = se.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td>${multi ? `<td data-l="Surfaces">${esc(RY.serieLabel(se))}</td>` : ''}<td data-l="Ventes">${s ? s.n : `<span class="warn">moins de 5 ventes</span>`}</td><td data-l="1er décile">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="9e décile">${s ? fmt0(s.p90) : '—'}</td></tr>`; })).join('');
+  return `<div class="rayon-svg" id="rayonSvg" style="margin-top:14px">${d.svg}</div>
+      <div class="hint" style="margin-top:8px">Visuel au format du deck Jadero (8,38 × 5,11 pouces, 200 dpi, fond transparent) : le PNG se glisse directement dans une présentation. ${multi ? `Séries : ${d.series.map(RY.serieLabel).map(esc).join(' · ')} — bornes modifiables dans le panneau Typologies. ` : d.series[0].typo ? `Surfaces ${RY.serieLabel(d.series[0])}. ` : ''}${d.couv.couverte < .999 ? `<span class="warn">${Math.round(d.couv.couverte*100)} % du disque dans les communes couvertes.</span>` : ''}</div>
+      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th>${multi ? '<th>Surfaces</th>' : ''}<th>Ventes</th><th>1er décile${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>9e décile${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
 function rayonCard(item, idx){
   if (!SALES.lon) return `<div class="card glass"><div class="empty"><h3>Coordonnées absentes</h3><p>Les ventes servies n'ont pas encore de coordonnées (format DVS1) : l'analyse par rayon sera disponible après le prochain run de mise à jour.</p></div></div>`;
-  const d = computeRayon(item, idx); lastRayon = d; const R = S.rprix;
+  const d = computeRayon(item, idx); lastRayon = d; const R = S.rprix; const chosen = (R.typo || '').split(',').filter(Boolean);
   const num = (k, v, ph, step=1) => `<input class="vi" type="number" min="0" step="${step}" value="${v||''}" placeholder="${ph}" data-rk="${k}" aria-label="${ph}" style="width:96px">`;
   const typos = S.typos.filter(t => t.surfMax > t.surfMin);
-  const rows = d.years.map(y => { const s = d.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td><td data-l="Ventes">${s ? s.n : `<span class="warn">moins de 5 ventes</span>`}</td><td data-l="1er décile">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="9e décile">${s ? fmt0(s.p90) : '—'}</td></tr>`; }).join('');
   return `
   <div class="card glass" id="rayonCard"><div class="card-h"><div class="card-t"><span class="badge">Présentation</span>Marché autour de l'immeuble${ib('rayon_med')}</div><span class="card-sub"><button class="btn btn-primary btn-sm" type="button" id="btnRayonPng" style="width:auto">Télécharger PNG (présentation)</button> <button class="btn btn-ghost btn-sm" type="button" id="btnRayonSvg" style="width:auto">SVG</button></span></div>
     <div class="card-b" style="padding-top:12px">
       <div class="loy-ctl"><span><span class="lbl">Historique</span></span><div class="seg seg-3" id="segHist">${[2,5,10].map(hh=>`<button type="button" data-v="${hh}" class="${R.hist===hh?'on':''}">${hh} ans</button>`).join('')}</div>
-        <span><span class="lbl">Surfaces</span><select data-rk="typo" aria-label="Surfaces"><option value="" ${R.typo?'':'selected'}>Toutes</option>${typos.map(t=>`<option value="${t.id}" ${R.typo===t.id?'selected':''}>${t.id} · ${t.surfMin}–${t.surfMax} m²</option>`).join('')}</select></span>
+        <span><span class="lbl">Surfaces</span><span class="typo-checks">${typos.map(t=>`<label><input type="checkbox" data-rt="${t.id}" ${chosen.includes(t.id)?'checked':''}> ${t.id} <small>${t.surfMin}–${t.surfMax} m²</small></label>`).join('')}<small class="hint">aucune case = toutes surfaces · bornes dans le panneau Typologies</small></span></span>
         <label class="sw-row" style="gap:8px;margin:0"><input type="checkbox" data-rk="pdf" ${R.pdf?'checked':''}> <span>Intégrer le visuel au rapport PDF</span></label></div>
       <div class="loy-ctl" style="margin-top:10px"><span><span class="lbl">Acquisition €/m² HD${ib('rayon_prix')}</span>${num('acq', R.acq, 'ex. 8 650', 10)}</span>
         <span><span class="lbl">Sortie libre €/m² HD</span>${num('libre', R.libre, 'ex. 12 600', 10)}</span>
         <span><span class="lbl">Sortie occupé €/m² HD</span>${num('occupe', R.occupe, 'ou décote', 10)}</span>
         <span><span class="lbl">Décote occupé %</span>${num('decote', R.decote, '20', 1)}</span></div>
-      <div class="rayon-svg" id="rayonSvg" style="margin-top:14px">${d.svg}</div>
-      <div class="hint" style="margin-top:8px">Visuel au format du deck Jadero (8,38 × 5,11 pouces, 200 dpi, fond transparent) : le PNG se glisse directement dans une présentation. ${d.opts.typo ? `Surfaces ${d.opts.typo.id} (${d.opts.typo.surfMin}–${d.opts.typo.surfMax} m²). ` : ''}${d.couv.couverte < .999 ? `<span class="warn">${Math.round(d.couv.couverte*100)} % du disque dans les communes couvertes.</span>` : ''}</div>
-      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes</th><th>1er décile${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>9e décile${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div id="rayonLive">${rayonLive(d)}</div>
       <div class="method"><b>Méthode.</b> ${esc(HELP.rayon_med[1])} ${esc(HELP.rayon_dec[1])} ${esc(HELP.rayon_prix[1])}</div></div></div>`;
 }
-function refreshRayonCard(){ const old = $('rayonCard'); if (!old || !lastEtude) return; const focus = document.activeElement?.dataset?.rk ? {k: document.activeElement.dataset.rk, s: document.activeElement.selectionStart} : null;
+function refreshRayonLive(){ const live = $('rayonLive'); if (!live || !lastEtude) return;
   const item = findItem('rayon', S.id); const idx = E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0});
-  old.outerHTML = rayonCard(item, idx); if (focus) { const el = $('etude').querySelector(`[data-rk="${focus.k}"]`); if (el) { el.focus(); try { el.setSelectionRange(focus.s, focus.s); } catch(_){} } } }
+  const d = computeRayon(item, idx); lastRayon = d; live.innerHTML = rayonLive(d); }
 let rayonTimer = null;
-$('etude').addEventListener('input', e => { const el = e.target; const k = el.dataset.rk; if (!k || !S.rprix) return;
+$('etude').addEventListener('input', e => { const el = e.target; if (!S.rprix) return;
+  if (el.dataset.rt) { S.rprix.typo = [...$('etude').querySelectorAll('input[data-rt]:checked')].map(c => c.dataset.rt).join(','); writeHash(); refreshRayonLive(); return; }
+  const k = el.dataset.rk; if (!k) return;
   if (k === 'pdf') { S.rprix.pdf = el.checked; writeHash(); return; }
-  if (k === 'typo') { S.rprix.typo = el.value; writeHash(); refreshRayonCard(); return; }
   const v = el.value === '' ? 0 : +el.value; if (isNaN(v)) return; S.rprix[k] = Math.max(0, v);
-  clearTimeout(rayonTimer); rayonTimer = setTimeout(() => { writeHash(); refreshRayonCard(); }, 350); });
+  clearTimeout(rayonTimer); rayonTimer = setTimeout(() => { writeHash(); refreshRayonLive(); }, 350); });
+// Bornes des typologies modifiées dans le panneau : le visuel suit (mêmes bornes que les sections de l'étude)
 $('etude').addEventListener('click', async e => {
-  const b = e.target.closest('#segHist button'); if (b && S.rprix) { S.rprix.hist = +b.dataset.v; writeHash(); refreshRayonCard(); return; }
+  const b = e.target.closest('#segHist button'); if (b && S.rprix) { S.rprix.hist = +b.dataset.v; b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); writeHash(); refreshRayonLive(); return; }
   const png = e.target.closest('#btnRayonPng'), svg = e.target.closest('#btnRayonSvg'); if (!png && !svg || !lastRayon) return;
   const base = `Jadero_Marche_${lastRayon.opts.titre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]+/g,'_')}_${lastRayon.opts.rayon}m_${lastRayon.years[0]}-${lastRayon.years[lastRayon.years.length-1]}`;
   try {
@@ -1168,6 +1180,12 @@ async function valoPourPdf(){
   if (!LAST_ADDR?.props || !S.valo) return null; await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
   return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === PARIS, src: LAST_ADDR.props.commune === PARIS ? LOYERS.paris : LOYERS.carte} : null};
 }
+async function rayonPourPdf(item){   // visuel du deck pour la page du PDF : la même image PNG que le téléchargement (un seul dessin)
+  if (S.niveau !== 'rayon' || !SALES.lon || !(S.rprix?.pdf ?? true)) return null;
+  const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0})); if (!d) return null;
+  try { d.png = await RY.svgToPngDataUrl(d.svg); } catch(ex) { d.png = null; d.pngErreur = ex.message; }
+  return d;
+}
 async function perspPourPdf(item){   // scénarios avec les hypothèses courantes (ou par défaut), pour la page Perspectives du PDF
   await ensureMacro(); if (MACRO_ERR || !item) return null;
   const tx = lastOf(MACRO.series.taux_credit.obs); if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v*100)/100;
@@ -1184,7 +1202,7 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: (S.niveau === 'rayon' && SALES.lon && (S.rprix?.pdf ?? true)) ? computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0})) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
+      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: await rayonPourPdf(item), rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
