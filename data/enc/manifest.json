@@ -5,14 +5,14 @@
   "hash": "SHA-256",
   "iterations": 200000
  },
- "generated_at": "2026-10-12T19:30:59.028498Z",
+ "generated_at": "2026-10-13T17:54:01.700976Z",
  "periode": "2014–2025",
  "files": {
   "meta": {
    "file": "meta.bin",
    "bytes": 23580,
    "plain_bytes": 124146,
-   "sha256": "0bfb4cd98a67f8c2"
+   "sha256": "8a05bca2a5a50101"
   },
   "sales": {
    "file": "sales.bin",
