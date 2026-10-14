@@ -43,6 +43,8 @@ COMMUNES = {"92012": ("Boulogne-Billancourt", 48.8371, 2.2424, 0.012, 0.015), "9
             "92009": ("Bois-Colombes", 48.9148, 2.2686, 0.008, 0.008), "92062": ("Puteaux", 48.882, 2.238, 0.009, 0.011),
             "93070": ("Saint-Ouen-sur-Seine", 48.9115, 2.3324, 0.008, 0.013), "94068": ("Saint-Maur-des-Fossés", 48.8003, 2.4913, 0.011, 0.022),
             "94067": ("Saint-Mandé", 48.8417, 2.4193, 0.005, 0.005), "94080": ("Vincennes", 48.847, 2.4388, 0.004, 0.014),
+            "92051": ("Neuilly-sur-Seine", 48.8859, 2.2656, 0.009, 0.014), "92040": ("Issy-les-Moulineaux", 48.8242, 2.2621, 0.007, 0.019),
+            "92025": ("Colombes", 48.9214, 2.2475, 0.011, 0.019), "92035": ("La Garenne-Colombes", 48.9070, 2.2433, 0.005, 0.010),
             "92072": ("Sèvres (hors périmètre)", 48.8238, 2.2096, 0.005, 0.005)}
 _GEO = None
 def point_dans_commune(code, rng, centre=None):
@@ -137,7 +139,7 @@ def write_gz(path, rows):
     with gzip.open(path, "wt", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=HEADER); w.writeheader(); w.writerows(rows)
 
-def build(root, variant="normal", n75=600, n92=500, n93=500, n94=500, seed=1):
+def build(root, variant="normal", n75=600, n92=900, n93=500, n94=500, seed=1):
     """Construit l'arborescence de sources dans `root`.
     variant : 'normal' | 'annee_creuse' (2018 quasi vide) | 'partiel_2019' (2019 seulement dans un millésime d'octobre 2019)."""
     rng = random.Random(seed); attendus = {}

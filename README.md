@@ -1,8 +1,9 @@
 # Data Marché Résidentiel · DVF
 
-Plateforme d'étude du marché résidentiel (Paris et dix communes limitrophes : Boulogne-Billancourt, Clichy,
+Plateforme d'étude du marché résidentiel (Paris et quatorze communes limitrophes : Boulogne-Billancourt, Clichy,
 Levallois-Perret, Asnières-sur-Seine, Bois-Colombes, Puteaux, Saint-Ouen-sur-Seine, Saint-Maur-des-Fossés, Saint-Mandé,
-Vincennes) alimentée par les données DVF de la DGFiP, servie par GitHub Pages, protégée par un code d'accès.
+Vincennes, et depuis le lot 11 Neuilly-sur-Seine, Issy-les-Moulineaux, Colombes, La Garenne-Colombes) alimentée par les
+données DVF de la DGFiP, servie par GitHub Pages, protégée par un code d'accès.
 
 ## Architecture
 
@@ -104,7 +105,9 @@ dashboard n'a plus aucun nom de commune en dur. Hors Paris, le niveau au-dessus 
 sont redirigées. Les quartiers hors Paris sont des IRIS INSEE regroupés selon une méthode choisie par commune dans
 `build_geo.py` (relevé du 06/10/2026 : la convention de nommage varie) — par nom sans numéro (Boulogne 10, Levallois 13),
 par grand quartier INSEE (Clichy 6, Asnières 7, Puteaux 4, Saint-Maur 8, Vincennes 4), ou IRIS individuels quand rien ne
-les regroupe (Bois-Colombes 12, Saint-Mandé 9, Saint-Ouen 18) ; 171 quartiers au total (format binaire : 256 max). Les
+les regroupe (Bois-Colombes 12, Saint-Mandé 9, Saint-Ouen 18). Lot 11 (14/10/2026) : Neuilly 5 (nom), Issy 7 (gq),
+Colombes 4 (gq), La Garenne-Colombes 11 (iris) ; 198 quartiers au total (format binaire : 256 max — une vague de plus
+tient, pas deux : au-delà, passer l'index de quartier sur deux octets). Les
 ventes sans coordonnées sont comptées par commune (`meta.geo.sans_quartier_commune` ; Bois-Colombes ≈ 21 % en 2024).
 Le cache porte le périmètre de communes de chaque entrée : élargir le périmètre force le retraitement. Les millésimes
 2014–2020 n'existent qu'en fichier national : il est lu une fois pour tous les départements. Saint-Ouen est soumise à
@@ -135,7 +138,7 @@ Bornes : 1 000–40 000 €/m², 9–400 m². Chaque exclusion est comptée (`me
 creuse, source partielle, rétention < 25 %, colonnes manquantes, > 2 % de ventes sans quartier. Les ventes sans
 quartier (hors polygones) ne sont comptées dans aucun niveau, pas même l'arrondissement.
 
-Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 91 quartiers IRIS (IGN) dans dix communes,
+Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 118 quartiers IRIS (IGN) dans quatorze communes,
 affectation par point-dans-polygone. Niveaux : arrondissements (celui du polygone, pas celui déclaré dans DVF) et
 communes entières, secteurs (listes de quartiers, Paris), zones officielles d'encadrement des loyers (Paris), quartiers.
 

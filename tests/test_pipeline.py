@@ -58,13 +58,13 @@ class Pipeline(unittest.TestCase):
         # Le doublon est retenu une fois ; le sans-géoloc est compté sans quartier
         self.assertGreaterEqual(c["surface_source:carrez"], att["surface_source:carrez_speciaux"])
         self.assertIn("6", d["secteurs"]); self.assertNotIn("B0", d["secteurs"])   # lot 9 : plus de pseudo-secteur Boulogne
-        # Géographie : 171 quartiers (80 Paris + 91 dans 10 communes), 14 zones, secteurs par polygones ; presque tout affecté
-        self.assertEqual(m["geo"]["quartiers"], 171)
+        # Géographie : 198 quartiers (80 Paris + 118 dans 14 communes), 14 zones, secteurs par polygones ; presque tout affecté
+        self.assertEqual(m["geo"]["quartiers"], 198)
         self.assertLess(sum(m["geo"]["sans_quartier"].values()), 0.02 * m["total_mutations"])
         self.assertEqual(len(d["zones"]), 14); self.assertGreaterEqual(len(d["quartiers"]), 100)
         self.assertEqual(set(d["secteurs"]), {str(i) for i in range(1, 15)})
         # Communes : les 10 hors Paris ont des statistiques, Sèvres (dans le CSV du 92) est ignorée, Paris n'y figure pas
-        self.assertEqual(set(d["communes"]), set(d["communes_ref"]) - {"75056"}); self.assertEqual(len(d["communes"]), 10)
+        self.assertEqual(set(d["communes"]), set(d["communes_ref"]) - {"75056"}); self.assertEqual(len(d["communes"]), 14)
         self.assertNotIn("92072", d["communes"]); self.assertEqual(d["communes_ref"]["93070"]["nom"], "Saint-Ouen-sur-Seine")
         self.assertEqual(d["communes_ref"]["92012"]["quartiers"], [f"B{i}" for i in range(1, 11)])
         self.assertTrue(all(d["quartiers_ref"][q]["secteur"] is None for q in d["communes_ref"]["92024"]["quartiers"]))

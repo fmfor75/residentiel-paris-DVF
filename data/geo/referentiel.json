@@ -236,6 +236,57 @@
     "VI3",
     "VI4"
    ]
+  },
+  "92051": {
+   "nom": "Neuilly-sur-Seine",
+   "prefix": "NE",
+   "quartiers": [
+    "NE1",
+    "NE2",
+    "NE3",
+    "NE4",
+    "NE5"
+   ]
+  },
+  "92040": {
+   "nom": "Issy-les-Moulineaux",
+   "prefix": "IS",
+   "quartiers": [
+    "IS1",
+    "IS2",
+    "IS3",
+    "IS4",
+    "IS5",
+    "IS6",
+    "IS7"
+   ]
+  },
+  "92025": {
+   "nom": "Colombes",
+   "prefix": "CO",
+   "quartiers": [
+    "CO1",
+    "CO2",
+    "CO3",
+    "CO4"
+   ]
+  },
+  "92035": {
+   "nom": "La Garenne-Colombes",
+   "prefix": "GC",
+   "quartiers": [
+    "GC1",
+    "GC2",
+    "GC3",
+    "GC4",
+    "GC5",
+    "GC6",
+    "GC7",
+    "GC8",
+    "GC9",
+    "GC10",
+    "GC11"
+   ]
   }
  },
  "zones": {
@@ -740,6 +791,34 @@
    "iris": 17,
    "methode": "gq",
    "quartiers": 4,
+   "source": "https://data.geopf.fr/wfs/ows"
+  },
+  "92051": {
+   "nom": "Neuilly-sur-Seine",
+   "iris": 26,
+   "methode": "nom",
+   "quartiers": 5,
+   "source": "https://data.geopf.fr/wfs/ows"
+  },
+  "92040": {
+   "nom": "Issy-les-Moulineaux",
+   "iris": 18,
+   "methode": "gq",
+   "quartiers": 7,
+   "source": "https://data.geopf.fr/wfs/ows"
+  },
+  "92025": {
+   "nom": "Colombes",
+   "iris": 33,
+   "methode": "gq",
+   "quartiers": 4,
+   "source": "https://data.geopf.fr/wfs/ows"
+  },
+  "92035": {
+   "nom": "La Garenne-Colombes",
+   "iris": 11,
+   "methode": "iris",
+   "quartiers": 11,
    "source": "https://data.geopf.fr/wfs/ows"
   }
  }

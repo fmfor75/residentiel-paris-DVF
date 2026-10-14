@@ -77,6 +77,12 @@ COMMUNES = {
     "94068": {"nom": "Saint-Maur-des-Fossés", "prefix": "SM", "methode": "gq"},
     "94067": {"nom": "Saint-Mandé", "prefix": "SD", "methode": "iris"},
     "94080": {"nom": "Vincennes", "prefix": "VI", "methode": "gq"},
+    # lot 11 (14/10/2026) : relevé IRIS — Neuilly 26 IRIS, 5 noms (« Parc de Neuilly 1 » à 11…) ; Issy 18 IRIS, 17 noms, 7 grands
+    # quartiers ; Colombes 33 IRIS, 33 noms composés, 4 grands quartiers ; La Garenne-Colombes 11 IRIS, un seul grand quartier
+    "92051": {"nom": "Neuilly-sur-Seine", "prefix": "NE", "methode": "nom"},
+    "92040": {"nom": "Issy-les-Moulineaux", "prefix": "IS", "methode": "gq"},
+    "92025": {"nom": "Colombes", "prefix": "CO", "methode": "gq"},
+    "92035": {"nom": "La Garenne-Colombes", "prefix": "GC", "methode": "iris"},
 }
 STEM = re.compile(r"\s+(\d+|[IVX]+)$")   # « Trapèze 3 », « Flachat II » → « Trapèze », « Flachat »
 
