@@ -121,6 +121,19 @@ typologies T1–T5 restent calculées sur les appartements seuls (une maison n'a
 trace une série « Appartements » (ou une par typologie cochée) et une série « Maisons » ; le PDF reprend les deux sections.
 Saint-Maur 2014–2025 : 9 882 appartements + 4 507 maisons = 14 389 ventes en « Tous » (test du 15/10/2026).
 
+**Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
+colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates
+(page 1), « 2024 » sur « 2025 » dans les graphiques de volume, des surfaces à point décimal, un « ← » disparu (absent de la
+police embarquée) et, dans le visuel du rayon, une bande vide sous le titre et des étiquettes recouvertes par les barres
+voisines. Causes fermées une fois pour tout le document : `st.text` calcule lui-même l'alignement des textes à lettres
+espacées (jsPDF l'ignore) et ajuste tout texte à son cadre (`fit` : espacement resserré, puis taille, puis « … » compté dans
+`st.coupes`) ; `axisLabels` n'écrit une étiquette d'axe que si elle ne touche pas la précédente ; `fmtSurf` (virgule) à l'écran
+et dans le PDF ; `rayonSvg` place la légende puis le graphique au plus juste, dessine les étiquettes après les barres et les
+écrit à la verticale quand elles sont plus larges que la barre. Gardes : `node tests/test_pdf_glyphs.mjs` (tout caractère de
+pdf.js et des définitions HELP existe dans la police ; dans le workflow) et `python3 tests/audit_pdf.py` (répétition de bout en
+bout sur six études types, mesure de chaque texte dans le PDF produit ; à lancer en local avant toute livraison qui touche au
+PDF : 64 défauts sur le rapport d'origine, 0 après).
+
 Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
 iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).
 

@@ -29,7 +29,19 @@ const venteDe = t => t === 'Maison' ? "d'une maison seule" : t === 'Tous' ? "d'u
 // opts : { rayon, titre, acq, libre, occupe, decote, type ('Appartement'|'Maison'), minN }
 export function rayonSvg(series, years, opts){
   const W = RAYON_W, H = RAYON_H, n = series.length, multi = n > 1;
-  const left = 0.118 * W, right = 0.955 * W, top = (1 - 0.72) * H, bottom = (1 - 0.135) * H;   // marges du script ; gauche élargie pour « 15 000 €/m² » (coupé à 0,085), bas relevé pour la ligne de lecture
+  // légende (deux colonnes au-dessus du graphique, comme loc='lower center' / bbox 1.02 / ncol=2) : calculée d'abord, car elle fixe
+  // le haut du graphique. Lot 14 : le haut était fixe (28 % de la hauteur, la place de quatre lignes de légende) — avec une seule
+  // ligne, 89 px vides sur 511 entre le titre et la légende (rapport du 15/10, mesuré par tests/audit_pdf.py).
+  const dash = `stroke-dasharray="8.3 5.6"`;   // (6, 4) en points matplotlib × 1,39
+  const items = multi ? series.map((se, k) => ['patch', SERIES_COLORS[k % SERIES_COLORS.length], `Médiane ${serieLabel(se)}`]) : [['patch', GREY2, 'Médiane']];
+  items.push(['line', GREY, '1er et 9e déciles', '']);
+  if (opts.acq > 0) items.push(['line', GREY, `Acquisition : logements à ${fmtN(opts.acq)} € / m² HD`, dash]);
+  if (opts.libre > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.libre)} € / m² HD libre (logements rénovés)`, dash, 2.8]);
+  if (opts.occupe > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.occupe)} € / m² HD occupé${opts.decote > 0 ? ` (décote ${Math.round(opts.decote)}%)` : ''}`, 'stroke-dasharray="2.1 4.2"', 2.2]);
+  const ncol = 2, nrow = Math.ceil(items.length / ncol), rowH = items.length > 6 ? 16 : 19, colW = (0.955 - 0.118) * W / ncol, fLeg = items.length > 6 ? 11 : 12.5;
+  const legTop = 38;   // sous le titre (ligne de base à 24 px)
+  // haut du graphique : sous la légende, avec la place d'une étiquette de 9e décile (≈ 16 px au-dessus du point le plus haut)
+  const left = 0.118 * W, right = 0.955 * W, top = Math.min((1 - 0.72) * H, legTop + nrow * rowH + 22), bottom = (1 - 0.135) * H;   // gauche élargie pour « 15 000 €/m² » (coupé à 0,085), bas relevé pour la ligne de lecture
   const vals = series.flatMap(s => years.filter(y => s.st.annees[y]).flatMap(y => [s.st.annees[y].p10, s.st.annees[y].p90]));
   let lo = Math.min(...vals, ...(opts.acq > 0 ? [opts.acq] : [])) - 1200, hi = Math.max(...vals, ...(opts.libre > 0 ? [opts.libre] : [])) + 500;
   if (!vals.length) { lo = 0; hi = 10000; }
@@ -37,8 +49,15 @@ export function rayonSvg(series, years, opts){
   const Y = v => bottom - (v - lo) / (hi - lo) * (bottom - top);
   const slot = (right - left) / years.length, X = i => left + slot * (i + 0.5);
   const nb = years.length * n;   // nombre de barres : pilote la taille des étiquettes
-  const fMed = nb <= 6 ? 15.3 : nb <= 10 ? 12.5 : nb <= 20 ? 10.5 : 9, fDec = nb <= 6 ? 11.1 : 9.6, decLabels = nb <= 20;
-  const out = [];
+  const fMed = nb <= 6 ? 15.3 : nb <= 10 ? 12.5 : nb <= 20 ? 10.5 : 9, fDec = nb <= 6 ? 11.1 : 9.6;
+  // largeur estimée d'un texte (la même fonction sert au PNG : pas de mesure DOM) — chiffres ≈ 0,56 em, 0,6 em en gras
+  const estW = (txt, f, bold) => [...String(txt)].reduce((a, c) => a + (/\d/.test(c) ? (bold ? 0.6 : 0.56) : /\s|\u202f|\u00a0/.test(c) ? 0.3 : 0.6), 0) * f;
+  const grp = slot * (multi ? 0.78 : 0.5), bw = grp / n;   // une série : barre à 50 % du créneau comme le script ; plusieurs : groupe à 78 %
+  // barres groupées trop étroites pour l'étiquette de médiane : étiquettes verticales, sans étiquettes de déciles (les chiffres
+  // sont dans le tableau) — en horizontal elles se chevauchaient et les barres voisines les recouvraient (lot 14, 3 typologies × 10 ans)
+  const medMax = Math.max(0, ...series.flatMap(se => years.filter(y => se.st.annees[y]).map(y => estW(fmtN(se.st.annees[y].median), fMed, true))));
+  const vertical = multi && medMax > bw * 0.95, decLabels = nb <= 20 && !vertical;
+  const out = [], barsOut = [], whiskOut = [], labOut = [];   // ordre de dessin : barres, moustaches, puis toutes les étiquettes (plus rien ne les recouvre)
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${FONT}">`);
   // titre
   const typoTxt = opts.type === 'Tous' ? '' : multi ? ` ${series.map(s => s.typo ? s.typo.id : 'toutes surfaces').join(' / ')}` : (series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : '');
@@ -52,44 +71,43 @@ export function rayonSvg(series, years, opts){
   }
   out.push(`<line x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}" stroke="${GREY2}" stroke-width="1.1"/>`);
   // lignes de référence (zorder 1 : sous les barres)
-  const dash = `stroke-dasharray="8.3 5.6"`;   // (6, 4) en points matplotlib × 1,39
   if (opts.acq > 0) out.push(`<line x1="${left}" x2="${right}" y1="${Y(opts.acq)}" y2="${Y(opts.acq)}" stroke="${GREY}" stroke-width="1.9" ${dash}/>`);
   if (opts.libre > 0) out.push(`<line x1="${left}" x2="${right}" y1="${Y(opts.libre)}" y2="${Y(opts.libre)}" stroke="${GREEN}" stroke-width="2.8" ${dash}/>`);
   if (opts.occupe > 0) out.push(`<line x1="${left}" x2="${right}" y1="${Y(opts.occupe)}" y2="${Y(opts.occupe)}" stroke="${GREEN}" stroke-width="2.2" stroke-dasharray="2.1 4.2"/>`);
   // barres, étiquettes, moustaches
   const bande = (hi - lo) * (fMed + 2) / (bottom - top);   // hauteur d'une étiquette en unités de prix
-  const grp = slot * (multi ? 0.78 : 0.5), bw = grp / n;   // une série : barre à 50 % du créneau comme le script ; plusieurs : groupe à 78 %
   years.forEach((y, i) => {
     const xc = X(i);
     out.push(`<text x="${xc}" y="${bottom + 20}" text-anchor="middle" font-size="15.3" fill="${GREY}">${y}</text>`);
     series.forEach((se, k) => {
       const s = se.st.annees[y]; const col = multi ? SERIES_COLORS[k % SERIES_COLORS.length] : GREY2;
       const xb = xc - grp / 2 + bw * (k + 0.5);   // centre de la barre
-      if (!s) { out.push(`<text x="${xb}" y="${bottom - 8}" text-anchor="middle" font-size="${multi ? 8.5 : 11.1}" fill="${MUTED}" transform="${multi ? `rotate(-90 ${xb} ${bottom - 8})` : ''}">${esc(multi ? '< 5 ventes' : `moins de ${opts.minN || 5} ventes`)}</text>`); return; }
-      out.push(`<rect x="${xb - bw * (multi ? 0.46 : 0.5)}" y="${Y(s.median)}" width="${bw * (multi ? 0.92 : 1)}" height="${Math.max(0, bottom - Y(s.median))}" fill="${col}"/>`);
+      // en groupé, texte vertical posé sur l'axe et montant (centré sur l'axe, sa moitié basse recouvrait l'année — lot 14)
+      if (!s) { barsOut.push(multi ? `<text x="${xb}" y="${bottom - 4}" dy="0.35em" text-anchor="start" font-size="8.5" fill="${MUTED}" transform="rotate(-90 ${xb} ${bottom - 4})">` : `<text x="${xb}" y="${bottom - 8}" text-anchor="middle" font-size="11.1" fill="${MUTED}">`); barsOut.push(`${esc(multi ? '< 5 ventes' : `moins de ${opts.minN || 5} ventes`)}</text>`); return; }
+      barsOut.push(`<rect x="${xb - bw * (multi ? 0.46 : 0.5)}" y="${Y(s.median)}" width="${bw * (multi ? 0.92 : 1)}" height="${Math.max(0, bottom - Y(s.median))}" fill="${col}"/>`);
       // moustache : à droite de la barre quand il n'y a qu'une série (comme le script), centrée sur la barre sinon
       const xw = multi ? xb : xc + slot * 0.34, cap = multi ? bw * 0.18 : slot * 0.03, wcol = multi && col === GREY ? '#1F2429' : GREY;
-      out.push(`<line x1="${xw}" x2="${xw}" y1="${Y(s.p10)}" y2="${Y(s.p90)}" stroke="${wcol}" stroke-width="1.8"/>`);
-      for (const v of [s.p10, s.p90]) out.push(`<line x1="${xw - cap}" x2="${xw + cap}" y1="${Y(v)}" y2="${Y(v)}" stroke="${wcol}" stroke-width="1.8"/>`);
+      whiskOut.push(`<line x1="${xw}" x2="${xw}" y1="${Y(s.p10)}" y2="${Y(s.p90)}" stroke="${wcol}" stroke-width="1.8"/>`);
+      for (const v of [s.p10, s.p90]) whiskOut.push(`<line x1="${xw - cap}" x2="${xw + cap}" y1="${Y(v)}" y2="${Y(v)}" stroke="${wcol}" stroke-width="1.8"/>`);
       // étiquettes de déciles au-dessus du 9e et en dessous du 1er (à droite, elles chevauchaient la barre voisine dès 6 ans — retour du 13/10)
       const halo = multi ? 'paint-order="stroke" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"' : '';   // en groupé, l'étiquette du 1er décile tombe sur la barre
-      if (decLabels) { out.push(`<text x="${xw}" y="${Y(s.p90) - 5}" text-anchor="middle" font-size="${fDec}" fill="${multi ? INK : MUTED}" ${halo}>${esc(fmtN(s.p90))}</text>`);
-        out.push(`<text x="${xw}" y="${Y(s.p10) + fDec + 3}" text-anchor="middle" font-size="${fDec}" fill="${multi ? INK : MUTED}" ${halo}>${esc(fmtN(s.p10))}</text>`); }
+      // une série : l'étiquette du 1er décile, sous la moustache, mordait sur le bord de la barre (1 à 3 px, rapport du 15/10) → décalée
+      // à droite de la barre, sauf si elle toucherait alors la barre suivante
+      let xd = xw;
+      if (!multi) { const half = estW(fmtN(s.p10), fDec) / 2, xr = xb + bw / 2 + half + 3; if (xr > xd && xr + half < xc + slot - bw / 2 - 2) xd = xr; }
+      if (decLabels) { labOut.push(`<text x="${xw}" y="${Y(s.p90) - 5}" text-anchor="middle" font-size="${fDec}" fill="${multi ? INK : MUTED}" ${halo}>${esc(fmtN(s.p90))}</text>`);
+        labOut.push(`<text x="${xd}" y="${Y(s.p10) + fDec + 3}" text-anchor="middle" font-size="${fDec}" fill="${multi ? INK : MUTED}" ${halo}>${esc(fmtN(s.p10))}</text>`); }
       // étiquette de médiane au-dessus de la barre ; si une ligne de référence (ou, en groupé, la moustache) traverse la bande du texte, halo blanc
       // et déplacement au-dessus de la ligne (constaté sur le PNG du 13 rue de Penthièvre : « 12 199 » barré par la ligne de sortie à 12 600)
       let yLab = s.median + bande * 0.35;
       if (!multi) for (const v of [opts.acq, opts.libre, opts.occupe]) if (v > 0 && v > yLab - bande * 0.3 && v < yLab + bande) yLab = v + bande * 0.35;
-      out.push(`<text x="${xb}" y="${Y(yLab) - 3}" text-anchor="middle" font-size="${fMed}" font-weight="700" fill="${INK}" ${multi ? 'paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"' : ''}>${esc(fmtN(s.median))}</text>`);
+      const haloM = multi ? 'paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round"' : '';
+      if (vertical) labOut.push(`<text x="${xb}" y="${Y(s.median) - 4}" dy="0.35em" text-anchor="start" transform="rotate(-90 ${xb} ${Y(s.median) - 4})" font-size="${fMed}" font-weight="700" fill="${INK}" ${haloM}>${esc(fmtN(s.median))}</text>`);
+      else labOut.push(`<text x="${xb}" y="${Y(yLab) - 3}" text-anchor="middle" font-size="${fMed}" font-weight="700" fill="${INK}" ${haloM}>${esc(fmtN(s.median))}</text>`);
     });
   });
-  // légende (deux colonnes au-dessus du graphique, comme loc='lower center' / bbox 1.02 / ncol=2)
-  const items = multi ? series.map((se, k) => ['patch', SERIES_COLORS[k % SERIES_COLORS.length], `Médiane ${serieLabel(se)}`]) : [['patch', GREY2, 'Médiane']];
-  items.push(['line', GREY, '1er et 9e déciles', '']);
-  if (opts.acq > 0) items.push(['line', GREY, `Acquisition : logements à ${fmtN(opts.acq)} € / m² HD`, dash]);
-  if (opts.libre > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.libre)} € / m² HD libre (logements rénovés)`, dash, 2.8]);
-  if (opts.occupe > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.occupe)} € / m² HD occupé${opts.decote > 0 ? ` (décote ${Math.round(opts.decote)}%)` : ''}`, 'stroke-dasharray="2.1 4.2"', 2.2]);
-  const ncol = 2, nrow = Math.ceil(items.length / ncol), rowH = items.length > 6 ? 16 : 19, colW = (right - left) / ncol, fLeg = items.length > 6 ? 11 : 12.5;
-  const legTop = top - 10 - nrow * rowH;
+  out.push(...barsOut, ...whiskOut, ...labOut);
+  // légende
   items.forEach((it, k) => {
     const col = Math.floor(k / nrow), row = k % nrow; const x = left + col * colW + 20, y = legTop + row * rowH + 10;
     if (it[0] === 'patch') out.push(`<rect x="${x}" y="${y - 6}" width="40" height="12" fill="${it[1]}"/>`);

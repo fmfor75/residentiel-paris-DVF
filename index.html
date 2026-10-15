@@ -457,7 +457,7 @@ const HELP = {
   yoy:     ['Médiane vs n−1', "Médiane de l'année rapportée à la médiane de l'année précédente.", 'méd(A) ÷ méd(A−1) − 1'],
   valo_ref:['Prix au m² retenu', "Percentile choisi par le curseur (P10 → P90) parmi les prix au m² des ventes d'appartements de référence, multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
   valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune hors Paris). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
-  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 ← 50 → P90'],
+  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 à P90 · défaut 50'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
   loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
   rayon_med:['Médiane dans le rayon', "Prix au m² médian des ventes situées à moins de la distance choisie (à vol d'oiseau, depuis le point géocodé de l'adresse ; DVF donne le centre de la parcelle vendue). Ventes de la plateforme : un logement par mutation, surface Carrez si cohérente sinon bâtie, 1 000–40 000 €/m², 9–400 m². Une année de moins de 5 ventes n'est pas tracée.", '€/m²'],
@@ -475,6 +475,8 @@ const HELP = {
 };
 const ib = k => `<button class="ib" type="button" data-help="${k}" aria-label="Méthode de calcul : ${esc(HELP[k][0])}" tabindex="0">i</button>`;
 const fmt0 = v => (v==null||isNaN(v)) ? '—' : Math.round(v).toLocaleString('fr-FR');
+// surfaces : une décimale, virgule française (« 159.5 m² » s'affichait à l'anglaise, vu sur le rapport du 15/10)
+const fmtSurf = v => (v==null||isNaN(v)) ? '—' : (Math.round(v*10)/10).toLocaleString('fr-FR');
 const fmtPct = v => v==null ? 'N/D' : `${v>0?'+':''}${v.toFixed(1).replace('.',',')} %`;
 const fmtDate = s => new Date(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -755,7 +757,7 @@ function sectionCard(title, badge, st, chartId){
   const w = windowOf(st);
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">${esc(badge)}</span>${esc(title)}</div><span class="card-sub">${w?w.count.toLocaleString('fr-FR')+' ventes · ':''}${esc(PERIODES[S.per])}${w?` · ${w.from} → ${w.to}`:''}</span></div>
     <div class="card-b">
-      ${w ? `<div class="kpis">${kpiBlock(w,'P90 · haut de marché','p90')}${kpiBlock(w,'Médiane','median','med')}${kpiBlock(w,'Moyenne','mean')}${kpiBlock(w,'P10 · bas de marché','p10')}<div class="kpi"><div class="l">Ventes${ib('count')}</div><div class="v">${fmt0(w.count)}</div><div class="u">surface méd. ${w.surf_median} m²</div></div></div>` : `<div class="empty" style="padding:16px"><p>Moins de 3 ventes sur cette période.</p></div>`}
+      ${w ? `<div class="kpis">${kpiBlock(w,'P90 · haut de marché','p90')}${kpiBlock(w,'Médiane','median','med')}${kpiBlock(w,'Moyenne','mean')}${kpiBlock(w,'P10 · bas de marché','p10')}<div class="kpi"><div class="l">Ventes${ib('count')}</div><div class="v">${fmt0(w.count)}</div><div class="u">surface méd. ${fmtSurf(w.surf_median)} m²</div></div></div>` : `<div class="empty" style="padding:16px"><p>Moins de 3 ventes sur cette période.</p></div>`}
       ${evoCells(st.by_year)}
       <div class="charts"><div class="chart"><div class="chart-t"><span>Prix au m² · ${esc(GRANS[S.gran])}${ib('band')}</span><span class="legend"><span><i></i>Médiane</span><span><i class="band"></i>P10 – P90</span></span></div><div id="${chartId}-band"></div></div>
       <div class="chart"><div class="chart-t"><span>Volume de ventes · ${esc(GRANS[S.gran])}${ib('vol')}</span><span class="legend"><span><i class="vol"></i>Ventes</span></span></div><div id="${chartId}-vol"></div></div></div>
@@ -774,7 +776,7 @@ function typoTable(et){
 function yearTable(st, nom){
   const by = st.by_year || {}; const years = Object.keys(by).sort();
   const rows = years.map((y,i)=>{ const v = by[y], prev = by[years[i-1]]; const e = prev ? (v.median/prev.median-1)*100 : null;
-    return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.mean)}</td><td>${v.surf_mean} m²</td><td class="${e>0?'up':e<0?'down':''}">${fmtPct(e)}</td></tr>`; }).join('');
+    return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.mean)}</td><td>${fmtSurf(v.surf_mean)} m²</td><td class="${e>0?'up':e<0?'down':''}">${fmtPct(e)}</td></tr>`; }).join('');
   const csv = ['annee;ventes;p10;q1;mediane;q3;p90;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.q3,v.p90,v.mean,v.surf_mean].join(';');})].join('\n');
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}</div><button class="btn btn-ghost btn-sm" type="button" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
     <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th><th>P10${ib('p10')}</th><th>Q1${ib('q')}</th><th>Médiane${ib('median')}</th><th>Q3${ib('q')}</th><th>P90${ib('p90')}</th><th>Moyenne${ib('mean')}</th><th>Surf. moy.${ib('surf')}</th><th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
@@ -1221,7 +1223,7 @@ async function exportPdf(){
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
       address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: await rayonPourPdf(item), rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
-      helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
+      helpers: {fmt0, fmtSurf, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
   } catch(ex) { console.error(ex); setStatus('err', `PDF impossible : ${ex.message}`); }

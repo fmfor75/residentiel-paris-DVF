@@ -67,8 +67,23 @@ async function renderMap(ctx, W, H){
 function mk(doc){
   const st = { doc, y: 0, page: 1 };
   st.font = (weight = 'normal', size = 9, color = C.text) => { doc.setFont('Inter', weight); doc.setFontSize(size); doc.setTextColor(...color); };
-  st.text = (str, x, y, o = {}) => { st.font(o.w, o.s, o.c); doc.text(String(str), x, y, { align: o.align || 'left', charSpace: o.ls || 0, maxWidth: o.maxWidth }); };
-  st.caps = (str, x, y, o = {}) => st.text(String(str).toUpperCase(), x, y, { s: o.s || 6.6, w: 'bold', c: o.c || C.grey, ls: o.ls ?? 0.5, align: o.align });
+  // Largeur réelle d'un texte, espacement des lettres compris (jsPDF l'ignore quand il aligne à droite ou au centre : en-têtes
+  // de colonnes décalés jusqu'à 22 pt de leurs chiffres et sortis de la marge — rapport du 15/10/2026, mesuré par tests/audit_pdf.py).
+  st.width = (str, size, weight = 'normal', ls = 0) => { st.font(weight, size); const s = String(str); return doc.getTextWidth(s) + ls * Math.max(0, s.length - 1); };
+  // o.fit (mm) : le texte doit tenir dans cette largeur — espacement des lettres resserré d'abord (jusqu'à 0,15 mm), puis taille
+  // réduite jusqu'à un plancher, puis coupe avec « … » ; chaque coupe est comptée (st.coupes, signalée en console) : un texte
+  // trop long ne déborde plus du cadre ni de la page.
+  st.coupes = [];
+  st.text = (str, x, y, o = {}) => {
+    let s = String(str), size = o.s || 9, ls = o.ls || 0; const wt = o.w || 'normal';
+    if (o.fit > 0 && !o.maxWidth) { const min = o.min || Math.max(4.6, size * 0.78);
+      while (ls > 0.15 && st.width(s, size, wt, ls) > o.fit) ls = Math.max(0.15, Math.round((ls - 0.05) * 100) / 100);
+      while (size > min && st.width(s, size, wt, ls) > o.fit) size = Math.max(min, Math.round((size - 0.2) * 100) / 100);
+      if (st.width(s, size, wt, ls) > o.fit) { st.coupes.push(s); while (s.length > 1 && st.width(s + '…', size, wt, ls) > o.fit) s = s.slice(0, -1); s = s.trimEnd() + '…'; } }
+    let al = o.align || 'left';
+    if (ls && al !== 'left' && !o.maxWidth) { const w = st.width(s, size, wt, ls); x = al === 'right' ? x - w : x - w / 2; al = 'left'; }
+    st.font(wt, size, o.c); doc.text(s, x, y, { align: al, charSpace: ls, maxWidth: o.maxWidth }); return size; };
+  st.caps = (str, x, y, o = {}) => st.text(String(str).toUpperCase(), x, y, { s: o.s || 6.6, w: 'bold', c: o.c || C.grey, ls: o.ls ?? 0.5, align: o.align, fit: o.fit });
   st.line = (x1, y1, x2, y2, color = C.line, w = 0.25) => { doc.setDrawColor(...color); doc.setLineWidth(w); doc.line(x1, y1, x2, y2); };
   st.rect = (x, y, w, h, fill, stroke, r = 0) => { if (fill) doc.setFillColor(...fill); if (stroke) { doc.setDrawColor(...stroke); doc.setLineWidth(0.25); } r ? doc.roundedRect(x, y, w, h, r, r, fill && stroke ? 'FD' : fill ? 'F' : 'S') : doc.rect(x, y, w, h, fill && stroke ? 'FD' : fill ? 'F' : 'S'); };
   st.wrap = (str, width, size, weight = 'normal') => { st.font(weight, size); return doc.splitTextToSize(String(str), width); };
@@ -76,7 +91,7 @@ function mk(doc){
   st.need = h => { if (st.y + h > PH - 24) st.newPage(); };
   st.newPage = () => { doc.addPage(); st.page++; st.header(); };
   // titre courant aligné à gauche : avec l'espacement des lettres, jsPDF calait mal l'alignement à droite (titre coupé, vu sur le rendu)
-  st.header = () => { st.y = M + 2; if (st.logo) doc.addImage(st.logo, 'PNG', M, st.y - 1, 24, 24 * 228 / 900); st.caps(st.runningTitle, M + 30, st.y + 4, { s: 6.4 }); st.line(M, st.y + 9, PW - M, st.y + 9, C.line); st.y += 18; };
+  st.header = () => { st.y = M + 2; if (st.logo) doc.addImage(st.logo, 'PNG', M, st.y - 1, 24, 24 * 228 / 900); st.caps(st.runningTitle, M + 30, st.y + 4, { s: 6.4, fit: PW - 2 * M - 30 }); st.line(M, st.y + 9, PW - M, st.y + 9, C.line); st.y += 18; };
   return st;
 }
 const money = (h, v) => v == null ? '—' : h.fmt0(v);
@@ -85,21 +100,30 @@ const dateFr = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long
 // ── Blocs ──────────────────────────────────────────────────────────────────────────────────────────────────
 function kpiRow(st, w, h, per, x, y, width, tall = true){
   const H = tall ? 24 : 17, gap = 3, n = 5, tw = (width - gap * (n - 1)) / n;
-  const cells = [['P90', money(h, w?.p90), 'haut de marché'], ['Médiane', money(h, w?.median), '€/m²', true], ['Moyenne', money(h, w?.mean), '€/m²'], ['P10', money(h, w?.p10), 'bas de marché'], ['Ventes', money(h, w?.count), w ? `surface méd. ${w.surf_median} m²` : '']];
+  const cells = [['P90', money(h, w?.p90), 'haut de marché'], ['Médiane', money(h, w?.median), '€/m²', true], ['Moyenne', money(h, w?.mean), '€/m²'], ['P10', money(h, w?.p10), 'bas de marché'], ['Ventes', money(h, w?.count), w ? `surface méd. ${h.fmtSurf(w.surf_median)} m²` : '']];
   cells.forEach(([l, v, u, acc], i) => { const cx = x + i * (tw + gap);
     st.rect(cx, y, tw, H, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
-    st.caps(l, cx + 3.2, y + 5, { s: tall ? 5.8 : 5.4 }); st.text(v, cx + 3.2, y + (tall ? 14.5 : 11.5), { s: tall ? 15 : 11.5, w: 'bold', c: acc ? C.accent : C.navy });
-    st.text(u + (tall && w && i < 4 ? ` · ${per}` : ''), cx + 3.2, y + (tall ? 20 : 15.2), { s: 5.8, c: C.grey }); });
+    st.caps(l, cx + 3.2, y + 5, { s: tall ? 5.8 : 5.4, fit: tw - 6.4 }); st.text(v, cx + 3.2, y + (tall ? 14.5 : 11.5), { s: tall ? 15 : 11.5, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 });
+    // « Historique complet » ne tenait pas dans la tuile à côté de « haut de marché » (coupé) : forme courte
+    st.text(u + (tall && w && i < 4 ? ` · ${String(per).replace(/^Historique complet$/, 'historique')}` : ''), cx + 3.2, y + (tall ? 20 : 15.2), { s: 5.8, c: C.grey, fit: tw - 6.4 }); });
   if (w && w.count < h.EFFECTIF_FAIBLE) st.text(`Effectif faible (${w.count} ventes) : chiffres indicatifs`, x, y + H + 4, { s: 6.5, c: C.gold });
   return H + (w && w.count < h.EFFECTIF_FAIBLE ? 6 : 0);
 }
 function evoRow(st, h, byYear, x, y, width, small = false){
-  const cells = h.evoData(byYear), gap = 3, tw = (width - gap * (cells.length - 1)) / cells.length, H = small ? 13 : 16;
+  // hauteurs : légende, valeur, dates sur trois lignes distinctes (en 13 mm, la valeur chevauchait les dates — rapport du 15/10)
+  const cells = h.evoData(byYear), gap = 3, tw = (width - gap * (cells.length - 1)) / cells.length, H = small ? 15 : 16;
   cells.forEach((c, i) => { const cx = x + i * (tw + gap); st.rect(cx, y, tw, H, c.on ? [234, 241, 252] : null, c.on ? [180, 205, 240] : C.line, 1.2);
-    st.caps(c.l, cx + tw / 2, y + 4.2, { s: 5.4, align: 'center' });
-    st.text(h.evoTxt(c), cx + tw / 2, y + (small ? 9.3 : 10.5), { s: small ? 8.5 : 10, w: 'bold', align: 'center', c: c.v == null ? C.grey2 : c.v > 0 ? C.good : c.v < 0 ? C.bad : C.text });
-    st.text(c.s, cx + tw / 2, y + H - 2.2, { s: 5.2, c: C.grey2, align: 'center' }); });
+    st.caps(c.l, cx + tw / 2, y + 4.2, { s: 5.4, align: 'center', fit: tw - 2 });
+    st.text(h.evoTxt(c), cx + tw / 2, y + (small ? 9.6 : 10.5), { s: small ? 8.5 : 10, w: 'bold', align: 'center', c: c.v == null ? C.grey2 : c.v > 0 ? C.good : c.v < 0 ? C.bad : C.text, fit: tw - 2 });
+    st.text(c.s, cx + tw / 2, y + H - 2.2, { s: 5.2, c: C.grey2, align: 'center', fit: tw - 2 }); });
   return H;
+}
+// Étiquettes d'axe : la dernière est toujours écrite, les autres seulement si elles ne touchent aucune étiquette déjà posée
+// (« 2024 » imprimé sur « 2025 » dans le graphique de volume — rapport du 15/10).
+function axisLabels(st, items, y, s = 5.2){
+  const box = it => { const w = st.width(it.t, s); const a = it.align === 'right' ? it.x - w : it.align === 'center' ? it.x - w / 2 : it.x; return [a, a + w]; };
+  const kept = [], ordre = [items.length - 1, ...items.keys()].filter((v, i, a) => a.indexOf(v) === i);
+  for (const i of ordre) { const [a, b] = box(items[i]); if (kept.every(([c, d]) => b + 1.2 < c || a > d + 1.2)) { kept.push([a, b]); st.text(items[i].t, items[i].x, y, { s, c: C.grey2, align: items[i].align }); } }
 }
 function bandChart(st, h, pts, x, y, w, hh, title){
   const { doc } = st; st.caps(title, x, y + 2.5, { s: 5.8 });
@@ -117,7 +141,7 @@ function bandChart(st, h, pts, x, y, w, hh, title){
   poly(pts.map((p, i) => [X(i), Y(p.median)])); doc.stroke();
   const last = pts[pts.length - 1]; doc.setFillColor(...C.accent2); doc.circle(X(pts.length - 1), Y(last.median), 0.9, 'F');
   st.text(h.fmt0(last.median), X(pts.length - 1) - 1.5, Y(last.median) - 2, { s: 6, w: 'bold', c: C.navy, align: 'right' });
-  const stp = Math.ceil(pts.length / 8); pts.forEach((p, i) => { if (i % stp === 0 || i === pts.length - 1) st.text(h.axisLabel(p.k), X(i), y + hh - 1, { s: 5.2, c: C.grey2, align: i === pts.length - 1 ? 'right' : i === 0 ? 'left' : 'center' }); });
+  const stp = Math.ceil(pts.length / 8); axisLabels(st, pts.map((p, i) => ({ i, t: h.axisLabel(p.k), x: X(i), align: i === pts.length - 1 ? 'right' : i === 0 ? 'left' : 'center' })).filter(o => o.i % stp === 0 || o.i === pts.length - 1), y + hh - 1);
   // légende
   st.line(x + w - 36, y + 1.5, x + w - 32, y + 1.5, C.accent2, 0.6); st.text('Médiane', x + w - 31, y + 2.5, { s: 5.2, c: C.grey });
   doc.setFillColor(214, 228, 247); doc.rect(x + w - 17, y - 0.2, 4, 2.4, 'F'); st.text('P10–P90', x + w - 12, y + 2.5, { s: 5.2, c: C.grey });
@@ -128,18 +152,18 @@ function barChart(st, h, pts, x, y, w, hh, title){
   const pl = 15, pr = 3, pt = 6, pb = 6, iw = w - pl - pr, ih = hh - pt - pb, max = Math.max(...pts.map(p => p.count)) || 1, bw = iw / pts.length, gap = Math.min(0.6, bw * .25);
   st.line(x + pl, y + pt + ih, x + w - pr, y + pt + ih, C.line, 0.25); st.text(h.fmt0(max), x + pl - 1.5, y + pt + 2, { s: 5.2, c: C.grey2, align: 'right' });
   doc.setFillColor(196, 201, 212); pts.forEach((p, i) => { const bh = p.count / max * ih; doc.rect(x + pl + i * bw + gap / 2, y + pt + ih - bh, Math.max(0.3, bw - gap), bh, 'F'); });
-  const stp = Math.ceil(pts.length / 8); pts.forEach((p, i) => { if (i % stp === 0 || i === pts.length - 1) st.text(h.axisLabel(p.k), x + pl + i * bw + bw / 2, y + hh - 1, { s: 5.2, c: C.grey2, align: 'center' }); });
+  const stp = Math.ceil(pts.length / 8); axisLabels(st, pts.map((p, i) => ({ i, t: h.axisLabel(p.k), x: x + pl + i * bw + bw / 2, align: 'center' })).filter(o => o.i % stp === 0 || o.i === pts.length - 1), y + hh - 1);
   return hh;
 }
 function table(st, cols, rows, x, width, o = {}){
   // cols : [{l, w (proportion), align, help}], rows : tableau de tableaux de {t, w:'bold', c}
   const { doc } = st; const tot = cols.reduce((a, c) => a + c.w, 0); const xs = []; let cx = x; cols.forEach(c => { xs.push(cx); cx += c.w / tot * width; });
   const rh = o.rh || 6.2, head = 6.5;
-  const drawHead = () => { st.need(head + rh); cols.forEach((c, i) => st.caps(c.l, c.align === 'right' ? xs[i] + c.w / tot * width - 1.5 : xs[i] + 1.5, st.y + 4.3, { s: 5.6, align: c.align || 'left' })); st.line(x, st.y + head, x + width, st.y + head, C.grey2, 0.3); st.y += head; };
+  const drawHead = () => { st.need(head + rh); cols.forEach((c, i) => st.caps(c.l, c.align === 'right' ? xs[i] + c.w / tot * width - 1.5 : xs[i] + 1.5, st.y + 4.3, { s: 5.6, align: c.align || 'left', fit: c.w / tot * width - 3 })); st.line(x, st.y + head, x + width, st.y + head, C.grey2, 0.3); st.y += head; };
   drawHead();
   rows.forEach((r, ri) => { if (st.y + rh > PH - 24) { st.newPage(); drawHead(); }
     if (r.fill) st.rect(x, st.y, width, rh, r.fill, null);
-    r.cells.forEach((cell, i) => { const c = cols[i]; const v = typeof cell === 'object' && cell !== null ? cell : { t: cell }; st.text(v.t ?? '—', c.align === 'right' ? xs[i] + c.w / tot * width - 1.5 : xs[i] + 1.5, st.y + rh - 1.9, { s: o.s || 7.2, w: v.w || 'normal', c: v.c || C.text, align: c.align || 'left' }); });
+    r.cells.forEach((cell, i) => { const c = cols[i]; const v = typeof cell === 'object' && cell !== null ? cell : { t: cell }; st.text(v.t ?? '—', c.align === 'right' ? xs[i] + c.w / tot * width - 1.5 : xs[i] + 1.5, st.y + rh - 1.9, { s: o.s || 7.2, w: v.w || 'normal', c: v.c || C.text, align: c.align || 'left', fit: c.w / tot * width - 3 }); });
     st.line(x, st.y + rh, x + width, st.y + rh, C.line2, 0.2); st.y += rh; });
 }
 
@@ -160,19 +184,19 @@ export async function exportPdf(ctx){
   st.caps('Étude de marché résidentiel', PW - M, 20, { align: 'right', s: 7, ls: 0.8 });
   st.text(dateFr(now), PW - M, 26, { s: 8, c: C.grey, align: 'right' });
   st.line(M, 34, PW - M, 34, C.green, 0.6);
-  st.caps(`${niveauLabel} · ${ctx.typeLbl} · ${periodeLabel}${w ? ` (${w.from} → ${w.to})` : ''}`, M, 48, { s: 7.2, ls: 0.6, c: C.green });
+  st.caps(`${niveauLabel} · ${ctx.typeLbl} · ${periodeLabel}${w ? ` (${w.from} → ${w.to})` : ''}`, M, 48, { s: 7.2, ls: 0.6, c: C.green, fit: CW });
   const titleLines = st.wrap(item.nom, CW, 27, 'bold'); let y = 60; titleLines.forEach(l => { st.text(l, M, y, { s: 27, w: 'bold', c: C.navy }); y += 11; });
   const sub = crumbs.join('  ·  '); const subLines = st.wrap(sub, CW, 9).slice(0, 3); subLines.forEach(l => { st.text(l, M, y, { s: 9, c: C.grey }); y += 5; });
   y += 4;
   // carte
   const mapW = CW, mapH = mapW * 900 / 1600; doc.addImage(map.data, 'JPEG', M, y, mapW, mapH); st.rect(M, y, mapW, mapH, null, C.line);
-  const cap = address ? `Localisation de l'adresse (point rouge) et découpage par ${niveauLabel.toLowerCase()} ; la zone étudiée est soulignée.` : `Découpage par ${niveauLabel.toLowerCase()} : polygones officiels (quartiers administratifs de Paris, IRIS INSEE des autres communes) ; la zone étudiée est soulignée.`;
+  const cap = address && ctx.rayonM > 0 ? `Localisation de l'adresse (point rouge) et disque de ${h.fmt0(ctx.rayonM)} m étudié (pointillés rouges) ; quartiers en fond.` : address ? `Localisation de l'adresse (point rouge) et découpage par ${niveauLabel.toLowerCase()} ; la zone étudiée est soulignée.` : `Découpage par ${niveauLabel.toLowerCase()} : polygones officiels (quartiers administratifs de Paris, IRIS INSEE des autres communes) ; la zone étudiée est soulignée.`;
   st.text(cap + (map.missing ? ` Fond incomplet (${map.missing}/${map.total} tuiles).` : ''), M, y + mapH + 4.5, { s: 6.6, c: C.grey, maxWidth: CW }); y += mapH + 12;
   if (address) {
     st.rect(M, y, CW, 22, C.tile, C.line, 1.6);
-    st.caps('Adresse localisée', M + 5, y + 5.5, { s: 5.8 }); st.text(address.label, M + 5, y + 11.5, { s: 11, w: 'bold', c: C.navy });
+    st.caps('Adresse localisée', M + 5, y + 5.5, { s: 5.8 }); st.text(address.label, M + 5, y + 11.5, { s: 11, w: 'bold', c: C.navy, fit: CW - 10 });
     const p = address.props; const rows = !p ? [['Périmètre', 'Hors des communes couvertes']] : ctx.locRows(p).map(r => r[0] === 'Zone encadrement' ? ['Zone d’encadrement', r[1]] : r);
-    const cw = (CW - 10) / 4; rows.forEach(([l, v], i) => { st.caps(l, M + 5 + i * cw, y + 17, { s: 5.4 }); st.text(v, M + 5 + i * cw, y + 20.5, { s: 7.6, w: 'bold', c: C.text, maxWidth: cw - 3 }); });
+    const cw = (CW - 10) / 4; rows.forEach(([l, v], i) => { st.caps(l, M + 5 + i * cw, y + 17, { s: 5.4, fit: cw - 3 }); st.text(v, M + 5 + i * cw, y + 20.5, { s: 7.6, w: 'bold', c: C.text, fit: cw - 3 }); });
     y += 28;
   }
   // chiffres clés
@@ -185,7 +209,7 @@ export async function exportPdf(ctx){
     const ww = h.windowOf(stat); st.need(112);   // hauteur d'une section : 15 + 27 + 20 + 50 = 112 mm → deux par page
     st.caps(badge, M, st.y + 2, { s: 6, c: C.green });
     st.text(`${ww ? h.fmt0(ww.count) + ' ventes · ' : ''}${periodeLabel}${ww ? ` · ${ww.from} → ${ww.to}` : ''}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    st.text(st.wrap(title, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy });   // une ligne : le titre ne chevauche plus le compte à droite (vu sur le rendu)
+    st.text(title, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 });   // une ligne ajustée (auparavant coupée au premier retour : fin du titre perdue)
     st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     st.y += kpiRow(st, ww, h, periodeLabel, M, st.y, CW, true) + 3;
     st.y += evoRow(st, h, stat.by_year, M, st.y, CW) + 4;
@@ -198,10 +222,10 @@ export async function exportPdf(ctx){
   const V = ctx.valo;
   if (V && V.lots > 0 && address) {
     st.caps('Valorisation', M, st.y + 2, { s: 6, c: C.green }); st.text(`Positionnement P${V.pos} · référence 12 derniers mois`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    st.text(st.wrap(`Valorisation de l'immeuble · ${address.label}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    st.text(`Valorisation de l'immeuble · ${address.label}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
     const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · P${V.pos}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au P10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au P90 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
     const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
-      st.caps(l, cx + 3.2, st.y + 5, { s: 5.6 }); st.text(v, cx + 3.2, st.y + 14.5, { s: v.length > 12 ? 11 : 13, w: 'bold', c: acc ? C.accent : C.navy }); st.text(u, cx + 3.2, st.y + 20, { s: 5.6, c: C.grey }); });
+      st.caps(l, cx + 3.2, st.y + 5, { s: 5.6, fit: tw - 6.4 }); st.text(v, cx + 3.2, st.y + 14.5, { s: v.length > 12 ? 11 : 13, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 }); st.text(u, cx + 3.2, st.y + 20, { s: 5.6, c: C.grey, fit: tw - 6.4 }); });
     st.y += 30;
     const from = V.rows.find(r => r.ref)?.ref;
     st.caps(`Lots de l'immeuble · appartements · référence ${from ? `${h.fmtMois(from.ymFrom)} → ${h.fmtMois(from.ymTo)}` : ''}`, M, st.y + 2, { s: 6.2 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
@@ -217,7 +241,7 @@ export async function exportPdf(ctx){
       const srcTxt = RT.paris ? `encadrement ${RT.src.annee} (applicable ${RT.src.application}) · loyer de référence majoré, hors charges · ${RT.meuble ? 'meublé' : 'vide'} · immeuble ${RT.epoque.toLowerCase().replace('apres', 'après')}` : `carte des loyers ${RT.src.edition} · loyers d'annonce charges comprises · ${RT.meuble ? 'meublé' : 'vide'}`;
       st.need(64); st.caps('Loyers et rentabilité brute', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.text(srcTxt, M, st.y + 7.5, { s: 6.2, c: C.grey, maxWidth: CW }); st.y += 11;
       const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (P${V.pos})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (P90)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (P10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
-      const tw = (CW - 9) / 4; tl.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 5, { s: 5.4 }); st.text(v, cx + 3, st.y + 13.5, { s: 12, w: 'bold', c: acc ? C.accent : C.navy }); st.text(u, cx + 3, st.y + 19, { s: 5.4, c: C.grey, maxWidth: tw - 5 }); });
+      const tw = (CW - 9) / 4; tl.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 5, { s: 5.4, fit: tw - 6 }); st.text(v, cx + 3, st.y + 13.5, { s: 12, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6 }); st.text(u, cx + 3, st.y + 19, { s: 5.4, c: C.grey, maxWidth: tw - 5 }); });
       st.y += 27;
       table(st, [{ l: 'Typologie', w: 1.1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Pièces', w: .75, align: 'right' }, { l: RT.paris ? 'Majoré €/m²' : 'Loyer €/m²', w: 1.25, align: 'right' }, { l: RT.paris ? 'Réf. · minoré' : 'Bas → haut', w: 1.35, align: 'right' }, { l: 'Loyer / lot', w: 1.25, align: 'right' }, { l: 'Loyer annuel', w: 1.35, align: 'right' }, { l: 'Rentab.', w: 1, align: 'right' }],
         [...RT.rows.filter(r => r.lots > 0).map(r => ({ cells: [{ t: r.id, w: 'bold' }, String(r.lots), r.pieces === 4 ? '4 et +' : String(r.pieces), r.ppm2 != null ? { t: r.ppm2.toFixed(1).replace('.', ','), w: 'bold' } : { t: r.motif || '—', c: C.gold }, r.ppm2 == null ? '' : RT.paris ? `${r.ref.toFixed(1).replace('.', ',')} · ${r.mino.toFixed(1).replace('.', ',')}` : `${r.bas.toFixed(1).replace('.', ',')} → ${r.haut.toFixed(1).replace('.', ',')}`, h.fmtEur(r.loyerLot), h.fmtEur(r.loyerAnnuel), { t: h.fmtPct2(r.rendement), w: 'bold' }] })),
@@ -239,12 +263,12 @@ export async function exportPdf(ctx){
     const tl = st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : opts.type === 'Tous' ? "d'appartements et de maisons" : "d'appartements"}${opts.type === 'Tous' ? '' : multi ? ` ${series.map(se => se.typo ? se.typo.id : 'toutes surfaces').join(' / ')}` : series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : ''} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 12, 'bold').slice(0, 2);
     tl.forEach((l, i) => st.text(l, M, st.y + 8.5 + i * 5.5, { s: 12, w: 'bold', c: C.navy })); st.line(M, st.y + 12 + (tl.length - 1) * 5.5, PW - M, st.y + 12 + (tl.length - 1) * 5.5, C.line); st.y += 16 + (tl.length - 1) * 5.5;
     const s0 = series[0].st;
-    const tiles = [['Ventes dans le rayon', h.fmt0(nTotal), `${ctx.typeLbl.toLowerCase()} · ${years[0]} → ${years[years.length - 1]}${multi ? ' · toutes séries' : ''}`, true],
+    const tiles = [['Ventes dans le rayon', h.fmt0(nTotal), `${opts.type === 'Tous' ? 'logements' : ctx.typeLbl.toLowerCase()} · ${years[0]} → ${years[years.length - 1]}${multi ? ` · ${series.length} séries` : ''}`, true],
       [`Médiane ${last || '—'}${multi ? ` · ${series[0].typo ? series[0].typo.id : 'toutes'}` : ''}`, last && s0.annees[last] ? h.fmt0(s0.annees[last].median) + ' €/m²' : '—', last && s0.annees[last] ? `P10 ${h.fmt0(s0.annees[last].p10)} · P90 ${h.fmt0(s0.annees[last].p90)}` : 'moins de 5 ventes'],
       ['Couverture', `${Math.round(couv.couverte * 100)} %`, couv.couverte >= 0.999 ? 'rayon dans les communes couvertes' : 'rayon partiellement hors périmètre'],
       ['Prix de comparaison', opts.libre > 0 ? h.fmt0(opts.libre) + ' €/m²' : '—', opts.libre > 0 ? `sortie libre HD${opts.acq > 0 ? ` · acquisition ${h.fmt0(opts.acq)}` : ''}` : 'aucun prix saisi']];
     const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
-      st.caps(l, cx + 4, st.y + 6.5, { s: 5.2 }); st.text(v, cx + 4, st.y + 15, { s: acc ? 13 : 11, w: 'bold', c: C.navy }); st.text(u, cx + 4, st.y + 20.5, { s: 5.6, c: C.grey }); }); st.y += 30;
+      st.caps(l, cx + 4, st.y + 6.5, { s: 5.2, fit: tw - 8 }); st.text(v, cx + 4, st.y + 15, { s: acc ? 13 : 11, w: 'bold', c: C.navy, fit: tw - 8 }); st.text(u, cx + 4, st.y + 20.5, { s: 5.6, c: C.grey, fit: tw - 8 }); }); st.y += 30;
     // image du visuel (PNG 1 676 × 1 022, rapport 8,38 / 5,11), pleine largeur utile
     const ih = CW * 5.11 / 8.38;
     if (RY.png) { doc.addImage(RY.png, 'PNG', M, st.y, CW, ih); st.y += ih + 4; }
@@ -261,13 +285,15 @@ export async function exportPdf(ctx){
     const { sc, sens, retro, cal, ref, params, macro } = PP; const o = sc.central.origine; const Mx = macro.series;
     const tx = h.lastOf(Mx.taux_credit.obs), oat = h.lastOf(Mx.oat_10.obs), ip = h.lastOf(Mx.ipch.obs), pm = h.lastOf(Mx.permis_paris.obs), loy = h.lastOf(Mx.loyers_paris.obs);
     st.caps('Perspectives', M, st.y + 2, { s: 6, c: C.green }); st.text(`scénarios à 3, 5 et 10 ans depuis ${h.moisLabel(o.q)}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    st.text(st.wrap(`Perspectives · ${item.nom} · ${ctx.typeLbl.toLowerCase()}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    st.text(`Perspectives · ${item.nom} · ${ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
     // hypothèses
     const hyps = [['Taux de crédit visé', `${params.tauxH.toFixed(2).replace('.', ',')} %`, `actuel ${tx.v.toFixed(2).replace('.', ',')} % (${h.moisLabel(tx.k)}) · atteint en ${params.horizonTaux / 4} an${params.horizonTaux > 4 ? 's' : ''}`], ['Inflation', `${params.inflation.toFixed(1).replace('.', ',')} %/an`, `IPCH ${h.fmtPctS(h.perAn(Mx.ipch.obs, ip.k, 12) * 100)} sur 12 mois (${h.moisLabel(ip.k)})`], ['Revenus réels', `${params.revenus.toFixed(1).replace('.', ',')} %/an`, `au-delà de l'inflation`], ['Prime locale', `${params.prime.toFixed(1).replace('.', ',')} %/an`, PP.tl != null ? `tendance 10 ans observée ${h.fmtPctS(PP.tl)}/an (non extrapolée)` : 'non calculable'], ['Vitesse d’ajustement', `${Math.round(params.lam * 100)} %/trim`, `écart prix / cible actuel ${h.fmtPctS(cal.ecartCourant * 100)}`]];
-    const tw = (CW - 12) / 5; hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+    const tw = (CW - 12) / 5; hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
     st.y += 28;
     // tableau des scénarios
-    st.caps(`Valeur projetée · zone ${ref.median ? h.fmt0(ref.median) + ' €/m² (12 mois)' : ''}${PP.valoValeur ? ` · immeuble ${h.fmtEur(PP.valoValeur)}` : ''}`, M, st.y + 2, { s: 5.8 }); st.text(`Départ Paris ${h.fmt0(o.prix)} €/m²${o.pont ? ' · DVF prolongé par l’indice Notaires-INSEE' : ''}`, PW - M, st.y + 2, { s: 6, c: C.grey, align: 'right' }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
+    // sans médiane de zone (rayon), « Valeur projetée · zone » restait sans complément (rapport du 15/10)
+    const depart = `Départ Paris ${h.fmt0(o.prix)} €/m²${o.pont ? ' · DVF prolongé par l’indice Notaires-INSEE' : ''}`;
+    st.caps(`Valeur projetée · ${ref.median ? `zone ${h.fmt0(ref.median)} €/m² (12 mois)` : 'évolution depuis le départ'}${PP.valoValeur ? ` · immeuble ${h.fmtEur(PP.valoValeur)}` : ''}`, M, st.y + 2, { s: 5.8, fit: CW - st.width(depart, 6) - 4 }); st.text(depart, PW - M, st.y + 2, { s: 6, c: C.grey, align: 'right' }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
     const cellTxt = (pj, n) => { const r = pj.at(n).ratio; return `${h.fmtPctS((r - 1) * 100)}${ref.median ? `  ·  ${h.fmt0(ref.median * r)} €/m²` : ''}${PP.valoValeur ? `  ·  ${h.fmtEur(PP.valoValeur * r)}` : ''}`; };
     table(st, [{ l: 'Horizon', w: .9 }, { l: 'Bas (taux +1, infl. −0,5)', w: 2.2, align: 'right' }, { l: 'Central', w: 2.2, align: 'right' }, { l: 'Haut (taux −1, infl. +0,5)', w: 2.2, align: 'right' }],
       [[12, '3 ans'], [20, '5 ans'], [40, '10 ans']].map(([n, l]) => ({ cells: [{ t: `${l} · ${h.moisLabel(sc.central.at(n).q)}`, w: 'bold' }, { t: cellTxt(sc.bas, n), c: C.bad }, { t: cellTxt(sc.central, n), w: 'bold', c: C.accent }, { t: cellTxt(sc.haut, n), c: C.good }] })), M, CW, { s: 7, rh: 7 });
@@ -278,7 +304,7 @@ export async function exportPdf(ctx){
     const X = t => cx0 + pl + t / 40 * iw, Y = v => cy0 + pt + ih - (v - lo) / (hi - lo) * ih;
     for (let v = lo; v <= hi; v += 10) { st.line(cx0 + pl, Y(v), cx0 + cw - 3, Y(v), C.line2, .2); st.text(String(v), cx0 + pl - 1.5, Y(v) + .9, { s: 5, c: C.grey2, align: 'right' }); }
     [[sc.bas, C.bad], [sc.central, C.accent2], [sc.haut, C.good]].forEach(([pj, col]) => { doc.setDrawColor(...col); doc.setLineWidth(pj === sc.central ? .6 : .35); doc.moveTo(X(0), Y(100)); pj.path.slice(1).forEach(p => doc.lineTo(X(p.t), Y(p.ratio * 100))); doc.stroke(); st.text(String(Math.round(pj.at(40).ratio * 100)), X(40) + 1.2, Y(pj.at(40).ratio * 100) + .8, { s: 5.2, w: 'bold', c: col }); });
-    [0, 12, 20, 40].forEach(t => st.text(sc.central.at(t).q.slice(0, 4), X(t), cy0 + ch - 1, { s: 5, c: C.grey2, align: t === 40 ? 'right' : t === 0 ? 'left' : 'center' }));
+    axisLabels(st, [0, 12, 20, 40].map(t => ({ t: sc.central.at(t).q.slice(0, 4), x: X(t), align: t === 40 ? 'right' : t === 0 ? 'left' : 'center' })), cy0 + ch - 1, 5);
     // sensibilité (à droite)
     const sx = M + cw + 8, sw = CW - cw - 8; st.caps('Sensibilité à 5 ans', sx, cy0 + 2.5, { s: 5.8 });
     const noms = { tauxH: 'Taux', inflation: 'Inflation', revenus: 'Revenus réels', prime: 'Prime locale', lam: 'Vitesse' };
@@ -288,7 +314,7 @@ export async function exportPdf(ctx){
     // rétrospectif
     st.caps(`Rétrospectif · modèle calé ≤ ${retro.trainUntil}, simulé sur ${retro.nTest} trimestres avec les taux et l’inflation réels`, M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 8;
     const rt = [['Erreur moyenne', `${(retro.errMoy * 100).toFixed(1).replace('.', ',')} %`], ['Erreur maximale', `${(retro.errMax * 100).toFixed(1).replace('.', ',')} %`], ['Fin 2025, simulé / réel', h.fmtPctS((retro.points.find(p => p.q === '2025-Q4')?.sim / retro.points.find(p => p.q === '2025-Q4')?.obs - 1) * 100)]];
-    const rw = (CW - 6) / 3; rt.forEach(([l, v], i) => { const cx = M + i * (rw + 3); st.rect(cx, st.y, rw, 14, C.tile, C.line, 1.2); st.caps(l, cx + 3, st.y + 4.5, { s: 5.2 }); st.text(v, cx + 3, st.y + 11, { s: 10, w: 'bold', c: C.navy }); });
+    const rw = (CW - 6) / 3; rt.forEach(([l, v], i) => { const cx = M + i * (rw + 3); st.rect(cx, st.y, rw, 14, C.tile, C.line, 1.2); st.caps(l, cx + 3, st.y + 4.5, { s: 5.2, fit: rw - 6 }); st.text(v, cx + 3, st.y + 11, { s: 10, w: 'bold', c: C.navy, fit: rw - 6 }); });
     st.y += 18;
     st.para(`Méthode. ${h.HELP.persp_modele[1]} ${h.HELP.persp_scen[1]} ${h.HELP.persp_retro[1]} ${h.HELP.persp_prime[1]} Sources : BCE (taux des crédits à l'habitat ${h.moisLabel(tx.k)}, OAT 10 ans ${oat.v.toFixed(2).replace('.', ',')} % en ${h.moisLabel(oat.k)}, IPCH ${h.moisLabel(ip.k)}), INSEE (indice Notaires-INSEE Paris, indice des loyers ${h.moisLabel(loy.k)}, logements autorisés à Paris ${h.fmt0(pm.v)} sur 12 mois en ${h.moisLabel(pm.k)}). Scénarios conditionnels aux hypothèses affichées : ce ne sont pas des prévisions.`, M, CW, { s: 7.2 });
     st.newPage();
@@ -302,8 +328,9 @@ export async function exportPdf(ctx){
   // ── Tableaux ──────────────────────────────────────────────────────────────────────────────────
   const bt = etTypo?.by_typo || {}, tIds = typos.map(t => t.id).filter(id => bt[id]);
   if (tIds.length) {
-    st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); st.text(`Répartition et prix par surface · ${PT ? 'appartements' : ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy });
-    st.text(`part sur ${META.meta.periode} · prix sur ${periodeLabel.toLowerCase()}`, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
+    st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); const partTxt = `part sur ${META.meta.periode} · prix sur ${periodeLabel.toLowerCase()}`;
+    st.text(`Répartition et prix par surface · ${PT ? 'appartements' : ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW - st.width(partTxt, 7.5) - 4, min: 9 });
+    st.text(partTxt, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     const evo = (by, n) => { const ly = META.meta.last_year, a = by?.[String(ly)]?.median, b = by?.[String(ly - n)]?.median; return (a && b) ? (a / b - 1) * 100 : null; };
     const pc = v => ({ t: h.fmtPct(v), c: v == null ? C.grey2 : v > 0 ? C.good : v < 0 ? C.bad : C.text });
     table(st, [{ l: 'Typologie', w: 2.4 }, { l: 'Part du marché', w: 1.5, align: 'right' }, { l: 'Ventes', w: 1.1, align: 'right' }, { l: 'P10', w: 1.1, align: 'right' }, { l: 'Médiane', w: 1.2, align: 'right' }, { l: 'P90', w: 1.1, align: 'right' }, { l: '1 an', w: 1, align: 'right' }, { l: '5 ans', w: 1, align: 'right' }],
@@ -312,10 +339,10 @@ export async function exportPdf(ctx){
     st.y += 6;
   }
   const by = et.by_year || {}, years = Object.keys(by).sort();
-  st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
+  st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
   table(st, [{ l: 'Année', w: 1 }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'P10', w: 1, align: 'right' }, { l: 'Q1', w: 1, align: 'right' }, { l: 'Médiane', w: 1.1, align: 'right' }, { l: 'Q3', w: 1, align: 'right' }, { l: 'P90', w: 1, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.2, align: 'right' }],
     years.map((yy, i) => { const v = by[yy], prev = by[years[i - 1]], e = prev ? (v.median / prev.median - 1) * 100 : null;
-      return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.mean), `${v.surf_mean} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 7 });
+      return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.mean), `${h.fmtSurf(v.surf_mean)} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 7 });
 
   // ── Méthode ───────────────────────────────────────────────────────────────────────────────────
   st.newPage(); st.caps('Méthode', M, st.y + 2, { s: 6, c: C.green }); st.text('Méthode de calcul et sources', M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 17;
@@ -325,7 +352,7 @@ export async function exportPdf(ctx){
   const colW = (CW - 8) / 2; let col = 0, yTop = st.y, yMax = st.y;
   for (const k of Object.keys(h.HELP)) { const [t, txt, f] = h.HELP[k]; const lines = st.wrap(txt, colW, 7.2); const bh = 4 + lines.length * 7.2 * pt2mm * 1.35 + 3 + 2.5;
     if (st.y + bh > PH - 24) { if (col === 0) { col = 1; yMax = Math.max(yMax, st.y); st.y = yTop; } else { st.newPage(); col = 0; yTop = st.y; yMax = st.y; } }
-    const x = M + col * (colW + 8); st.text(t, x, st.y + 3, { s: 7.8, w: 'bold', c: C.navy }); st.text(f, x + colW, st.y + 3, { s: 6, c: C.grey, align: 'right' }); st.y += 4 + 2.5;
+    const x = M + col * (colW + 8); st.text(t, x, st.y + 3, { s: 7.8, w: 'bold', c: C.navy, fit: colW - st.width(f, 6) - 3 }); st.text(f, x + colW, st.y + 3, { s: 6, c: C.grey, align: 'right' }); st.y += 4 + 2.5;
     lines.forEach(l => { st.text(l, x, st.y, { s: 7.2, c: C.text2 }); st.y += 7.2 * pt2mm * 1.35; }); st.y += 3; }
 
   // ── Pieds de page ─────────────────────────────────────────────────────────────────────────────
@@ -336,5 +363,6 @@ export async function exportPdf(ctx){
     st.text(`${i} / ${n}`, PW - M, PH - 11.5, { s: 6.6, c: C.grey, align: 'right' }); }
   const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '');
   doc.save(`Jadero_Etude_${slug(item.nom)}_${S.type}_${S.per === 'all' ? 'historique' : S.per + 'ans'}_${now.toISOString().slice(0, 10)}.pdf`);
-  return { pages: n, map };
+  if (st.coupes.length) console.warn(`PDF : ${st.coupes.length} texte(s) raccourci(s) pour tenir dans leur cadre`, st.coupes);
+  return { pages: n, map, coupes: st.coupes };
 }
