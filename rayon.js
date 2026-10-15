@@ -19,7 +19,10 @@ export const fmtN = v => Math.round(v).toLocaleString('fr-FR').replace(/ /g, '
 // Pas d'axe « rond » pour ~6 graduations (matplotlib MaxNLocator approché)
 function pasAxe(span){ const brut = span / 6, p = Math.pow(10, Math.floor(Math.log10(brut))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= brut) return m * p; return 10 * p; }
 
-export const serieLabel = s => s.typo ? `${s.typo.id} · ${s.typo.surfMin}–${s.typo.surfMax} m²` : 'toutes surfaces';
+export const serieLabel = s => s.label || (s.typo ? `${s.typo.id} · ${s.typo.surfMin}–${s.typo.surfMax} m²` : 'toutes surfaces');
+// « d'appartements » / « de maisons » / « d'appartements et de maisons » (type « Tous », lot 13)
+export const typeDe = t => t === 'Maison' ? 'de maisons' : t === 'Tous' ? "d'appartements et de maisons" : "d'appartements";
+const venteDe = t => t === 'Maison' ? "d'une maison seule" : t === 'Tous' ? "d'un logement seul (appartement ou maison)" : "d'un appartement seul";
 
 // series : [{ typo: {id, surfMin, surfMax} | null, st: engine.statsRayon(...) }] — une série par typologie choisie (une seule, sans
 // typo, = toutes les surfaces) ; years : liste complète des années tracées ;
@@ -38,8 +41,8 @@ export function rayonSvg(series, years, opts){
   const out = [];
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${FONT}">`);
   // titre
-  const typoTxt = multi ? ` ${series.map(s => s.typo ? s.typo.id : 'toutes surfaces').join(' / ')}` : (series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : '');
-  const titre = `Ventes ${opts.type === 'Maison' ? 'de maisons' : "d'appartements"}${typoTxt} à moins de ${fmtN(opts.rayon)} m du ${opts.titre} : prix au m² (DVF, ${years[0]} à ${years[years.length - 1]})`;
+  const typoTxt = opts.type === 'Tous' ? '' : multi ? ` ${series.map(s => s.typo ? s.typo.id : 'toutes surfaces').join(' / ')}` : (series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : '');
+  const titre = `Ventes ${typeDe(opts.type)}${typoTxt} à moins de ${fmtN(opts.rayon)} m du ${opts.titre} : prix au m² (DVF, ${years[0]} à ${years[years.length - 1]})`;
   out.push(`<text x="${0.01 * W}" y="${(1 - 0.965) * H + 6}" font-size="${titre.length > 95 ? 14.5 : 16.7}" fill="${INK}">${esc(titre)}</text>`);
   // grille + axe Y (en €/m², demande de Franck)
   const pas = pasAxe(hi - lo); const y0 = Math.ceil(lo / pas) * pas;
@@ -96,8 +99,9 @@ export function rayonSvg(series, years, opts){
   // source + lecture (demande de Franck : expliquer les déciles sous le graphique)
   const nTotal = series.reduce((a, s) => a + s.st.nTotal, 0), last = years.slice().reverse().find(y => series.some(s => s.st.annees[y]));
   const nLast = last ? series.reduce((a, s) => a + (s.st.annees[last]?.n || 0), 0) : 0;
-  const surfTxt = multi ? ` (${series.map(serieLabel).join(', ')})` : (series[0].typo ? ` de ${series[0].typo.surfMin} à ${series[0].typo.surfMax} m²` : '');
-  const src = `Source : DVF (data.gouv.fr), ventes d'un ${opts.type === 'Maison' ? 'maison seule' : 'appartement seul'}${surfTxt}, rayon de ${fmtN(opts.rayon)} m ; ${fmtN(nTotal)} ventes${last ? ` dont ${fmtN(nLast)} en ${last}` : ''}.`;
+  // en « Tous » sans typologie cochée, les séries Appartements / Maisons répètent déjà le type : pas de parenthèse redondante
+  const surfTxt = (opts.type === 'Tous' && !series.some(s => s.typo)) ? '' : multi ? ` (${series.map(serieLabel).join(', ')})` : (series[0].typo ? ` de ${series[0].typo.surfMin} à ${series[0].typo.surfMax} m²` : '');
+  const src = `Source : DVF (data.gouv.fr), ventes ${venteDe(opts.type)}${surfTxt}, rayon de ${fmtN(opts.rayon)} m ; ${fmtN(nTotal)} ventes${last ? ` dont ${fmtN(nLast)} en ${last}` : ''}.`;
   out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 16}" font-size="${src.length > 150 ? 9.6 : 11.1}" fill="${MUTED}">${esc(src)}</text>`);
   out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 2}" font-size="11.1" fill="${MUTED}">${esc('Lecture : la barre est le prix au m² médian des ventes de l’année ; la moustache va du 1er décile (10 % des ventes en dessous) au 9e décile (10 % au-dessus).')}</text>`);
   out.push('</svg>');

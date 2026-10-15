@@ -368,7 +368,7 @@ footer a{color:var(--text3)}
   </div>
   <div class="sec">
     <div class="sec-h"><span>Type de bien</span></div>
-    <div class="seg seg-2" id="segType"><button data-v="Appartement">Appartements</button><button data-v="Maison">Maisons</button></div>
+    <div class="seg seg-3" id="segType"><button data-v="Appartement">Appartements</button><button data-v="Maison">Maisons</button><button data-v="Tous">Tous</button></div>
   </div>
   <div class="sec">
     <div class="sec-h"><span>Typologies</span><button class="link" id="typoReset" type="button">réinitialiser</button></div>
@@ -423,6 +423,9 @@ const NIVEAU_HINT = {
   quartier:'Les 80 quartiers administratifs de Paris et les quartiers IRIS (INSEE) des communes couvertes, regroupés quand leur nommage le permet.',
   rayon:'Les ventes à moins de la distance choisie, à vol d’oiseau depuis le point géocodé de l’adresse localisée (lot 10). Toute l’étude se calcule dans ce disque ; le visuel pour présentation est au bas de l’étude.'};
 const PARIS = '75056';
+// Type de bien (lot 13) : code de sélection pour engine.select / selectRayon (null = appartements et maisons) et libellés
+const TYPE_CODE = t => t === 'Maison' ? 1 : t === 'Tous' ? null : 0;
+const TYPE_LBL = t => t === 'Maison' ? 'Maisons' : t === 'Tous' ? 'Appartements et maisons' : 'Appartements';
 const isCommune = g => /^\d{5}$/.test(String(g));   // identifiant de groupe = code INSEE → commune entière hors Paris
 const communeNom = c => META?.communes_ref?.[c]?.nom || c;
 // Libellés de localisation d'un quartier (fiche d'adresse, popup, PDF) : Paris → arrondissement, secteur, zone ; ailleurs → commune
@@ -569,7 +572,7 @@ function readHash(){
   if (S.niveau === 'secteur' && /^B\d+$/.test(S.id||'')) { if (S.id === 'B0') { S.niveau = 'commune'; S.id = '92012'; } else S.niveau = 'quartier'; }
   if (h.get('per') in PERIODES) S.per = h.get('per');
   if (h.get('gran') in GRANS) S.gran = h.get('gran');
-  if (['Appartement','Maison'].includes(h.get('type'))) S.type = h.get('type');
+  if (['Appartement','Maison','Tous'].includes(h.get('type'))) S.type = h.get('type');
   if (h.get('global')!=null) S.global = h.get('global')==='1';
   if (['etude','carte','valo','persp'].includes(h.get('vue'))) S.vue = h.get('vue');
   const ry = h.get('rprix');   // acq:libre:occupe:decote:hist:typo:pdf — paramètres du visuel « marché autour de l'immeuble » (prix vides autorisés)
@@ -764,7 +767,7 @@ function typoTable(et){
   const rows = ids.map(id => { const t = bt[id]; const w = t.windows?.[S.per]; const tdef = S.typos.find(x=>x.id===id); const e1 = evoN(t.by_year,1), e5 = evoN(t.by_year,5); const faible = w && w.count < EFFECTIF_FAIBLE;
     return `<tr class="${id===top?'top':''} ${!w?'dim':''}"><td>${id}<small>${tdef.surfMin}–${tdef.surfMax} m²</small></td><td><span class="share"><span class="bar"><i style="width:${(t.share/maxShare*100).toFixed(0)}%"></i></span>${t.share.toFixed(1).replace('.',',')} %</span></td>
       <td data-l="Ventes">${w?fmt0(w.count):'—'}${faible?' <span title="effectif faible" style="color:var(--warn)">•</span>':''}</td><td data-l="P10">${fmt0(w?.p10)}</td><td data-l="Médiane"><b>${fmt0(w?.median)}</b></td><td data-l="P90">${fmt0(w?.p90)}</td><td data-l="1 an" class="${e1>0?'up':e1<0?'down':''}">${fmtPct(e1)}</td><td data-l="5 ans" class="${e5>0?'up':e5<0?'down':''}">${fmtPct(e5)}</td></tr>`; }).join('');
-  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Typologies</span>Répartition et prix par surface · ${esc(S.type)}s</div><span class="card-sub">part sur ${esc(META.meta.periode)} · prix sur ${esc(PERIODES[S.per]).toLowerCase()}</span></div>
+  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Typologies</span>Répartition et prix par surface · ${S.type === 'Tous' ? 'appartements' : esc(TYPE_LBL(S.type).toLowerCase())}</div><span class="card-sub">part sur ${esc(META.meta.periode)} · prix sur ${esc(PERIODES[S.per]).toLowerCase()}</span></div>
     <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché${ib('share')}</th><th>Ventes${ib('typo')}</th><th>P10${ib('p10')}</th><th>Médiane${ib('median')}</th><th>P90${ib('p90')}</th><th>1 an${ib('evo_n')}</th><th>5 ans${ib('evo_n')}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="hint">Fourchettes modifiables dans les filtres (Typologies). Parts calculées sur tout l'historique ; prix et ventes sur la période sélectionnée. • effectif inférieur à ${EFFECTIF_FAIBLE} ventes.</div></div></div>`;
 }
@@ -773,7 +776,7 @@ function yearTable(st, nom){
   const rows = years.map((y,i)=>{ const v = by[y], prev = by[years[i-1]]; const e = prev ? (v.median/prev.median-1)*100 : null;
     return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.mean)}</td><td>${v.surf_mean} m²</td><td class="${e>0?'up':e<0?'down':''}">${fmtPct(e)}</td></tr>`; }).join('');
   const csv = ['annee;ventes;p10;q1;mediane;q3;p90;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.q3,v.p90,v.mean,v.surf_mean].join(';');})].join('\n');
-  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(S.type)}s</div><button class="btn btn-ghost btn-sm" type="button" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
+  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}</div><button class="btn btn-ghost btn-sm" type="button" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
     <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th><th>P10${ib('p10')}</th><th>Q1${ib('q')}</th><th>Médiane${ib('median')}</th><th>Q3${ib('q')}</th><th>P90${ib('p90')}</th><th>Moyenne${ib('mean')}</th><th>Surf. moy.${ib('surf')}</th><th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-csv]'); if (!b) return; const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(b.dataset.csv); a.download = `dvf_${b.dataset.name.replace(/[^\w]+/g,'_')}_${S.type}.csv`; a.click(); });
@@ -797,7 +800,7 @@ function headerHtml(item, count){
 $('hdr').addEventListener('click', e => { if (e.target.closest('#btnPdf')) { exportPdf(); return; } const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; update(); });
 function renderMbar(item){
   $('mbarT').textContent = item ? item.nom : 'Choisissez une zone';
-  $('mbarS').textContent = item ? `${NIVEAUX[S.niveau]} · ${PERIODES[S.per]} · ${S.type}s` : NIVEAUX[S.niveau];
+  $('mbarS').textContent = item ? `${NIVEAUX[S.niveau]} · ${PERIODES[S.per]} · ${S.type === 'Tous' ? 'Tous logements' : TYPE_LBL(S.type)}` : NIVEAUX[S.niveau];
   $('mbarVue').textContent = S.vue === 'carte' ? 'Étude' : 'Carte'; $('mbarValo').hidden = !LAST_ADDR?.props; $('mbarValo').classList.toggle('primary', S.vue==='valo');
   if (S.vue === 'valo') { $('mbarT').textContent = LAST_ADDR.label; $('mbarS').textContent = 'Valorisation · 12 derniers mois'; }
   if (S.vue === 'persp') { $('mbarS').textContent = 'Perspectives · 3, 5, 10 ans'; }
@@ -814,10 +817,14 @@ function update(soft=false){
   let et = null, idx = null;
   if (item) {
     const t0 = performance.now();
-    idx = S.niveau === 'rayon' ? E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0})
-        : E.select(SALES, {quartiers: E.masqueZone(META, S.niveau, S.id), type: S.type==='Maison'?1:0});
+    idx = S.niveau === 'rayon' ? E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)})
+        : E.select(SALES, {quartiers: E.masqueZone(META, S.niveau, S.id), type: TYPE_CODE(S.type)});
     et = idx.length ? E.etude(SALES, idx, META.meta.last_year, typosValides, {withMonth:true}) : null;
-    lastEtude = {et, ms: performance.now()-t0, n: idx.length};
+    // Mode « Tous » : la même sélection séparée par type — distinction appartements / maisons, typologies sur les appartements
+    let parType = null;
+    if (S.type === 'Tous' && et) { const ia = idx.filter(i => SALES.t[i] === 0), im = idx.filter(i => SALES.t[i] === 1);
+      parType = {app: ia.length ? E.etude(SALES, ia, META.meta.last_year, typosValides, {withMonth:true}) : null, mai: im.length ? E.etude(SALES, im, META.meta.last_year, typosValides, {withMonth:true}) : null, nApp: ia.length, nMai: im.length}; }
+    lastEtude = {et, ms: performance.now()-t0, n: idx.length, parType};
   }
   $('hdr').innerHTML = headerHtml(item, idx ? idx.length : 0); renderMbar(item);
   if (S.vue === 'carte') { box.hidden = true; mapv.hidden = false; showMap(item); setStatus('ok', statusLine()); if (!item && !LAST_ADDR && matchMedia('(hover:hover)').matches) setTimeout(() => $('addr').focus(), 60); return; }
@@ -825,11 +832,18 @@ function update(soft=false){
   if (S.vue === 'valo') { renderValo(); setStatus('ok', statusLine()); return; }
   if (S.vue === 'persp') { renderPersp(item); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Sélectionnez un ${NIVEAUX[S.niveau].toLowerCase()} dans les filtres, ou ouvrez la carte pour localiser une adresse. Tout se recalcule immédiatement dans votre navigateur.</p></div></div>`; setStatus('ok', statusLine()); return; }
-  if (!et) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Aucune vente de ${S.type.toLowerCase()} retenue</h3><p>Moins de 3 ventes de ce type sur ${esc(item.nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; setStatus('ok', statusLine()); return; }
+  if (!et) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Aucune vente retenue (${esc(TYPE_LBL(S.type).toLowerCase())})</h3><p>Moins de 3 ventes de ce type sur ${esc(item.nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; setStatus('ok', statusLine()); return; }
   let html = ''; const charts = [];
-  if (S.global) { html += sectionCard(`${item.nom} · ${S.type}s · toutes surfaces`, 'Marché global', et, 'c-g'); charts.push(['c-g', et]); }
-  html += typoTable(et);
-  typosValides.filter(t=>t.on).forEach(t => { const st = et.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); });
+  const pt = lastEtude.parType;
+  if (S.global || pt) { html += sectionCard(`${item.nom} · ${TYPE_LBL(S.type).toLowerCase()} · toutes surfaces`, 'Marché global', et, 'c-g'); charts.push(['c-g', et]); }
+  if (pt) {   // distinction appartements / maisons (lot 13)
+    if (pt.app) { html += sectionCard(`${item.nom} · appartements · toutes surfaces`, 'Appartements', pt.app, 'c-app'); charts.push(['c-app', pt.app]); }
+    if (pt.mai) { html += sectionCard(`${item.nom} · maisons · toutes surfaces`, 'Maisons', pt.mai, 'c-mai'); charts.push(['c-mai', pt.mai]); }
+    else html += `<div class="card glass"><div class="card-b"><div class="hint">Moins de 3 ventes de maisons sur ${esc(item.nom)} : pas de statistique maisons.</div></div></div>`;
+  }
+  const etTypo = pt ? pt.app : et;   // typologies T1–T5 : surfaces d'appartement
+  if (etTypo) { html += typoTable(etTypo);
+    typosValides.filter(t=>t.on).forEach(t => { const st = etTypo.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²${pt ? ' · appartements' : ''}`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); }); }
   html += yearTable(et, item.nom);
   if (S.niveau === 'rayon') html += rayonCard(item, idx);
   html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (P10, Q1, médiane, Q3, P90) et moyenne calculés dans votre navigateur sur les ventes de la période (${lastEtude.n.toLocaleString('fr-FR')} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.
@@ -933,7 +947,7 @@ async function ensureMacro(){
 }
 function refZone(item){   // €/m² de la zone étudiée sur les 12 derniers mois disponibles (même fenêtre que la valorisation)
   const to = E.ymMax(SALES), from = to - VALO_MOIS + 1;
-  const idx = E.select(SALES, {quartiers: E.masqueZone(META, S.niveau, S.id), type: S.type==='Maison'?1:0, ymFrom: from, ymTo: to});
+  const idx = E.select(SALES, {quartiers: E.masqueZone(META, S.niveau, S.id), type: TYPE_CODE(S.type), ymFrom: from, ymTo: to});
   return {n: idx.length, median: E.percentileOf(SALES, idx, .5), from, to};
 }
 function tendanceLocale(item){   // tendance relative à Paris sur 10 ans, pour information (jamais extrapolée par défaut)
@@ -969,7 +983,7 @@ async function renderPersp(item){
         <div class="h"><div class="l">Vitesse d'ajustement</div><div class="row"><select data-pk="lam" aria-label="Vitesse d'ajustement"><option value="0.12" ${P.lam==0.12?'selected':''}>lente · 12 %/trim</option><option value="0.2" ${P.lam==0.2?'selected':''}>20 %/trim (rétrospectif)</option><option value="0.35" ${P.lam==0.35?'selected':''}>rapide · 35 %/trim</option></select></div><div class="src">Part de l'écart entre prix et cible comblée chaque trimestre. Écart actuel : <b>${fmtPctS(CAL.ecartCourant*100)}</b> (prix ${CAL.ecartCourant<0?'sous':'au-dessus de'} la cible).</div></div>
       </div>
       <div class="hint">Point de départ${ib('persp_pont')} : Paris ${fmt0(SERIE_PARIS[o.qDvf])} €/m² au ${moisLabel(o.qDvf)} (DVF)${o.pont ? ` × ${o.pont.ratio.toFixed(3).replace('.',',')} (indice Notaires-INSEE ${moisLabel(o.pont.de)} → ${moisLabel(o.pont.a)})` : ''} = <b>${fmt0(o.prix)} €/m²</b> au ${moisLabel(o.q)}. Zone : ${ref.median ? `<b>${fmt0(ref.median)} €/m²</b> (${ref.n} ventes, ${fmtMois(ref.from)} → ${fmtMois(ref.to)})` : 'effectif insuffisant sur 12 mois'}${valo?.valeur ? ` · immeuble valorisé <b>${fmtEur(valo.valeur)}</b>` : ''}.${stale.length ? ` <span style="color:var(--warn)">Séries à surveiller : ${esc(stale.join(' ; '))}.</span>` : ''}</div></div></div>
-    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(S.type)}s${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
       <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
         ${horizons.map(([n,l]) => `<tr><td>${l}<small>${moisLabel(sc.central.at(n).q)}</small></td>${cell(sc.bas,n,'b')}${cell(sc.central,n,'c')}${cell(sc.haut,n,'h')}</tr>`).join('')}</tbody></table></div>
       <div class="chart"><div class="chart-t"><span>Trajectoire · Paris, base 100 au ${moisLabel(o.q)}</span><span class="legend"><span><i style="border-color:var(--bad)"></i>Bas</span><span><i></i>Central</span><span><i style="border-color:var(--good)"></i>Haut</span></span></div><div id="persp-chart"></div></div>
@@ -1016,8 +1030,11 @@ function computeRayon(item, idx){
   const R = S.rprix; const years = []; for (let y = META.meta.last_year - R.hist + 1; y <= META.meta.last_year; y++) years.push(y);
   const t0 = performance.now();
   const ids = (R.typo || '').split(',').filter(Boolean); const typos = ids.map(id => S.typos.find(t => t.id === id && t.surfMax > t.surfMin)).filter(Boolean);
-  const series = (typos.length ? typos : [null]).map(t => { const sel = t ? idx.filter(i => SALES.surf[i] >= t.surfMin && SALES.surf[i] < t.surfMax) : idx;
-    return {typo: t ? {id: t.id, surfMin: t.surfMin, surfMax: t.surfMax} : null, st: E.statsRayon(SALES, sel, {years, minN: 5}), n: sel.length}; });
+  // mode « Tous » (lot 13) : typologies cochées sur les appartements (ou appartements toutes surfaces) + une série Maisons
+  const base = S.type === 'Tous' ? idx.filter(i => SALES.t[i] === 0) : idx;
+  const series = (typos.length ? typos : [null]).map(t => { const sel = t ? base.filter(i => SALES.surf[i] >= t.surfMin && SALES.surf[i] < t.surfMax) : base;
+    return {typo: t ? {id: t.id, surfMin: t.surfMin, surfMax: t.surfMax} : null, label: S.type === 'Tous' ? (t ? `${t.id} · ${t.surfMin}–${t.surfMax} m² (appart.)` : 'Appartements') : null, st: E.statsRayon(SALES, sel, {years, minN: 5}), n: sel.length}; });
+  if (S.type === 'Tous') { const sel = idx.filter(i => SALES.t[i] === 1); series.push({typo: null, label: 'Maisons', st: E.statsRayon(SALES, sel, {years, minN: 5}), n: sel.length}); }
   const couv = E.couvertureRayon(LAST_ADDR.lon, LAST_ADDR.lat, item.r, quartierAt);
   const occupe = R.occupe > 0 ? R.occupe : (R.libre > 0 && R.decote > 0 ? Math.round(R.libre * (1 - R.decote / 100)) : 0);
   const opts = {rayon: item.r, titre: rayonTitre(), acq: R.acq, libre: R.libre, occupe, decote: R.occupe > 0 ? 0 : R.decote, type: S.type, minN: 5};
@@ -1042,7 +1059,7 @@ function rayonCard(item, idx){
   <div class="card glass" id="rayonCard"><div class="card-h"><div class="card-t"><span class="badge">Présentation</span>Marché autour de l'immeuble${ib('rayon_med')}</div><span class="card-sub"><button class="btn btn-primary btn-sm" type="button" id="btnRayonPng" style="width:auto">Télécharger PNG (présentation)</button> <button class="btn btn-ghost btn-sm" type="button" id="btnRayonSvg" style="width:auto">SVG</button></span></div>
     <div class="card-b" style="padding-top:12px">
       <div class="loy-ctl"><span><span class="lbl">Historique</span></span><div class="seg seg-3" id="segHist">${[2,5,10].map(hh=>`<button type="button" data-v="${hh}" class="${R.hist===hh?'on':''}">${hh} ans</button>`).join('')}</div>
-        <span><span class="lbl">Surfaces</span><span class="typo-checks">${typos.map(t=>`<label><input type="checkbox" data-rt="${t.id}" ${chosen.includes(t.id)?'checked':''}> ${t.id} <small>${t.surfMin}–${t.surfMax} m²</small></label>`).join('')}<small class="hint">aucune case = toutes surfaces · bornes dans le panneau Typologies</small></span></span>
+        <span><span class="lbl">Surfaces</span><span class="typo-checks">${typos.map(t=>`<label><input type="checkbox" data-rt="${t.id}" ${chosen.includes(t.id)?'checked':''}> ${t.id} <small>${t.surfMin}–${t.surfMax} m²</small></label>`).join('')}<small class="hint">aucune case = toutes surfaces · bornes dans le panneau Typologies${S.type === 'Tous' ? ' · en « Tous », les typologies portent sur les appartements et une série Maisons est ajoutée' : ''}</small></span></span>
         <label class="sw-row" style="gap:8px;margin:0"><input type="checkbox" data-rk="pdf" ${R.pdf?'checked':''}> <span>Intégrer le visuel au rapport PDF</span></label></div>
       <div class="loy-ctl" style="margin-top:10px"><span><span class="lbl">Acquisition €/m² HD${ib('rayon_prix')}</span>${num('acq', R.acq, 'ex. 8 650', 10)}</span>
         <span><span class="lbl">Sortie libre €/m² HD</span>${num('libre', R.libre, 'ex. 12 600', 10)}</span>
@@ -1052,7 +1069,7 @@ function rayonCard(item, idx){
       <div class="method"><b>Méthode.</b> ${esc(HELP.rayon_med[1])} ${esc(HELP.rayon_dec[1])} ${esc(HELP.rayon_prix[1])}</div></div></div>`;
 }
 function refreshRayonLive(){ const live = $('rayonLive'); if (!live || !lastEtude) return;
-  const item = findItem('rayon', S.id); const idx = E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0});
+  const item = findItem('rayon', S.id); const idx = E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)});
   const d = computeRayon(item, idx); lastRayon = d; live.innerHTML = rayonLive(d); }
 let rayonTimer = null;
 $('etude').addEventListener('input', e => { const el = e.target; if (!S.rprix) return;
@@ -1182,7 +1199,7 @@ async function valoPourPdf(){
 }
 async function rayonPourPdf(item){   // visuel du deck pour la page du PDF : la même image PNG que le téléchargement (un seul dessin)
   if (S.niveau !== 'rayon' || !SALES.lon || !(S.rprix?.pdf ?? true)) return null;
-  const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: S.type==='Maison'?1:0})); if (!d) return null;
+  const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)})); if (!d) return null;
   try { d.png = await RY.svgToPngDataUrl(d.svg); } catch(ex) { d.png = null; d.pngErreur = ex.message; }
   return d;
 }
@@ -1203,6 +1220,7 @@ async function exportPdf(){
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
       address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: await rayonPourPdf(item), rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
+      parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
       helpers: {fmt0, fmtPct, fmtPctS, fmtPct2, fmtEur, fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());

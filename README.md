@@ -115,6 +115,12 @@ Le cache porte le périmètre de communes de chaque entrée : élargir le périm
 2014–2020 n'existent qu'en fichier national : il est lu une fois pour tous les départements. Saint-Ouen est soumise à
 l'encadrement des loyers de Plaine Commune : non intégré (loyer d'annonce affiché, mention explicite ; lot 9b).
 
+**Type de bien (lot 13).** Trois choix : Appartements, Maisons, Tous (`type=Tous` dans l'URL). « Tous » donne le marché
+global (ventes d'un logement seul, appartement ou maison) et, en dessous, les mêmes indicateurs séparés par type ; les
+typologies T1–T5 restent calculées sur les appartements seuls (une maison n'a pas de typologie DVF comparable). Le rayon
+trace une série « Appartements » (ou une par typologie cochée) et une série « Maisons » ; le PDF reprend les deux sections.
+Saint-Maur 2014–2025 : 9 882 appartements + 4 507 maisons = 14 389 ventes en « Tous » (test du 15/10/2026).
+
 Sur iPhone (≤ 700 px) les chiffres s'affichent en premier, les filtres s'ouvrent depuis la barre fixe en bas ; sur
 iPad portrait deux colonnes plus étroites ; cibles tactiles ≥ 40 px et champs à 16 px (sinon iOS Safari zoome).
 

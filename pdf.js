@@ -151,7 +151,7 @@ export async function exportPdf(ctx){
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   doc.addFileToVFS('Inter-Regular.ttf', regular); doc.addFont('Inter-Regular.ttf', 'Inter', 'normal');
   doc.addFileToVFS('Inter-SemiBold.ttf', semibold); doc.addFont('Inter-SemiBold.ttf', 'Inter', 'bold');
-  const st = mk(doc); st.logo = logoImg; st.runningTitle = `Étude de marché résidentiel · ${item.nom} · ${S.type}s`;
+  const st = mk(doc); st.logo = logoImg; st.runningTitle = `Étude de marché résidentiel · ${item.nom} · ${ctx.typeLbl.toLowerCase()}`;
   const now = new Date(), w = h.windowOf(et), addrIn = address && address.props;
   const typoLabel = typos.filter(t => t.on).map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(' · ');
 
@@ -160,7 +160,7 @@ export async function exportPdf(ctx){
   st.caps('Étude de marché résidentiel', PW - M, 20, { align: 'right', s: 7, ls: 0.8 });
   st.text(dateFr(now), PW - M, 26, { s: 8, c: C.grey, align: 'right' });
   st.line(M, 34, PW - M, 34, C.green, 0.6);
-  st.caps(`${niveauLabel} · ${S.type}s · ${periodeLabel}${w ? ` (${w.from} → ${w.to})` : ''}`, M, 48, { s: 7.2, ls: 0.6, c: C.green });
+  st.caps(`${niveauLabel} · ${ctx.typeLbl} · ${periodeLabel}${w ? ` (${w.from} → ${w.to})` : ''}`, M, 48, { s: 7.2, ls: 0.6, c: C.green });
   const titleLines = st.wrap(item.nom, CW, 27, 'bold'); let y = 60; titleLines.forEach(l => { st.text(l, M, y, { s: 27, w: 'bold', c: C.navy }); y += 11; });
   const sub = crumbs.join('  ·  '); const subLines = st.wrap(sub, CW, 9).slice(0, 3); subLines.forEach(l => { st.text(l, M, y, { s: 9, c: C.grey }); y += 5; });
   y += 4;
@@ -236,10 +236,10 @@ export async function exportPdf(ctx){
     const last = years.slice().reverse().find(y => series.some(se => se.st.annees[y]));
     const nTotal = series.reduce((a, se) => a + se.st.nTotal, 0);
     st.caps('Proximité', M, st.y + 2, { s: 6, c: C.green }); st.text(`Rayon ${h.fmt0(opts.rayon)} m · ${years[0]} → ${years[years.length - 1]}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    const tl = st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : "d'appartements"}${multi ? ` ${series.map(se => se.typo ? se.typo.id : 'toutes surfaces').join(' / ')}` : series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : ''} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 12, 'bold').slice(0, 2);
+    const tl = st.wrap(`Ventes ${opts.type === 'Maison' ? 'de maisons' : opts.type === 'Tous' ? "d'appartements et de maisons" : "d'appartements"}${opts.type === 'Tous' ? '' : multi ? ` ${series.map(se => se.typo ? se.typo.id : 'toutes surfaces').join(' / ')}` : series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : ''} à moins de ${h.fmt0(opts.rayon)} m du ${opts.titre}`, CW, 12, 'bold').slice(0, 2);
     tl.forEach((l, i) => st.text(l, M, st.y + 8.5 + i * 5.5, { s: 12, w: 'bold', c: C.navy })); st.line(M, st.y + 12 + (tl.length - 1) * 5.5, PW - M, st.y + 12 + (tl.length - 1) * 5.5, C.line); st.y += 16 + (tl.length - 1) * 5.5;
     const s0 = series[0].st;
-    const tiles = [['Ventes dans le rayon', h.fmt0(nTotal), `${opts.type.toLowerCase()}s · ${years[0]} → ${years[years.length - 1]}${multi ? ' · toutes séries' : ''}`, true],
+    const tiles = [['Ventes dans le rayon', h.fmt0(nTotal), `${ctx.typeLbl.toLowerCase()} · ${years[0]} → ${years[years.length - 1]}${multi ? ' · toutes séries' : ''}`, true],
       [`Médiane ${last || '—'}${multi ? ` · ${series[0].typo ? series[0].typo.id : 'toutes'}` : ''}`, last && s0.annees[last] ? h.fmt0(s0.annees[last].median) + ' €/m²' : '—', last && s0.annees[last] ? `P10 ${h.fmt0(s0.annees[last].p10)} · P90 ${h.fmt0(s0.annees[last].p90)}` : 'moins de 5 ventes'],
       ['Couverture', `${Math.round(couv.couverte * 100)} %`, couv.couverte >= 0.999 ? 'rayon dans les communes couvertes' : 'rayon partiellement hors périmètre'],
       ['Prix de comparaison', opts.libre > 0 ? h.fmt0(opts.libre) + ' €/m²' : '—', opts.libre > 0 ? `sortie libre HD${opts.acq > 0 ? ` · acquisition ${h.fmt0(opts.acq)}` : ''}` : 'aucun prix saisi']];
@@ -261,7 +261,7 @@ export async function exportPdf(ctx){
     const { sc, sens, retro, cal, ref, params, macro } = PP; const o = sc.central.origine; const Mx = macro.series;
     const tx = h.lastOf(Mx.taux_credit.obs), oat = h.lastOf(Mx.oat_10.obs), ip = h.lastOf(Mx.ipch.obs), pm = h.lastOf(Mx.permis_paris.obs), loy = h.lastOf(Mx.loyers_paris.obs);
     st.caps('Perspectives', M, st.y + 2, { s: 6, c: C.green }); st.text(`scénarios à 3, 5 et 10 ans depuis ${h.moisLabel(o.q)}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
-    st.text(st.wrap(`Perspectives · ${item.nom} · ${S.type}s`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+    st.text(st.wrap(`Perspectives · ${item.nom} · ${ctx.typeLbl.toLowerCase()}`, CW, 13, 'bold')[0], M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
     // hypothèses
     const hyps = [['Taux de crédit visé', `${params.tauxH.toFixed(2).replace('.', ',')} %`, `actuel ${tx.v.toFixed(2).replace('.', ',')} % (${h.moisLabel(tx.k)}) · atteint en ${params.horizonTaux / 4} an${params.horizonTaux > 4 ? 's' : ''}`], ['Inflation', `${params.inflation.toFixed(1).replace('.', ',')} %/an`, `IPCH ${h.fmtPctS(h.perAn(Mx.ipch.obs, ip.k, 12) * 100)} sur 12 mois (${h.moisLabel(ip.k)})`], ['Revenus réels', `${params.revenus.toFixed(1).replace('.', ',')} %/an`, `au-delà de l'inflation`], ['Prime locale', `${params.prime.toFixed(1).replace('.', ',')} %/an`, PP.tl != null ? `tendance 10 ans observée ${h.fmtPctS(PP.tl)}/an (non extrapolée)` : 'non calculable'], ['Vitesse d’ajustement', `${Math.round(params.lam * 100)} %/trim`, `écart prix / cible actuel ${h.fmtPctS(cal.ecartCourant * 100)}`]];
     const tw = (CW - 12) / 5; hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
@@ -293,13 +293,16 @@ export async function exportPdf(ctx){
     st.para(`Méthode. ${h.HELP.persp_modele[1]} ${h.HELP.persp_scen[1]} ${h.HELP.persp_retro[1]} ${h.HELP.persp_prime[1]} Sources : BCE (taux des crédits à l'habitat ${h.moisLabel(tx.k)}, OAT 10 ans ${oat.v.toFixed(2).replace('.', ',')} % en ${h.moisLabel(oat.k)}, IPCH ${h.moisLabel(ip.k)}), INSEE (indice Notaires-INSEE Paris, indice des loyers ${h.moisLabel(loy.k)}, logements autorisés à Paris ${h.fmt0(pm.v)} sur 12 mois en ${h.moisLabel(pm.k)}). Scénarios conditionnels aux hypothèses affichées : ce ne sont pas des prévisions.`, M, CW, { s: 7.2 });
     st.newPage();
   }
-  if (S.global) section(`${item.nom} · ${S.type}s · toutes surfaces`, 'Marché global', et);
-  typos.filter(t => t.on && et.by_typo?.[t.id]).forEach(t => section(`${t.id} · ${t.surfMin}–${t.surfMax} m²`, 'Typologie', et.by_typo[t.id]));
+  const PT = ctx.parType, etTypo = PT ? PT.app : et;   // lot 13 : en « Tous », distinction par type et typologies sur les appartements
+  if (S.global || PT) section(`${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, 'Marché global', et);
+  if (PT) { if (PT.app) section(`${item.nom} · appartements · toutes surfaces`, 'Appartements', PT.app);
+    if (PT.mai) section(`${item.nom} · maisons · toutes surfaces`, 'Maisons', PT.mai); }
+  if (etTypo) typos.filter(t => t.on && etTypo.by_typo?.[t.id]).forEach(t => section(`${t.id} · ${t.surfMin}–${t.surfMax} m²${PT ? ' · appartements' : ''}`, 'Typologie', etTypo.by_typo[t.id]));
 
   // ── Tableaux ──────────────────────────────────────────────────────────────────────────────────
-  const bt = et.by_typo || {}, tIds = typos.map(t => t.id).filter(id => bt[id]);
+  const bt = etTypo?.by_typo || {}, tIds = typos.map(t => t.id).filter(id => bt[id]);
   if (tIds.length) {
-    st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); st.text(`Répartition et prix par surface · ${S.type}s`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy });
+    st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); st.text(`Répartition et prix par surface · ${PT ? 'appartements' : ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy });
     st.text(`part sur ${META.meta.periode} · prix sur ${periodeLabel.toLowerCase()}`, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     const evo = (by, n) => { const ly = META.meta.last_year, a = by?.[String(ly)]?.median, b = by?.[String(ly - n)]?.median; return (a && b) ? (a / b - 1) * 100 : null; };
     const pc = v => ({ t: h.fmtPct(v), c: v == null ? C.grey2 : v > 0 ? C.good : v < 0 ? C.bad : C.text });
@@ -309,14 +312,14 @@ export async function exportPdf(ctx){
     st.y += 6;
   }
   const by = et.by_year || {}, years = Object.keys(by).sort();
-  st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${S.type}s · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
+  st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
   table(st, [{ l: 'Année', w: 1 }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'P10', w: 1, align: 'right' }, { l: 'Q1', w: 1, align: 'right' }, { l: 'Médiane', w: 1.1, align: 'right' }, { l: 'Q3', w: 1, align: 'right' }, { l: 'P90', w: 1, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.2, align: 'right' }],
     years.map((yy, i) => { const v = by[yy], prev = by[years[i - 1]], e = prev ? (v.median / prev.median - 1) * 100 : null;
       return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.mean), `${v.surf_mean} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 7 });
 
   // ── Méthode ───────────────────────────────────────────────────────────────────────────────────
   st.newPage(); st.caps('Méthode', M, st.y + 2, { s: 6, c: C.green }); st.text('Méthode de calcul et sources', M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 17;
-  st.para(`Périmètre de l'étude : ${item.nom} (${niveauLabel.toLowerCase()}), ${S.type.toLowerCase()}s, ${periodeLabel.toLowerCase()}${w ? ` (${w.from} → ${w.to})` : ''}, ${h.fmt0(ctx.nVentes)} ventes retenues sur l'ensemble de l'historique ${META.meta.periode}. Typologies : ${typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(', ')}${typoLabel ? ` (détaillées : ${typoLabel})` : ''}. Étude générée le ${dateFr(now)} depuis ${location.origin}${location.pathname}, calculs effectués dans le navigateur sur les ventes déchiffrées.`, M, CW, { s: 8.2 }); st.y += 3;
+  st.para(`Périmètre de l'étude : ${item.nom} (${niveauLabel.toLowerCase()}), ${ctx.typeLbl.toLowerCase()}, ${periodeLabel.toLowerCase()}${w ? ` (${w.from} → ${w.to})` : ''}, ${h.fmt0(ctx.nVentes)} ventes retenues sur l'ensemble de l'historique ${META.meta.periode}. Typologies : ${typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(', ')}${typoLabel ? ` (détaillées : ${typoLabel})` : ''}. Étude générée le ${dateFr(now)} depuis ${location.origin}${location.pathname}, calculs effectués dans le navigateur sur les ventes déchiffrées.`, M, CW, { s: 8.2 }); st.y += 3;
   st.para(`Données : « Demandes de valeurs foncières » (DGFiP) publiées par Etalab (geo-dvf et opendatarchives), millésimes ${META.meta.periode}, dernière mise à jour ${new Date(META.meta.generated_at).toLocaleDateString('fr-FR')}. Sont retenues les ventes (hors VEFA) d'un logement unique — appartement ou maison, dépendances tolérées, local professionnel ou second logement exclus — dont le prix au m² est compris entre 1 000 et 40 000 € et la surface entre 9 et 400 m². Surface Carrez de l'acte si elle est cohérente avec la surface bâtie (écart ≤ 30 %), sinon surface bâtie. Chaque vente est rattachée par ses coordonnées au polygone officiel de son quartier (80 quartiers administratifs de la Ville de Paris ; dans les autres communes couvertes — ${Object.values(ctx.communesRef || {}).filter(c => c.nom !== 'Paris').map(c => c.nom).join(', ')} — quartiers constitués des IRIS de l'INSEE / IGN, regroupés quand leur nommage le permet). Les ventes sans coordonnées ne sont comptées dans aucun niveau. Zones d'encadrement des loyers : découpage officiel de la Ville de Paris. Fond de carte et géocodage : IGN Géoplateforme. Licence Ouverte 2.0.`, M, CW, { s: 8.2 }); st.y += 4;
   st.caps('Définition des indicateurs', M, st.y + 2, { s: 6.2 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 9;
   const colW = (CW - 8) / 2; let col = 0, yTop = st.y, yMax = st.y;
