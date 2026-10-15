@@ -83,6 +83,8 @@ COMMUNES = {
     "92040": {"nom": "Issy-les-Moulineaux", "prefix": "IS", "methode": "gq"},
     "92025": {"nom": "Colombes", "prefix": "CO", "methode": "gq"},
     "92035": {"nom": "La Garenne-Colombes", "prefix": "GC", "methode": "iris"},
+    # lot 12 (15/10/2026) : premier département hors petite couronne (78). 10 IRIS aux noms distincts, un seul grand quartier
+    "78358": {"nom": "Maisons-Laffitte", "prefix": "ML", "methode": "iris"},
 }
 STEM = re.compile(r"\s+(\d+|[IVX]+)$")   # « Trapèze 3 », « Flachat II » → « Trapèze », « Flachat »
 

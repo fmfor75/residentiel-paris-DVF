@@ -2,8 +2,9 @@
 
 Plateforme d'étude du marché résidentiel (Paris et quatorze communes limitrophes : Boulogne-Billancourt, Clichy,
 Levallois-Perret, Asnières-sur-Seine, Bois-Colombes, Puteaux, Saint-Ouen-sur-Seine, Saint-Maur-des-Fossés, Saint-Mandé,
-Vincennes, et depuis le lot 11 Neuilly-sur-Seine, Issy-les-Moulineaux, Colombes, La Garenne-Colombes) alimentée par les
-données DVF de la DGFiP, servie par GitHub Pages, protégée par un code d'accès.
+Vincennes, depuis le lot 11 Neuilly-sur-Seine, Issy-les-Moulineaux, Colombes, La Garenne-Colombes, et depuis le lot 12
+Maisons-Laffitte, dans les Yvelines) alimentée par les données DVF de la DGFiP, servie par GitHub Pages, protégée par un
+code d'accès.
 
 ## Architecture
 
@@ -30,7 +31,7 @@ tests/                        ← pipeline sur fixtures HTTP locales · chiffrem
 ## Fonctionnement du dashboard (lot 4)
 
 Le navigateur déchiffre `sales.bin` (≈ 280 000 ventes) et calcule lui-même toutes les statistiques : niveau
-(arrondissement ou commune entière, secteur, zone d'encadrement, quartier), période, type de bien et **typologies dont les
+(arrondissement ou commune entière, secteur, zone d'encadrement, quartier, rayon autour d'une adresse), période, type de bien et **typologies dont les
 bornes de surface sont modifiables à chaque étude** (préremplies avec T1 9–30, T2 30–50, T3 50–70, T4 70–100,
 T5 100–400 m²). L'étude complète est encodée dans l'URL (`#…&typos=T1:9-30:1,…`), donc partageable.
 
@@ -106,8 +107,9 @@ sont redirigées. Les quartiers hors Paris sont des IRIS INSEE regroupés selon 
 `build_geo.py` (relevé du 06/10/2026 : la convention de nommage varie) — par nom sans numéro (Boulogne 10, Levallois 13),
 par grand quartier INSEE (Clichy 6, Asnières 7, Puteaux 4, Saint-Maur 8, Vincennes 4), ou IRIS individuels quand rien ne
 les regroupe (Bois-Colombes 12, Saint-Mandé 9, Saint-Ouen 18). Lot 11 (14/10/2026) : Neuilly 5 (nom), Issy 7 (gq),
-Colombes 4 (gq), La Garenne-Colombes 11 (iris) ; 198 quartiers au total (format binaire : 256 max — une vague de plus
-tient, pas deux : au-delà, passer l'index de quartier sur deux octets). Les
+Colombes 4 (gq), La Garenne-Colombes 11 (iris). Lot 12 (15/10/2026) : Maisons-Laffitte 10 (iris), premier commune du
+78 — le département est ajouté automatiquement (DEPS dérivé du référentiel). 208 quartiers au total (format binaire :
+256 max — au-delà, passer l'index de quartier sur deux octets). Les
 ventes sans coordonnées sont comptées par commune (`meta.geo.sans_quartier_commune` ; Bois-Colombes ≈ 21 % en 2024).
 Le cache porte le périmètre de communes de chaque entrée : élargir le périmètre force le retraitement. Les millésimes
 2014–2020 n'existent qu'en fichier national : il est lu une fois pour tous les départements. Saint-Ouen est soumise à

@@ -45,6 +45,7 @@ COMMUNES = {"92012": ("Boulogne-Billancourt", 48.8371, 2.2424, 0.012, 0.015), "9
             "94067": ("Saint-Mandé", 48.8417, 2.4193, 0.005, 0.005), "94080": ("Vincennes", 48.847, 2.4388, 0.004, 0.014),
             "92051": ("Neuilly-sur-Seine", 48.8859, 2.2656, 0.009, 0.014), "92040": ("Issy-les-Moulineaux", 48.8242, 2.2621, 0.007, 0.019),
             "92025": ("Colombes", 48.9214, 2.2475, 0.011, 0.019), "92035": ("La Garenne-Colombes", 48.9070, 2.2433, 0.005, 0.010),
+            "78358": ("Maisons-Laffitte", 48.9499, 2.1527, 0.011, 0.017),
             "92072": ("Sèvres (hors périmètre)", 48.8238, 2.2096, 0.005, 0.005)}
 _GEO = None
 def point_dans_commune(code, rng, centre=None):
@@ -139,13 +140,14 @@ def write_gz(path, rows):
     with gzip.open(path, "wt", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=HEADER); w.writeheader(); w.writerows(rows)
 
-def build(root, variant="normal", n75=600, n92=900, n93=500, n94=500, seed=1):
+def build(root, variant="normal", n75=600, n92=900, n93=500, n94=500, n78=500, seed=1):
     """Construit l'arborescence de sources dans `root`.
     variant : 'normal' | 'annee_creuse' (2018 quasi vide) | 'partiel_2019' (2019 seulement dans un millésime d'octobre 2019)."""
     rng = random.Random(seed); attendus = {}
     for annee in range(2014, 2027):
         r75 = gen_year("75", annee, n75 if not (variant == "annee_creuse" and annee == 2018) else 120, rng, 8000)
         r92 = gen_year("92", annee, n92, rng, 7000); r93 = gen_year("93", annee, n93, rng, 5000); r94 = gen_year("94", annee, n94, rng, 6000)
+        r78 = gen_year("78", annee, n78, rng, 6000)
         if annee == 2024:
             spec, attendus = cas_speciaux(annee); r75 += spec
         if annee >= 2021:
@@ -156,7 +158,7 @@ def build(root, variant="normal", n75=600, n92=900, n93=500, n94=500, seed=1):
             base = f"oda/2019-04/csv/{annee}/departements"
         if variant == "partiel_2019" and annee == 2019:
             base = f"oda/2019-10/csv/{annee}/departements"; r75 = r75[: len(r75) // 2]; r92 = r92[: len(r92) // 2]
-        for dep, rows in (("75", r75), ("92", r92), ("93", r93), ("94", r94)):
+        for dep, rows in (("75", r75), ("92", r92), ("93", r93), ("94", r94), ("78", r78)):
             write_gz(os.path.join(root, base, f"{dep}.csv.gz"), rows)
     return attendus
 

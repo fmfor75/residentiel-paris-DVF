@@ -58,13 +58,13 @@ class Pipeline(unittest.TestCase):
         # Le doublon est retenu une fois ; le sans-géoloc est compté sans quartier
         self.assertGreaterEqual(c["surface_source:carrez"], att["surface_source:carrez_speciaux"])
         self.assertIn("6", d["secteurs"]); self.assertNotIn("B0", d["secteurs"])   # lot 9 : plus de pseudo-secteur Boulogne
-        # Géographie : 198 quartiers (80 Paris + 118 dans 14 communes), 14 zones, secteurs par polygones ; presque tout affecté
-        self.assertEqual(m["geo"]["quartiers"], 198)
+        # Géographie : 208 quartiers (80 Paris + 128 dans 15 communes, dont Maisons-Laffitte dans le 78), 14 zones ; presque tout affecté
+        self.assertEqual(m["geo"]["quartiers"], 208)
         self.assertLess(sum(m["geo"]["sans_quartier"].values()), 0.02 * m["total_mutations"])
         self.assertEqual(len(d["zones"]), 14); self.assertGreaterEqual(len(d["quartiers"]), 100)
         self.assertEqual(set(d["secteurs"]), {str(i) for i in range(1, 15)})
         # Communes : les 10 hors Paris ont des statistiques, Sèvres (dans le CSV du 92) est ignorée, Paris n'y figure pas
-        self.assertEqual(set(d["communes"]), set(d["communes_ref"]) - {"75056"}); self.assertEqual(len(d["communes"]), 14)
+        self.assertEqual(set(d["communes"]), set(d["communes_ref"]) - {"75056"}); self.assertEqual(len(d["communes"]), 15)
         self.assertNotIn("92072", d["communes"]); self.assertEqual(d["communes_ref"]["93070"]["nom"], "Saint-Ouen-sur-Seine")
         self.assertEqual(d["communes_ref"]["92012"]["quartiers"], [f"B{i}" for i in range(1, 11)])
         self.assertTrue(all(d["quartiers_ref"][q]["secteur"] is None for q in d["communes_ref"]["92024"]["quartiers"]))
@@ -103,10 +103,10 @@ class Pipeline(unittest.TestCase):
         import gzip
         cache = json.load(gzip.open("data/dvf_cache.json.gz", "rt", encoding="utf-8"))
         self.assertEqual(cache["parser_version"], P.PARSER_VERSION)
-        self.assertEqual(len(cache["entries"]), 13 * 4)
+        self.assertEqual(len(cache["entries"]), 13 * 5)   # 75, 78, 92, 93, 94
         self.assertIn("compteurs", cache["entries"]["75_2020"]); self.assertTrue(cache["entries"]["75_2025"]["empreinte"])
         self.assertEqual(sorted(cache["entries"]["92_2024"]["communes"]), sorted(P.DEPS["92"]))
-        self.assertEqual(m["fichiers_telecharges"], 52)
+        self.assertEqual(m["fichiers_telecharges"], 65)
 
     def test_cache_reutilise_et_compteurs_conserves(self):
         code, _ = self.run_pipeline(); self.assertEqual(code, 0)

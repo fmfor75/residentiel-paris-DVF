@@ -287,6 +287,22 @@
     "GC10",
     "GC11"
    ]
+  },
+  "78358": {
+   "nom": "Maisons-Laffitte",
+   "prefix": "ML",
+   "quartiers": [
+    "ML1",
+    "ML2",
+    "ML3",
+    "ML4",
+    "ML5",
+    "ML6",
+    "ML7",
+    "ML8",
+    "ML9",
+    "ML10"
+   ]
   }
  },
  "zones": {
@@ -819,6 +835,13 @@
    "iris": 11,
    "methode": "iris",
    "quartiers": 11,
+   "source": "https://data.geopf.fr/wfs/ows"
+  },
+  "78358": {
+   "nom": "Maisons-Laffitte",
+   "iris": 10,
+   "methode": "iris",
+   "quartiers": 10,
    "source": "https://data.geopf.fr/wfs/ows"
   }
  }
