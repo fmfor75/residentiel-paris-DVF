@@ -49,37 +49,10 @@ input,select{font-family:inherit;color:inherit}
 .glass{background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--line);box-shadow:var(--sh-glass)}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-/* ── Écran d'accès : fond qui respire, carte de verre qui se pose, éléments en cascade ─────────────── */
-.gate{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;isolation:isolate}
-.aurora{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-.aurora i{position:absolute;width:52vmax;height:52vmax;border-radius:50%;filter:blur(80px);opacity:.34;will-change:transform}
-.aurora i:nth-child(1){background:var(--accent);left:-14vmax;top:-18vmax;animation:drift1 22s ease-in-out infinite alternate}
-.aurora i:nth-child(2){background:var(--accent3);right:-18vmax;top:4vmax;opacity:.26;animation:drift2 26s ease-in-out infinite alternate}
-.aurora i:nth-child(3){background:#2fb8a6;left:18vmax;bottom:-30vmax;opacity:.16;animation:drift3 30s ease-in-out infinite alternate}
-@keyframes drift1{to{transform:translate(12vmax,10vmax) scale(1.12)}}
-@keyframes drift2{to{transform:translate(-10vmax,8vmax) scale(.9)}}
-@keyframes drift3{to{transform:translate(-8vmax,-12vmax) scale(1.18)}}
-.gate-card{border-radius:var(--r-xl);padding:40px 36px;width:100%;max-width:420px;box-shadow:var(--sh-float);text-align:center;
-  background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);animation:cardIn .8s cubic-bezier(.2,.8,.2,1) both}
-.gate-card>*{animation:rise .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 70ms + 260ms)}
-@keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.98);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.gate-card.shake{animation:shake .45s cubic-bezier(.36,.07,.19,.97) both}
-@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
-.gate.out .gate-card{animation:cardOut .34s cubic-bezier(.4,0,1,1) both}
-.gate.out .aurora{transition:opacity .34s;opacity:0}
-@keyframes cardOut{to{opacity:0;transform:translateY(-8px) scale(.96);filter:blur(6px)}}
-#app.app-in{animation:appIn .55s cubic-bezier(.2,.8,.2,1) both}
-@keyframes appIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .brand{display:flex;align-items:center;gap:12px}
 .brand-mark{width:38px;height:38px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;letter-spacing:.02em;flex-shrink:0;box-shadow:0 8px 20px -8px rgba(90,169,240,.6)}
 .brand-title{font-size:15px;font-weight:700;letter-spacing:-.01em}
 .brand-sub{font-size:11.5px;color:var(--text3)}
-.gate-logo{display:block;width:230px;max-width:80%;height:auto;margin:6px auto 0}
-.gate-sub{font-size:11px;color:var(--text3);margin-top:14px;letter-spacing:.12em;font-weight:600}
-.gate h1{font-size:24px;font-weight:700;margin:24px 0 6px;letter-spacing:-.02em}
-.gate p{color:var(--text3);font-size:13px;margin-bottom:22px;line-height:1.6}
-.gate .input{text-align:center}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
 .input{border:1px solid var(--line3);border-radius:12px;padding:11px 13px;font-size:14px;background:rgba(255,255,255,.06);width:100%;transition:border-color .2s,box-shadow .25s,background .2s}
@@ -97,9 +70,6 @@ input,select{font-family:inherit;color:inherit}
 .btn-ghost{background:var(--glass);border-color:var(--line3);color:var(--text2)}
 .btn-ghost:hover{background:var(--glass-hi);color:var(--text)}
 .btn-sm{padding:6px 11px;font-size:12px}
-.gate-err{color:var(--bad);background:var(--bad-bg);border:1px solid rgba(248,113,113,.3);border-radius:12px;padding:8px 12px;font-size:12px;margin-bottom:12px;animation:rise .3s both}
-.gate-foot{margin-top:20px;font-size:11px;color:var(--text4);line-height:1.6}
-
 /* ── Application ───────────────────────────────────────────────────────────────────────────────── */
 .topbar{height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:900;background:rgba(8,13,22,.62);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
 .topbar-right{display:flex;align-items:center;gap:10px}
@@ -367,38 +337,240 @@ footer a{color:var(--text3)}
   .valo-tbl .vi{min-height:38px}.valo-tbl .del{width:36px;height:36px}
   .ib{width:20px;height:20px;font-size:11px}.legbtn{min-height:40px}.maplegend .li{min-height:32px}.link{min-height:36px;display:inline-flex;align-items:center}
 }
+
+/* ═══ Lot 15b : structure de la plateforme V (prototype validé par Franck le 15/10/2026) ════════════════════════════
+   Rail rétractable (76 px, petit logo, icônes ; s'ouvre au survol, au toucher du logo ou du bouton Filtres), barre de
+   recherche ronde, grand titre, pilules, cartes de chiffres séparées, courbe lissée en dégradé, barres en dégradé,
+   anneau de répartition. Écran d'accès inspiré du « Glassy OTP » aux couleurs de V. */
+:root{--rail:76px;--rail-open:332px}
+
+/* ── Écran d'accès ─────────────────────────────────────────────────────────────────────────────── */
+.gate{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;position:relative;overflow:hidden;isolation:isolate;
+  background:radial-gradient(1200px 800px at 70% 10%,#18263a 0%,#05080e 65%)}
+.waves{position:absolute;inset:-10%;width:120%;height:120%;z-index:-1;pointer-events:none}
+.waves path{fill:none;stroke-linecap:round}
+.waves .w1{animation:sway 14s ease-in-out infinite alternate}.waves .w2{animation:sway 18s ease-in-out infinite alternate-reverse}.waves .w3{animation:sway 22s ease-in-out infinite alternate}
+@keyframes sway{from{transform:translate(0,0) rotate(0deg)}to{transform:translate(-40px,30px) rotate(-2deg)}}
+.stage{position:relative;width:min(440px,100%);animation:cardIn .9s cubic-bezier(.2,.8,.2,1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px) scale(.97);filter:blur(12px)}to{opacity:1;transform:none;filter:none}}
+.gate-card{--cut:38px;position:relative;padding:44px 38px 34px;text-align:center;
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+  background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,.035) 45%,rgba(255,255,255,.06));backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
+.gate-edge{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.gate-edge path{fill:none;stroke:rgba(255,255,255,.22);stroke-width:1.2}
+.shard{position:absolute;width:44px;height:44px;background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.shard.tl{left:-12px;top:-12px;clip-path:polygon(0 0,100% 0,0 100%);border-radius:10px 0 0 0}
+.shard.br{right:-12px;bottom:-12px;clip-path:polygon(100% 0,100% 100%,0 100%);border-radius:0 0 10px 0}
+.gate-card>*{animation:rise .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 80ms + 300ms)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.gate-badge{width:52px;height:52px;margin:0 auto;border-radius:16px;display:grid;place-items:center;border:1px solid rgba(90,169,240,.5);background:rgba(90,169,240,.12);box-shadow:0 0 24px -6px rgba(90,169,240,.7) inset,0 0 30px -10px rgba(90,169,240,.8);color:var(--accent);transition:all .4s}
+.gate-badge svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.gate-logo{display:block;width:150px;max-width:70%;height:auto;margin:18px auto 0}
+.gate h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:16px}
+.gate h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent3),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.gate .gate-sub{color:var(--text3);font-size:13px;margin-top:6px;line-height:1.55}
+.gate-field{margin:26px 0 8px}
+.gate-field input{width:100%;height:56px;border-radius:16px;border:1px solid rgba(90,169,240,.45);background:rgba(5,8,14,.55);color:var(--text);font:600 18px var(--sans);letter-spacing:.24em;text-align:center;outline:none;
+  box-shadow:0 0 22px -8px rgba(90,169,240,.6);transition:box-shadow .3s,border-color .3s}
+.gate-field input::placeholder{color:var(--text4);letter-spacing:.3em}
+.gate-field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(90,169,240,.16),0 0 30px -6px rgba(90,169,240,.75)}
+.gate-note{font-size:12px;color:var(--text4);min-height:18px}
+.gate-note b{color:#c9b6ff;font-weight:600}
+.gate-btn{margin-top:20px;width:100%;height:54px;border:0;border-radius:16px;font:700 15px var(--sans);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--accent3),var(--accent));box-shadow:0 14px 34px -12px rgba(90,169,240,.85),0 0 0 1px rgba(255,255,255,.12) inset;transition:background .4s,box-shadow .4s}
+.gate-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%)}
+.gate-btn:hover::after{transition:transform .8s;transform:translateX(120%)}
+.gate-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gate-btn[disabled]{cursor:progress}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gate-foot{margin-top:18px;font-size:11px;color:var(--text4);line-height:1.6}
+.gate-check{display:none;width:76px;height:76px;margin:24px auto 6px;border-radius:20px;border:2px solid rgba(74,222,128,.7);background:#0b1410;place-items:center;position:relative;box-shadow:0 0 28px -6px rgba(74,222,128,.8)}
+.gate-check svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s .15s ease-out forwards}
+.gate-check::before{content:'';position:absolute;inset:-60px;border-radius:50%;border:1px solid rgba(74,222,128,.35);animation:pulse 1.6s ease-out infinite}
+@keyframes draw{to{stroke-dashoffset:0}}@keyframes pulse{from{transform:scale(.4);opacity:1}to{transform:scale(1.1);opacity:0}}
+.gate.ok .gate-badge{border-color:rgba(74,222,128,.55);background:rgba(74,222,128,.12);color:var(--good);box-shadow:0 0 24px -6px rgba(74,222,128,.7) inset,0 0 30px -10px rgba(74,222,128,.8)}
+.gate.ok h1 em{background:linear-gradient(90deg,#4ade80,#86efac);-webkit-background-clip:text;background-clip:text}
+.gate.ok .gate-btn{background:linear-gradient(135deg,#22c55e,#4ade80);box-shadow:0 14px 34px -12px rgba(74,222,128,.85)}
+.gate.ok .gate-check{display:grid}.gate.ok .gate-field{display:none}
+.gate.err .gate-badge{border-color:rgba(248,113,113,.55);background:rgba(248,113,113,.12);color:var(--bad);box-shadow:0 0 24px -6px rgba(248,113,113,.7) inset,0 0 30px -10px rgba(248,113,113,.8)}
+.gate.err h1 em{background:linear-gradient(90deg,#f87171,#fca5a5);-webkit-background-clip:text;background-clip:text}
+.gate.err .gate-field input{border-color:rgba(248,113,113,.7);box-shadow:0 0 0 4px rgba(248,113,113,.14),0 0 30px -6px rgba(248,113,113,.6)}
+.gate.err .gate-note{color:var(--bad)}
+/* secousse sur la carte et non sur .stage : remplacer l'animation d'entrée de .stage la rejouait (flou) à chaque retour en saisie — vu sur l'enregistrement */
+.gate.err .gate-card{animation:shake .45s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+.gate.out .stage{animation:cardOut .45s cubic-bezier(.4,0,1,1) both}
+.gate.out .waves{transition:opacity .45s;opacity:0}
+@keyframes cardOut{to{opacity:0;transform:scale(.96) translateY(-10px);filter:blur(8px)}}
+#app.app-in{animation:appIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes appIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── Rail rétractable (bureau et tablette) ─────────────────────────────────────────────────────── */
+.icon{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#app{min-height:100vh}
+#etude{display:flex;flex-direction:column;gap:16px}
+.rail{position:fixed;left:16px;top:16px;bottom:16px;width:var(--rail);z-index:960;border-radius:28px;padding:14px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden;
+  background:rgba(14,22,34,.74);border:1px solid var(--line3);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:var(--sh-glass);
+  transition:width .32s cubic-bezier(.2,.8,.2,1),background .32s,box-shadow .32s}
+.rail.open,.rail:focus-within{width:var(--rail-open);background:rgba(14,22,34,.95);box-shadow:0 30px 80px -10px rgba(0,0,0,.75)}
+@media (hover:hover){.rail:hover{width:var(--rail-open);background:rgba(14,22,34,.95);box-shadow:0 30px 80px -10px rgba(0,0,0,.75)}}
+.rail-logo{display:flex;align-items:center;gap:12px;height:52px;padding:0 4px;flex:none;border:0;background:none;text-align:left}
+.rail-logo .mk{width:44px;height:44px;border-radius:14px;background:var(--grad);display:grid;place-items:center;font-weight:800;font-size:19px;color:#fff;flex:none;box-shadow:0 8px 22px -8px rgba(90,169,240,.7)}
+.rail-logo img{height:17px;width:auto;opacity:0;transition:opacity .2s}
+.rail-nav{display:flex;flex-direction:column;gap:4px;margin-top:6px;flex:none}
+.rail-nav button{display:flex;align-items:center;gap:14px;height:46px;padding:0 14px;border-radius:14px;color:var(--text3);white-space:nowrap;border:0;background:none;font-size:13.5px;font-weight:500;transition:background .16s,color .16s}
+.rail-nav button:hover{background:var(--glass);color:var(--text)}
+.rail-nav button.on{background:var(--pill-on);color:var(--text);font-weight:600}
+.rail-nav button span,.rail-more{opacity:0;transition:opacity .18s}
+.rail.open .rail-nav button span,.rail.open .rail-more,.rail.open .rail-logo img,.rail:focus-within .rail-nav button span,.rail:focus-within .rail-more,.rail:focus-within .rail-logo img{opacity:1;transition-delay:.1s}
+@media (hover:hover){.rail:hover .rail-nav button span,.rail:hover .rail-more,.rail:hover .rail-logo img{opacity:1;transition-delay:.1s}}
+.rail-sep{height:1px;background:var(--line);margin:8px 6px;flex:none}
+.rail-more{display:flex;flex-direction:column;gap:18px;width:calc(var(--rail-open) - 26px);padding:2px 4px 10px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0}
+.rail-bottom{margin-top:auto}
+.rail .sheet-head{display:none}
+
+/* ── Contenu : barre du haut, grand titre, pilules ────────────────────────────────────────────── */
+.main{margin-left:calc(var(--rail) + 32px);padding:22px 28px 30px 0;max-width:1320px;display:flex;flex-direction:column;gap:16px;min-width:0}
+/* « .topnav » et non « .top » : .top est la ligne de typologie dominante (tr.top) — la collision passait ses cellules en flex (mesuré, lot 15b) */
+.topnav{display:flex;align-items:center;gap:12px}
+.searchpill{flex:1;max-width:520px;display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:999px;border:1px solid var(--line3);background:var(--glass);color:var(--text4);font-size:13.5px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:left;transition:border-color .16s,background .16s}
+.searchpill:hover{border-color:rgba(90,169,240,.5);background:var(--glass-hi)}
+.searchpill .sp-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.searchpill kbd{margin-left:auto;font:600 11px var(--sans);color:var(--text3);border:1px solid var(--line3);border-radius:7px;padding:2px 7px}
+.topnav .grow{flex:1}
+.round{width:46px;height:46px;border-radius:50%;border:1px solid var(--line3);background:var(--glass);display:grid;place-items:center;color:var(--text);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);flex:none;transition:background .16s}
+.round:hover{background:var(--glass-hi)}
+.topnav .pill{height:46px;padding:0 16px}
+.hero-wrap{display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:0}
+.hdr small.over{display:block;font-size:13px;color:var(--text3);margin-bottom:2px}
+.hdr h2{font-size:34px;font-weight:700;letter-spacing:-.025em;line-height:1.12}
+.hdr .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hdr .tags{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn-grad{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:999px;background:var(--grad);color:#fff;font-weight:600;font-size:13px;border:0;box-shadow:0 10px 24px -10px rgba(90,169,240,.75);white-space:nowrap}
+.btn-grad:hover{box-shadow:0 12px 30px -10px rgba(90,169,240,.95)}
+.btn-grad[disabled]{opacity:.7;cursor:progress}
+.pills{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pillset{display:inline-flex;gap:3px;padding:4px;border-radius:999px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.pillset button{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:500;color:var(--text4);border:0;background:none;white-space:nowrap;transition:background .16s,color .16s}
+.pillset button:hover{color:var(--text)}
+.pillset button.on{background:var(--pill-on);color:var(--text);font-weight:600}
+.pills .hint{margin-left:4px}
+.viewtabs{display:none}
+
+/* ── Sections de l'étude ──────────────────────────────────────────────────────────────────────── */
+.sec-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:14px 2px 0}
+.sec-title .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--line);color:var(--text3)}
+.sec-title h3{font-size:20px;font-weight:700;letter-spacing:-.015em}
+.sec-title .sub{font-size:12.5px;color:var(--text4);margin-left:auto}
+.vk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.vkpi{padding:18px 20px;display:grid;gap:10px;position:relative;min-width:0;border-radius:24px;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.vkpi:hover{transform:translateY(-4px)}
+.vkpi.hi{background:linear-gradient(150deg,rgba(138,123,242,.42),rgba(90,169,240,.20) 60%,rgba(255,255,255,.06));border-color:rgba(160,150,255,.40)}
+.vkpi .lab{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text3);font-weight:500;padding-right:30px}
+.vkpi.hi .lab{color:#dfe3ff}
+.vkpi .val{display:flex;align-items:baseline;gap:8px 10px;flex-wrap:wrap}
+.vkpi .val b{font-size:34px;font-weight:500;letter-spacing:-.03em;line-height:1}
+.vkpi .val em{font-style:normal;font-size:14px;color:var(--text3);font-weight:500}
+.vkpi .sub{font-size:12px;color:var(--text4)}.vkpi.hi .sub{color:#c3cbec}
+.chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap;display:inline-block}
+.chip.up{color:var(--good);background:var(--good-bg)}.chip.dn{color:var(--bad);background:var(--bad-bg)}.chip.nd{color:var(--text4);background:rgba(255,255,255,.06)}
+.ib.corner{position:absolute;top:14px;right:14px;width:28px;height:28px;margin:0;font-size:12px;background:rgba(255,255,255,.05);border-color:var(--line3)}
+.g2{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
+.g1{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.vcard{padding:20px 20px 16px;display:grid;gap:8px;min-width:0;position:relative;align-content:start;border-radius:24px}
+.vcard h4{font-size:15px;font-weight:600;letter-spacing:-.01em;padding-right:36px}
+.vcard .legend{display:flex;gap:16px;font-size:12px;color:var(--text3)}
+.vcard .legend i{display:inline-block;width:18px;height:3px;border:0;border-radius:2px;background:var(--grad);vertical-align:middle;margin-right:6px}
+.vcard .legend i.band{height:10px;width:14px;background:rgba(90,169,240,.24)}
+.vchart svg{width:100%;height:auto;display:block;overflow:visible}
+.yrs{display:flex;justify-content:space-between;gap:4px;padding:0 2px;flex-wrap:wrap}
+.yrs button{padding:6px 11px;border-radius:9px;font-size:12.5px;font-weight:500;color:var(--text4);border:0;background:none;transition:background .16s,color .16s}
+.yrs button:hover{color:var(--text)}
+.yrs button[aria-pressed=true]{background:var(--pill-on);color:var(--text)}
+.evl{display:grid;gap:8px;margin-top:4px}
+.evl div{display:grid;grid-template-columns:1fr auto;align-items:center;font-size:13.5px;font-weight:600;color:var(--text2);padding:9px 12px;border-radius:12px;background:rgba(255,255,255,.035)}
+.evl div .chip{grid-row:1/3;grid-column:2}
+.evl small{grid-column:1;font-size:11px;font-weight:500;color:var(--text4)}
+.evl div.on{background:var(--row-hi);color:var(--text)}
+.donut{position:relative;width:170px;height:170px;margin:4px auto}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.donut .c b{font-size:30px;font-weight:500;letter-spacing:-.03em}.donut .c span{font-size:12px;color:var(--text3)}
+.dleg{display:grid;gap:7px;font-size:13px}.dleg div{display:flex;align-items:center;gap:8px;color:var(--text3)}.dleg div b{margin-left:auto;color:var(--text);font-weight:600}
+.dleg i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}.dleg small{color:var(--text4)}
+.vempty{padding:18px 20px;color:var(--text3);font-size:13px}
+/* cartes de tableau et de méthode : titres sans filet, comme la maquette */
+.card{border-radius:24px}
+.card-h{border-bottom:0;padding:18px 20px 4px}
+.card-t{font-size:15px}
+
+footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:1320px}
+/* tablette : rail replié, s'ouvre au toucher du logo ou du bouton Filtres */
+@media (max-width:1100px){.vk{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1fr)}.main{padding-right:16px}.hdr h2{font-size:28px}}
+/* téléphone : le rail devient le panneau qui glisse depuis le bas (barre fixe « Filtres ») */
+@media (max-width:700px){
+  .rail{left:0;right:0;bottom:0;top:auto;width:auto!important;max-height:88vh;max-height:88dvh;border-radius:24px 24px 0 0;transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    padding:8px 16px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;background:rgba(12,19,30,.97)}
+  .rail.open{transform:none}
+  .rail .rail-logo,.rail .rail-nav,.rail .rail-sep{display:none}
+  .rail .rail-more{opacity:1;width:auto;overflow:visible;flex:none}
+  .rail .sheet-head{display:flex;flex-direction:column;align-items:center;gap:6px;position:sticky;top:-8px;background:inherit;padding:4px 0 8px;margin-top:-8px;z-index:1}
+  .main{margin-left:0;padding:12px 12px calc(88px + env(safe-area-inset-bottom))}footer{margin-left:0;padding:0 14px calc(96px + env(safe-area-inset-bottom))}
+  .topnav .pill{display:none}.searchpill{height:44px}
+  .hdr h2{font-size:26px}.viewtabs{display:inline-grid;width:100%}
+  .vk{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vkpi{padding:14px 14px}.vkpi .val b{font-size:24px}.vkpi .lab{font-size:12px}
+  .g2{grid-template-columns:minmax(0,1fr)}.sec-title .sub{margin-left:0;flex-basis:100%}
+  .pillset button{padding:7px 10px;font-size:12.5px}
+}
 </style>
 </head>
 <body>
 
 <!-- ═══════════ Écran d'accès ═══════════ -->
 <div class="gate" id="gate">
-  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-  <form class="gate-card glass" id="gateForm" autocomplete="off">
-    <img class="gate-logo" src="assets/logo-jadero-clair.png" alt="Jadero" width="900" height="228" style="--i:0">
-    <div class="gate-sub" style="--i:1">DATA MARCHÉ RÉSIDENTIEL · DVF</div>
-    <h1 style="--i:2">Accès réservé</h1>
-    <p style="--i:3">Les données de cette plateforme sont chiffrées. Saisissez le code d'accès pour les déchiffrer dans votre navigateur.</p>
-    <div class="gate-err" id="gateErr" hidden></div>
-    <div class="field" style="--i:4"><label for="code">Code d'accès</label><input class="input" id="code" type="password" autocomplete="current-password" required></div>
-    <button class="btn btn-primary" id="gateBtn" type="submit" style="--i:5">Ouvrir la plateforme</button>
-    <div class="gate-foot" style="--i:6">Le code n'est jamais transmis : il sert uniquement à dériver la clé de déchiffrement, localement. Il reste actif jusqu'à la fermeture de l'onglet.</div>
-  </form>
+  <svg class="waves" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="wg1" x1="0" x2="1"><stop offset="0" stop-color="#8a7bf2" stop-opacity="0"/><stop offset=".45" stop-color="#8a7bf2" stop-opacity=".9"/><stop offset="1" stop-color="#5aa9f0" stop-opacity="0"/></linearGradient>
+      <linearGradient id="wg2" x1="0" x2="1"><stop offset="0" stop-color="#5aa9f0" stop-opacity="0"/><stop offset=".55" stop-color="#5aa9f0" stop-opacity=".8"/><stop offset="1" stop-color="#2fb8a6" stop-opacity="0"/></linearGradient>
+      <filter id="wglow"><feGaussianBlur stdDeviation="6"/></filter>
+    </defs>
+    <g class="w1"><path d="M-100 820 C 300 620, 600 980, 1000 700 S 1500 420, 1750 560" stroke="url(#wg1)" stroke-width="70" opacity=".22" filter="url(#wglow)"/><path d="M-100 820 C 300 620, 600 980, 1000 700 S 1500 420, 1750 560" stroke="url(#wg1)" stroke-width="2.5"/></g>
+    <g class="w2"><path d="M-100 300 C 250 120, 700 420, 1050 200 S 1500 40, 1750 160" stroke="url(#wg2)" stroke-width="90" opacity=".16" filter="url(#wglow)"/><path d="M-100 300 C 250 120, 700 420, 1050 200 S 1500 40, 1750 160" stroke="url(#wg2)" stroke-width="2"/></g>
+    <g class="w3"><path d="M-100 560 C 350 460, 650 720, 1100 520 S 1450 380, 1750 430" stroke="url(#wg1)" stroke-width="1.4" opacity=".7"/><path d="M-100 600 C 350 500, 650 760, 1100 560 S 1450 420, 1750 470" stroke="url(#wg2)" stroke-width="1" opacity=".5"/></g>
+  </svg>
+  <div class="stage">
+    <span class="shard tl"></span><span class="shard br"></span>
+    <form class="gate-card" id="gateForm" autocomplete="off">
+      <svg class="gate-edge" aria-hidden="true"><path id="gateEdge" d=""/></svg>
+      <div class="gate-badge" style="--i:0"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14 9l2 2"/></svg></div>
+      <img class="gate-logo" src="assets/logo-jadero-clair.png" alt="Jadero" width="900" height="228" style="--i:1">
+      <h1 style="--i:2" id="gateTitle">Accès <em>réservé</em></h1>
+      <p class="gate-sub" style="--i:3" id="gateSub">Saisissez le code d'accès : il déchiffre les données dans votre navigateur.</p>
+      <div class="gate-check"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+      <div class="gate-field" style="--i:4"><input id="code" type="password" autocomplete="current-password" placeholder="••••••••" aria-label="Code d'accès" required></div>
+      <div class="gate-note" style="--i:5" id="gateErr" role="status">Le code ne quitte jamais votre appareil.</div>
+      <button class="gate-btn" id="gateBtn" type="submit" style="--i:6">Ouvrir la plateforme <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      <div class="gate-foot" style="--i:7">Data Marché Résidentiel · DVF DGFiP. Le code sert uniquement à dériver la clé de déchiffrement, localement ; il reste actif jusqu'à la fermeture de l'onglet.</div>
+    </form>
+  </div>
 </div>
 
 <!-- ═══════════ Application ═══════════ -->
 <div id="app" hidden>
-<header class="topbar">
-  <div class="brand"><div class="brand-mark">DM</div><div><div class="brand-title">Data Marché Résidentiel</div><div class="brand-sub" id="topSub">DVF DGFiP</div></div></div>
-  <div class="topbar-right">
-    <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Chargement…</span></span>
-    <button class="btn btn-ghost btn-sm" id="btnLogout" type="button">Verrouiller</button>
-  </div>
-</header>
-
-<div class="layout">
-<aside class="sidebar glass" id="sidebar">
+<aside class="rail" id="sidebar" aria-label="Navigation et filtres">
   <div class="sheet-head"><span class="handle"></span><div class="row"><b>Filtres</b><button class="btn btn-ghost btn-sm" type="button" id="sheetClose">Fermer</button></div></div>
+  <button class="rail-logo" type="button" id="railToggle" aria-label="Ouvrir le panneau"><span class="mk">J</span><img src="assets/logo-jadero-clair.png" alt="Jadero" width="900" height="228"></button>
+  <nav class="rail-nav" id="railNav">
+    <button type="button" data-vue="etude"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>Étude</span></button>
+    <button type="button" data-vue="carte"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span>Carte</span></button>
+    <button type="button" data-vue="valo" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg><span>Valorisation</span></button>
+    <button type="button" data-vue="persp"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span>Perspectives</span></button>
+    <button type="button" id="railFiltres"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Filtres</span></button>
+  </nav>
+  <div class="rail-sep"></div>
+  <div class="rail-more">
   <div class="sec">
     <div class="sec-h"><span>Zone géographique</span></div>
     <div class="seg seg-4" id="segNiveau">
@@ -409,17 +581,8 @@ footer a{color:var(--text3)}
     <div class="hint" id="niveauHint"></div>
   </div>
   <div class="sec">
-    <div class="sec-h"><span>Période analysée</span></div>
-    <div class="seg seg-5" id="segPer"><button data-v="1">1 an</button><button data-v="3">3 ans</button><button data-v="5">5 ans</button><button data-v="10">10 ans</button><button data-v="all">Tout</button></div>
-    <div class="hint" id="perHint"></div>
-  </div>
-  <div class="sec">
     <div class="sec-h"><span>Granularité des courbes</span></div>
     <div class="seg seg-3" id="segGran"><button data-v="month">Mois</button><button data-v="quarter">Trimestre</button><button data-v="year">Année</button></div>
-  </div>
-  <div class="sec">
-    <div class="sec-h"><span>Type de bien</span></div>
-    <div class="seg seg-3" id="segType"><button data-v="Appartement">Appartements</button><button data-v="Maison">Maisons</button><button data-v="Tous">Tous</button></div>
   </div>
   <div class="sec">
     <div class="sec-h"><span>Typologies</span><button class="link" id="typoReset" type="button">réinitialiser</button></div>
@@ -427,10 +590,27 @@ footer a{color:var(--text3)}
     <div class="hint">Surfaces en m², bornes min incluse / max exclue. Les fourchettes s'appliquent à l'étude affichée et sont mémorisées dans l'adresse de la page.</div>
     <div class="sw-row"><span>Marché global (toutes surfaces)</span><button class="sw on" id="swGlobal" type="button" role="switch" aria-checked="true" aria-label="Marché global"></button></div>
   </div>
+  </div>
+  <nav class="rail-nav rail-bottom">
+    <button type="button" id="btnLogout"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Verrouiller</span></button>
+  </nav>
 </aside>
 
-<main class="content">
-  <div class="hdr" id="hdr"></div>
+<main class="main" id="main">
+  <div class="topnav">
+    <button class="searchpill" type="button" id="topSearch"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="sp-txt">Quartier, commune ou zone…</span><kbd>⌘K</kbd></button>
+    <div class="grow"></div>
+    <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Chargement…</span></span>
+    <button class="round" type="button" id="topMap" title="Carte et adresse" aria-label="Carte et adresse"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></button>
+  </div>
+  <div class="hero-wrap">
+    <div class="hdr" id="hdr"></div>
+    <div class="pills" id="heroPills">
+      <div class="pillset" id="segPer"><button data-v="1">1 an</button><button data-v="3">3 ans</button><button data-v="5">5 ans</button><button data-v="10">10 ans</button><button data-v="all">Tout</button></div>
+      <div class="pillset" id="segType"><button data-v="Appartement">Appartements</button><button data-v="Maison">Maisons</button><button data-v="Tous">Tous</button></div>
+      <span class="hint" id="perHint"></span>
+    </div>
+  </div>
   <div id="etude"></div>
   <div class="mapwrap glass" id="mapview" hidden>
     <div id="map"></div>
@@ -442,7 +622,6 @@ footer a{color:var(--text3)}
     <div class="maplegend" id="maplegend" hidden></div>
   </div>
 </main>
-</div>
 <div class="scrim" id="scrim"></div>
 <nav class="mbar" id="mbar"><div class="sum"><b id="mbarT">—</b><span id="mbarS"></span></div><button type="button" id="mbarVue">Carte</button><button type="button" id="mbarValo" hidden>Valo</button><button type="button" class="primary" id="mbarFiltres">Filtres</button></nav>
 <div id="tipbox" role="tooltip"></div>
@@ -566,15 +745,31 @@ async function tryOpen(rawKey){
   KEY = await importRaw(rawKey);
   META = await (await decryptBlob(await fetchBlob('meta'), KEY)).json();   // OperationError si mauvais code
 }
+// Écran d'accès (lot 15b, inspiration « Glassy OTP ») : états saisie → déchiffrement → incorrect (rouge, secousse) ou
+// autorisé (coche tracée, onde, bouton vert) avant l'ouverture. L'anneau du bouton ne mesure rien : la dérivation de clé
+// n'a pas d'avancement observable.
+const GATE_BTN = 'Ouvrir la plateforme <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+function gateEdge(){ const f = $('gateForm'), w = f.offsetWidth, h = f.offsetHeight, c = 38; if (!w) return; f.querySelector('.gate-edge').setAttribute('viewBox', `0 0 ${w} ${h}`);
+  $('gateEdge').setAttribute('d', `M${c} .6 H${w - .6} V${h - c} L${w - c} ${h - .6} H.6 V${c} Z`); }
+gateEdge(); addEventListener('resize', gateEdge);
+function gateState(st, msg){ const g = $('gate'), btn = $('gateBtn'), note = $('gateErr');
+  g.classList.remove('busy', 'err', 'ok'); if (st === 'err') void g.offsetWidth; if (st !== 'saisie') g.classList.add(st);
+  $('gateTitle').innerHTML = st === 'err' ? 'Code <em>incorrect</em>' : st === 'ok' ? 'Accès <em>autorisé</em>' : 'Accès <em>réservé</em>';
+  if (st === 'ok') $('gateSub').textContent = 'Données déchiffrées. Ouverture de la plateforme…';
+  note.innerHTML = msg ?? (st === 'busy' ? 'Déchiffrement des données <b>dans votre navigateur</b>…' : st === 'ok' ? '' : "Le code ne quitte jamais votre appareil.");
+  btn.disabled = st === 'busy' || st === 'ok';
+  btn.innerHTML = st === 'busy' ? '<span class="spin"></span>Déchiffrement…' : st === 'ok' ? '<svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Accès sécurisé' : st === 'err' ? 'Réessayer' : GATE_BTN;
+  requestAnimationFrame(gateEdge); }
+$('code').addEventListener('input', () => { if ($('gate').classList.contains('err')) gateState('saisie'); });
 $('gateForm').addEventListener('submit', async e => {
-  e.preventDefault(); const btn = $('gateBtn'), err = $('gateErr'), card = $('gateForm'); err.hidden = true; btn.disabled = true; btn.classList.add('busy'); btn.textContent = 'Déchiffrement…';
+  e.preventDefault(); gateState('busy');
   try {
     const blob = await fetchBlob('meta'); const raw = await deriveKey($('code').value, blob.slice(4,20));
     await tryOpen(raw); try { sessionStorage.setItem('dvf_k', btoa(String.fromCharCode(...raw))); } catch(_){}
-    $('code').value = ''; await start();
-  } catch(ex) { err.textContent = ex.name === 'OperationError' ? 'Code incorrect.' : `Impossible de charger les données (${ex.message}).`; err.hidden = false;
-    card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); $('code').select(); }
-  finally { btn.disabled = false; btn.classList.remove('busy'); btn.textContent = 'Ouvrir la plateforme'; }
+    $('code').value = ''; gateState('ok');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) await new Promise(r => setTimeout(r, 1100));   // la coche se trace (0,65 s), puis fondu
+    await start();
+  } catch(ex) { gateState('err', ex.name === 'OperationError' ? 'Vérifiez le code et réessayez.' : `Impossible de charger les données (${esc(ex.message)}).`); $('code').select(); }
 });
 $('btnLogout').addEventListener('click', () => { try { sessionStorage.removeItem('dvf_k'); } catch(_){} location.hash=''; location.reload(); });
 (async function boot(){
@@ -689,6 +884,19 @@ const isPhone = () => matchMedia('(max-width:700px)').matches;
 function openSheet(){ $('sidebar').classList.add('open'); $('scrim').classList.add('show'); $('mbarFiltres').textContent = 'Fermer'; }
 function closeSheet(){ $('sidebar').classList.remove('open'); $('scrim').classList.remove('show'); $('mbarFiltres').textContent = 'Filtres'; }
 $('mbarFiltres').addEventListener('click', () => $('sidebar').classList.contains('open') ? closeSheet() : openSheet());
+// Rail (lot 15b) : replié à 76 px ; s'ouvre au survol (souris), au toucher du logo ou de « Filtres », ou par la recherche.
+// Il reste ouvert tant qu'un champ y a le focus (saisie d'une borne de typologie, recherche d'un quartier).
+const railOpen = (on = true) => { if (isPhone()) { on ? openSheet() : closeSheet(); return; } $('sidebar').classList.toggle('open', on); };
+$('railToggle').addEventListener('click', () => railOpen(!$('sidebar').classList.contains('open')));
+$('railFiltres').addEventListener('click', () => railOpen(!$('sidebar').classList.contains('open')));
+$('railNav').addEventListener('click', e => { const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; railOpen(false); update(); scrollTo({top:0}); });
+// recherche : champ des quartiers s'il est affiché, sinon la zone sélectionnée (ou la première) de la liste — le niveau d'étude ne change pas
+function openSearch(){ railOpen(true);
+  setTimeout(() => { const i = $('search'); if (i && !i.closest('[hidden]')) { i.focus(); i.select(); } else (document.querySelector('#zlist .zbtn.on') || document.querySelector('#zlist .zbtn'))?.focus(); }, isPhone() ? 300 : 120); }
+$('topSearch').addEventListener('click', openSearch);
+$('topMap').addEventListener('click', () => { S.vue = 'carte'; update(); scrollTo({top:0}); });
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !$('app').hidden) { e.preventDefault(); openSearch(); } });
+document.addEventListener('pointerdown', e => { const r = $('sidebar'); if (!isPhone() && r.classList.contains('open') && !r.contains(e.target) && !e.target.closest('#topSearch')) railOpen(false); });
 $('sheetClose').addEventListener('click', closeSheet); $('scrim').addEventListener('click', closeSheet);
 $('mbarVue').addEventListener('click', () => { S.vue = S.vue === 'carte' ? 'etude' : 'carte'; update(); scrollTo({top:0}); });
 // (PDF sur téléphone : bouton « Exporter en PDF » de l'en-tête ; la barre du bas garde Vue · Valo · Filtres)
@@ -709,7 +917,7 @@ function renderSidebar(){
     const b = document.createElement('button'); b.type='button'; b.className = 'zbtn' + (it.id===S.id && niv===S.niveau?' on':'');
     const idLabel = niv==='secteur'&&/^\d+$/.test(it.id) ? 'S'+it.id : niv==='arrondissement' ? (it.id==='1'?'1er':it.id+'e') : niv==='commune' ? it.id : it.id;
     b.innerHTML = `<span><span class="n">${esc(it.nom)}</span>${it.meta?`<span class="m">${esc(it.meta)}</span>`:''}</span><span class="id">${esc(idLabel)}</span>`;
-    b.onclick = () => { S.niveau = niv; S.id = it.id; S.vue = 'etude'; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } }; list.appendChild(b); shown++;
+    b.onclick = () => { S.niveau = niv; S.id = it.id; S.vue = 'etude'; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } else { railOpen(false); document.activeElement?.blur(); } }; list.appendChild(b); shown++;
   });
   if (!shown) { const e = document.createElement('div'); e.className='hint'; e.style.padding='8px'; e.textContent='Aucun quartier ne correspond.'; list.appendChild(e); }
   if (S.niveau === 'rayon' && LAST_ADDR?.props) { const e = document.createElement('div'); e.className = 'hint'; e.style.padding = '6px 8px'; e.innerHTML = `Autre rayon : <input class="vi" type="number" min="50" max="5000" step="50" value="${/^\d+$/.test(S.id||'') && !RAYONS.includes(+S.id) ? S.id : ''}" placeholder="m" id="rayonLibre" aria-label="Rayon libre en mètres" style="width:72px"> m`; list.appendChild(e);
@@ -755,43 +963,66 @@ const axisLabel = k => S.gran==='year' ? k : S.gran==='quarter' ? k.replace('-Q'
 // Graphiques SVG
 // ═══════════════════════════════════════════════════════════════════════════════
 const AX = 'font-size="10.5" fill="var(--text4)" font-family="inherit"';   // lot 15 : encres pour le fond bleu nuit
+// Lot 15b : courbe lissée (Catmull-Rom, tension 0,18) en dégradé violet → bleu, fourchette P10–P90 en voile dégradé, pas de
+// quadrillage ; lecture par bulle (survol, ou pilules des années quand il y a 12 points ou moins). Les nœuds de la courbe sont
+// les valeurs exactes ; le lissage ne sert qu'au tracé entre deux périodes.
+const lisse = P => { if (P.length < 3) return P.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  let d = `M${P[0][0].toFixed(1)},${P[0][1].toFixed(1)}`; for (let i = 0; i < P.length-1; i++){ const p0 = P[i-1] || P[i], p1 = P[i], p2 = P[i+1], p3 = P[i+2] || p2, t = .18;
+    d += ` C${(p1[0]+(p2[0]-p0[0])*t).toFixed(1)},${(p1[1]+(p2[1]-p0[1])*t).toFixed(1)} ${(p2[0]-(p3[0]-p1[0])*t).toFixed(1)},${(p2[1]-(p3[1]-p1[1])*t).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`; }
+  return d; };
+// largeur du repère = largeur affichée (bornée à 340–760) : le texte des graphiques garde sa taille réelle sur téléphone
+// (avec un repère fixe de 760, il tombait à 4–5 px à 390 px de large — vu sur capture, lot 15b)
+const reperW = el => Math.round(Math.max(340, Math.min(760, el.clientWidth || 760)));
 function chartBand(el, pts){
-  const W = 760, H = 230, pl = 52, pr = 12, pt = 12, pb = 28; const iw = W-pl-pr, ih = H-pt-pb;
-  if (!pts || pts.length < 2) { el.innerHTML = `<div class="empty" style="padding:24px"><p>Pas assez de périodes (${pts?pts.length:0}) pour tracer une courbe.</p></div>`; return; }
+  const W = reperW(el), H = W < 560 ? 230 : 250, pl = 54, pr = 12, pt = 30, pb = 14; const iw = W-pl-pr, ih = H-pt-pb, gid = el.id;
+  if (!pts || pts.length < 2) { el.innerHTML = `<div class="vempty">Pas assez de périodes (${pts?pts.length:0}) pour tracer une courbe.</div>`; return; }
   const lo = Math.min(...pts.map(p=>p.p10)), hi = Math.max(...pts.map(p=>p.p90));
-  const raw = (hi-lo)/4 || 100; const ystep = [100,200,250,500,1000,2000,2500,5000,10000].find(s=>s>=raw) || 10000; const y0 = Math.floor(lo/ystep)*ystep, y1 = Math.ceil(hi/ystep)*ystep; const ticks = Math.round((y1-y0)/ystep);
+  const raw = (hi-lo)/4 || 100; const ystep = [100,200,250,500,1000,2000,2500,5000,10000].find(s=>s>=raw) || 10000; const y0 = Math.floor(lo/ystep)*ystep, y1 = Math.ceil(hi/ystep)*ystep;
   const x = i => pl + i*(iw/(pts.length-1)), y = v => pt + ih - (v-y0)/(y1-y0)*ih;
-  const path = key => pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p[key]).toFixed(1)}`).join(' ');
-  const band = pts.map((p,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(p.p90).toFixed(1)}`).join(' ') + ' ' + pts.slice().reverse().map((p,i)=>`L${x(pts.length-1-i).toFixed(1)},${y(p.p10).toFixed(1)}`).join(' ') + ' Z';
-  let grid = '', ylab = '';
-  for (let t=0;t<=ticks;t++){ const v = y0 + ystep*t; grid += `<line x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="rgba(255,255,255,.07)"/>`; ylab += `<text x="${pl-8}" y="${(y(v)+3.5).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; }
-  const step = Math.ceil(pts.length/8); let xlab = '';
-  pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="${i===pts.length-1?'end':i===0?'start':'middle'}" ${AX}>${esc(axisLabel(p.k))}</text>`; });
-  const last = pts[pts.length-1];
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution du prix au m²">${grid}${ylab}${xlab}
-    <path d="${band}" fill="var(--band)"/><path d="${path('p10')}" fill="none" stroke="var(--p1090)" stroke-width="1" stroke-dasharray="3 3"/><path d="${path('p90')}" fill="none" stroke="var(--p1090)" stroke-width="1" stroke-dasharray="3 3"/>
-    <path d="${path('median')}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
-    <circle cx="${x(pts.length-1).toFixed(1)}" cy="${y(last.median).toFixed(1)}" r="4" fill="var(--s1)" stroke="var(--bg-bot)" stroke-width="2.5"/>
-    <text x="${(x(pts.length-1)-8).toFixed(1)}" y="${(y(last.median)-9).toFixed(1)}" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--text)" font-family="inherit">${fmt0(last.median)}</text>
-    <g class="hover"></g><rect x="${pl}" y="${pt}" width="${iw}" height="${ih}" fill="transparent"/></svg><div class="tip"></div>`;
-  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), hov = el.querySelector('.hover');
-  svg.addEventListener('mousemove', ev => {
-    const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; const i = Math.max(0, Math.min(pts.length-1, Math.round((mx-pl)/(iw/(pts.length-1)))));
-    const p = pts[i]; const cx = x(i), cy = y(p.median);
-    hov.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt}" y2="${pt+ih}" stroke="#fff" stroke-opacity=".3"/><circle cx="${cx}" cy="${cy}" r="5" fill="var(--s1)" stroke="var(--bg-bot)" stroke-width="2.5"/>`;
-    tip.innerHTML = `<b>${esc(labelOf(p.k))}</b> · ${nb(p.count)} ventes<br>P90 ${fmt0(p.p90)} · <b>méd. ${fmt0(p.median)}</b> · P10 ${fmt0(p.p10)} €/m²`;
-    tip.style.left = `${cx/W*r.width}px`; tip.style.top = `${cy/H*r.height + 12}px`; tip.classList.add('show');
-  });
-  svg.addEventListener('mouseleave', () => { tip.classList.remove('show'); hov.innerHTML=''; });
+  const P = k => pts.map((p,i) => [x(i), y(p[k])]);
+  const band = lisse(P('p90')) + ' L' + lisse(P('p10').reverse()).slice(1) + ' Z';
+  let ylab = ''; for (let v = y0; v <= y1 + 1e-9; v += ystep) ylab += `<text x="${pl-12}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`;
+  const pills = pts.length <= 12;
+  let xlab = ''; if (!pills) { const step = Math.ceil(pts.length/8); pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${x(i).toFixed(1)}" y="${H+12}" text-anchor="${i===pts.length-1?'end':i===0?'start':'middle'}" ${AX}>${esc(axisLabel(p.k))}</text>`; }); }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H + (pills ? 0 : 18)}" role="img" aria-label="Évolution du prix au m²"><defs>
+      <linearGradient id="${gid}-ln" x1="0" x2="1"><stop offset="0" stop-color="#8a7bf2"/><stop offset="1" stop-color="#5aa9f0"/></linearGradient>
+      <linearGradient id="${gid}-bd" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5aa9f0" stop-opacity=".28"/><stop offset="1" stop-color="#8a7bf2" stop-opacity=".05"/></linearGradient></defs>
+    ${ylab}${xlab}<path d="${band}" fill="url(#${gid}-bd)"/><path d="${lisse(P('median'))}" fill="none" stroke="url(#${gid}-ln)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <g class="mk"></g><rect x="${pl}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg>${pills ? `<div class="yrs">${pts.map((p,i)=>`<button type="button" data-i="${i}">${esc(axisLabel(p.k))}</button>`).join('')}</div>` : ''}`;
+  const svg = el.querySelector('svg'), mk = el.querySelector('.mk'), yrs = el.querySelector('.yrs');
+  const mark = i => { const p = pts[i], cx = x(i), cy = y(p.median), bw = Math.min(236, W - pl - pr), tx = Math.min(Math.max(cx, pl + bw/2), W - pr - bw/2), ty = Math.max(cy - 58, 0);
+    mk.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt-6}" y2="${pt+ih}" stroke="rgba(255,255,255,.18)"/><circle cx="${cx}" cy="${cy}" r="6.5" fill="#5aa9f0" stroke="var(--bg-bot)" stroke-width="3"/>
+      <rect x="${tx-bw/2}" y="${ty}" width="${bw}" height="40" rx="10" fill="rgba(20,30,46,.96)" stroke="rgba(255,255,255,.18)"/>
+      <text x="${tx}" y="${ty+17}" text-anchor="middle" fill="var(--text)" font-size="12.5" font-weight="700">${esc(labelOf(p.k))} · ${fmt0(p.median)} €/m²</text>
+      <text x="${tx}" y="${ty+32}" text-anchor="middle" fill="var(--text3)" font-size="11">P10 ${fmt0(p.p10)} · P90 ${fmt0(p.p90)} · ${nb(p.count)} ventes</text>`;
+    if (yrs) [...yrs.children].forEach((b, k) => b.setAttribute('aria-pressed', k === i)); };
+  mark(pts.length-1);
+  svg.addEventListener('mousemove', ev => { const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; mark(Math.max(0, Math.min(pts.length-1, Math.round((mx-pl)/(iw/(pts.length-1)))))); });
+  svg.addEventListener('mouseleave', () => mark(pts.length-1));
+  if (yrs) yrs.addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) mark(+b.dataset.i); });
 }
+// barres arrondies en dégradé (inspiration « Glassy CRM »), valeur au-dessus quand il y a 16 barres ou moins
 function chartBars(el, pts){
-  const W = 760, H = 110, pl = 52, pr = 12, pt = 8, pb = 22; const iw = W-pl-pr, ih = H-pt-pb;
+  const W = reperW(el), H = W < 560 ? 180 : 200, pl = 10, pr = 10, pt = 22, pb = 26; const iw = W-pl-pr, ih = H-pt-pb, gid = el.id;
   if (!pts || !pts.length) { el.innerHTML=''; return; }
-  const max = Math.max(...pts.map(p=>p.count)) || 1; const bw = iw/pts.length; const gap = Math.min(2, bw*0.25);
-  let bars = ''; pts.forEach((p,i)=>{ const h = p.count/max*ih; bars += `<rect x="${(pl+i*bw+gap/2).toFixed(1)}" y="${(pt+ih-h).toFixed(1)}" width="${Math.max(1,bw-gap).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="var(--vol)"><title>${esc(labelOf(p.k))} : ${nb(p.count)} ventes</title></rect>`; });
-  const step = Math.ceil(pts.length/8); let xlab='';
-  pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${(pl+i*bw+bw/2).toFixed(1)}" y="${H-6}" text-anchor="middle" ${AX}>${esc(axisLabel(p.k))}</text>`; });
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Volume de ventes"><line x1="${pl}" x2="${W-pr}" y1="${pt+ih}" y2="${pt+ih}" stroke="rgba(255,255,255,.16)"/><text x="${pl-8}" y="${pt+8}" text-anchor="end" ${AX}>${fmt0(max)}</text>${bars}${xlab}</svg>`;
+  const max = Math.max(...pts.map(p=>p.count)) || 1, n = pts.length, slot = iw/n, bw = Math.max(2, slot * (n <= 16 ? .58 : .7)), r = Math.min(14, bw * .3), lab = n <= 16;
+  const top = pts.reduce((a, p, i) => p.count > pts[a].count ? i : a, 0);
+  let bars = ''; pts.forEach((p,i)=>{ const h = Math.max(2, p.count/max*ih), bx = pl + i*slot + (slot-bw)/2;
+    bars += `<rect x="${bx.toFixed(1)}" y="${(pt+ih-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${r.toFixed(1)}" fill="url(#${gid}-g)" opacity="${i === top ? 1 : .72}"><title>${esc(labelOf(p.k))} : ${nb(p.count)} ventes</title></rect>`
+      + (lab ? `<text x="${(bx+bw/2).toFixed(1)}" y="${(pt+ih-h-8).toFixed(1)}" text-anchor="middle" fill="var(--text2)" font-size="12" font-weight="600">${nb(p.count)}</text>` : ''); });
+  const step = Math.ceil(n/8); let xlab=''; pts.forEach((p,i)=>{ if (i%step===0 || i===n-1) xlab += `<text x="${(pl+i*slot+slot/2).toFixed(1)}" y="${H-6}" text-anchor="middle" ${AX}>${esc(axisLabel(p.k))}</text>`; });
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Volume de ventes"><defs><linearGradient id="${gid}-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#9d90ff"/><stop offset="1" stop-color="#5aa9f0" stop-opacity=".35"/></linearGradient></defs>${bars}${xlab}</svg>`;
+}
+// anneau de répartition des typologies (parts calculées sur tout l'historique, comme le tableau)
+const TYPO_COL = ['#5aa9f0','#8a7bf2','#2fb8a6','#e5b567','#f472b6','#94a3b8','#fb923c'];
+function donutHtml(etTypo){
+  const bt = etTypo?.by_typo || {}; const ids = S.typos.map(t=>t.id).filter(id=>bt[id] && bt[id].share > 0); if (!ids.length) return '';
+  const C = 2*Math.PI*50; let off = 0, arcs = '';
+  ids.forEach((id, i) => { const len = bt[id].share/100*C; arcs += `<circle cx="60" cy="60" r="50" fill="none" stroke="${TYPO_COL[i % TYPO_COL.length]}" stroke-width="12" stroke-dasharray="${Math.max(0, len-3).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" stroke-linecap="round"/>`; off += len; });
+  const top = bt._top_typo && bt[bt._top_typo] ? bt._top_typo : ids[0];
+  return `<article class="vcard glass"><h4>Répartition par typologie</h4>${ib('share').replace('class="ib"','class="ib corner"')}
+    <div class="donut"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="12"/>${arcs}</svg><div class="c"><b>${Math.round(bt[top].share)} %</b><span>${top} · dominante</span></div></div>
+    <div class="dleg">${ids.map((id,i)=>{ const td = S.typos.find(t=>t.id===id); return `<div><i style="background:${TYPO_COL[i % TYPO_COL.length]}"></i>${id} <small>${td.surfMin}–${td.surfMax} m²</small><b>${bt[id].share.toFixed(1).replace('.',',')} %</b></div>`; }).join('')}</div></article>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -809,15 +1040,24 @@ const evoTxt = c => c.v==null ? 'N/D' : (c.v>0?'▲':c.v<0?'▼':'')+' '+fmtPct(
 function evoCells(byYear){
   return `<div class="evos">${evoData(byYear).map(c=>`<div class="evo ${c.on?'on':''}"><div class="l">${c.l}${ib(c.h)}</div><div class="v ${c.v==null?'nd':c.v>0?'up':c.v<0?'down':''}">${evoTxt(c)}</div><div class="s">${c.s}</div></div>`).join('')}</div>`;
 }
-function sectionCard(title, badge, st, chartId){
-  const w = windowOf(st);
-  return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">${esc(badge)}</span>${esc(title)}</div><span class="card-sub">${w?nb(w.count)+' ventes · ':''}${esc(PERIODES[S.per])}${w?` · ${w.from} → ${w.to}`:''}</span></div>
-    <div class="card-b">
-      ${w ? `<div class="kpis">${kpiBlock(w,'P90 · haut de marché','p90')}${kpiBlock(w,'Médiane','median','med')}${kpiBlock(w,'Moyenne','mean')}${kpiBlock(w,'P10 · bas de marché','p10')}<div class="kpi"><div class="l">Ventes${ib('count')}</div><div class="v">${fmt0(w.count)}</div><div class="u">surface méd. ${fmtSurf(w.surf_median)} m²</div></div></div>` : `<div class="empty" style="padding:16px"><p>Moins de 3 ventes sur cette période.</p></div>`}
-      ${evoCells(st.by_year)}
-      <div class="charts"><div class="chart"><div class="chart-t"><span>Prix au m² · ${esc(GRANS[S.gran])}${ib('band')}</span><span class="legend"><span><i></i>Médiane</span><span><i class="band"></i>P10 – P90</span></span></div><div id="${chartId}-band"></div></div>
-      <div class="chart"><div class="chart-t"><span>Volume de ventes · ${esc(GRANS[S.gran])}${ib('vol')}</span><span class="legend"><span><i class="vol"></i>Ventes</span></span></div><div id="${chartId}-vol"></div></div></div>
-    </div></div>`;
+const chipEvo = (v, pa) => v==null ? '<span class="chip nd">N/D</span>' : `<span class="chip ${v>0?'up':v<0?'dn':'nd'}">${v>0?'▲':v<0?'▼':''} ${fmtPct(Math.abs(v)).replace('+','')}${pa?'/an':''}</span>`;
+const icoK = d => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const ibC = k => ib(k).replace('class="ib"', 'class="ib corner"');
+function sectionCard(title, badge, st, chartId, donutSrc = null){
+  const w = windowOf(st), faible = w && w.count < EFFECTIF_FAIBLE, per = esc(PERIODES[S.per]).toLowerCase(), e1 = evoN(st.by_year, 1);
+  const kpis = w ? `<section class="vk">
+      <article class="vkpi glass hi"><div class="lab">${icoK('<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>')}Prix médian</div>${ibC('median')}
+        <div class="val"><b>${fmt0(w.median)}</b><em>€/m²</em>${chipEvo(e1)}</div><div class="sub">moyenne ${fmt0(w.mean)} €/m² · ${w.from} → ${w.to}${faible?' · <span style="color:var(--warn)">effectif faible</span>':''}</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 19V5M5 12l7-7 7 7"/>')}Haut de marché · P90</div>${ibC('p90')}<div class="val"><b>${fmt0(w.p90)}</b><em>€/m²</em></div><div class="sub">10 % des ventes au-dessus · ${per}</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 5v14M5 12l7 7 7-7"/>')}Bas de marché · P10</div>${ibC('p10')}<div class="val"><b>${fmt0(w.p10)}</b><em>€/m²</em></div><div class="sub">10 % des ventes en dessous · ${per}</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 7h16M4 12h16M4 17h10"/>')}Ventes</div>${ibC('count')}<div class="val"><b>${fmt0(w.count)}</b></div><div class="sub">surface médiane ${fmtSurf(w.surf_median)} m²</div></article>
+    </section>` : `<div class="vcard glass"><div class="vempty">Moins de 3 ventes sur cette période.</div></div>`;
+  const evo = `<article class="vcard glass"><h4>Évolution de la médiane</h4>${ibC('evo_n')}<div class="evl">${evoData(st.by_year).map(c => `<div class="${c.on?'on':''}">${c.l}<small>${c.s}</small>${chipEvo(c.v, c.pa)}</div>`).join('')}</div></article>`;
+  const donut = donutSrc ? donutHtml(donutSrc) : '';
+  return `<div class="sec-title"><span class="badge">${esc(badge)}</span><h3>${esc(title)}</h3><span class="sub">${w?nb(w.count)+' ventes · ':''}${esc(PERIODES[S.per])}${w?` · ${w.from} → ${w.to}`:''}</span></div>
+    ${kpis}
+    <section class="g2"><article class="vcard glass vchart"><h4>Prix au m² · ${esc(GRANS[S.gran]).toLowerCase()}</h4>${ibC('band')}<div class="legend"><span><i></i>Médiane</span><span><i class="band"></i>P10 – P90</span></div><div id="${chartId}-band"></div></article>${evo}</section>
+    <section class="${donut ? 'g2' : 'g1'}"><article class="vcard glass vchart"><h4>Volume de ventes · ${esc(GRANS[S.gran]).toLowerCase()}</h4>${ibC('vol')}<div id="${chartId}-vol"></div></article>${donut}</section>`;
 }
 function typoTable(et){
   const bt = et.by_typo || {}; const ids = S.typos.map(t=>t.id).filter(id=>bt[id]); if (!ids.length) return '';
@@ -847,13 +1087,15 @@ function crumbsOf(item){
 }
 function headerHtml(item, count){
   const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
-  const pdf = item && lastEtude?.et ? `<button class="btn btn-ghost btn-sm" type="button" id="btnPdf"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3v10m0 0 4-4m-4 4-4-4M4 17h12"/></svg>Exporter en PDF</button>` : '';
+  const pdf = item && lastEtude?.et ? `<button class="btn-grad" type="button" id="btnPdf"><svg class="icon" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></svg>Exporter en PDF</button>` : '';
+  // lot 15b : sur-titre (fil d'Ariane), grand titre, pastilles d'information ; onglets de vue seulement sur téléphone (rail ailleurs)
+  const hero = (over, titre, meta, right = '') => `<div><small class="over">${over}</small><h2>${titre}</h2>${meta ? `<div class="meta">${meta}</div>` : ''}</div><div class="tags">${tabs}${right}</div>`;
   if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune===PARIS ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, communeNom(p.commune)];
-    return `<div><h2>${esc(LAST_ADDR.label)}</h2><div class="crumbs">${cr.filter(Boolean).map(esc).join('<span class="sep">›</span>')}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Valorisation</span><span class="tag">12 derniers mois</span></div>`; }
-  if (S.vue === 'persp') return `<div><h2>${item ? esc(item.nom) : 'Perspectives'}</h2><div class="crumbs">${item ? crumbsOf(item).map(esc).join('<span class="sep">›</span>') : 'Scénarios à 3, 5 et 10 ans à partir des taux, de l’inflation et des revenus.'}</div></div><div class="tags">${tabs}${pdf}<span class="tag acc">Perspectives</span><span class="tag">3 · 5 · 10 ans</span></div>`;
-  if (!item) return `<div><h2>${S.vue==='carte'?'Localisez une adresse':'Choisissez une zone'}</h2><div class="crumbs">${S.vue==='carte' ? 'Saisissez une adresse pour connaître son quartier, son secteur et sa zone, ou cliquez un polygone.' : esc(NIVEAU_HINT[S.niveau])}</div></div><div class="tags">${tabs}</div>`;
-  return `<div><h2>${esc(item.nom)}</h2><div class="crumbs">${crumbsOf(item).map(esc).join('<span class="sep">›</span>')}</div></div>
-    <div class="tags">${tabs}${pdf}<span class="tag acc">${esc(NIVEAUX[S.niveau])}</span><span class="tag">${nb(count)} ventes · ${esc(META.meta.periode)}</span><span class="tag">MàJ ${fmtDate(META.meta.generated_at)}</span>${META.meta.last_year_complete?'':`<span class="tag warn">${META.meta.last_year} incomplète</span>`}</div>`;
+    return hero(cr.filter(Boolean).map(esc).join(' · '), esc(LAST_ADDR.label), `<span class="tag acc">Valorisation</span><span class="tag">12 derniers mois</span>`, pdf); }
+  if (S.vue === 'persp') return hero(item ? crumbsOf(item).map(esc).join(' · ') : 'Scénarios à 3, 5 et 10 ans à partir des taux, de l’inflation et des revenus.', item ? esc(item.nom) : 'Perspectives', `<span class="tag acc">Perspectives</span><span class="tag">3 · 5 · 10 ans</span>`, pdf);
+  if (!item) return hero(S.vue==='carte' ? 'Saisissez une adresse pour connaître son quartier, son secteur et sa zone, ou cliquez un polygone.' : esc(NIVEAU_HINT[S.niveau]), S.vue==='carte' ? 'Localisez une adresse' : 'Choisissez une zone', '');
+  return hero(`${esc(NIVEAUX[S.niveau])} · ${crumbsOf(item).map(esc).join(' · ')}`, esc(item.nom),
+    `<span class="tag acc">${esc(NIVEAUX[S.niveau])}</span><span class="tag">${nb(count)} ventes · ${esc(META.meta.periode)}</span><span class="tag">MàJ ${fmtDate(META.meta.generated_at)}</span>${META.meta.last_year_complete?'':`<span class="tag warn">${META.meta.last_year} incomplète</span>`}`, pdf);
 }
 $('hdr').addEventListener('click', e => { if (e.target.closest('#btnPdf')) { exportPdf(); return; } const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; update(); });
 function renderMbar(item){
@@ -885,6 +1127,8 @@ function update(soft=false){
     lastEtude = {et, ms: performance.now()-t0, n: idx.length, parType};
   }
   $('hdr').innerHTML = headerHtml(item, idx ? idx.length : 0); renderMbar(item);
+  document.querySelectorAll('#railNav button[data-vue]').forEach(b => { b.classList.toggle('on', b.dataset.vue === S.vue); if (b.dataset.vue === 'valo') b.hidden = !LAST_ADDR?.props; });
+  $('heroPills').hidden = S.vue === 'valo';   // la valorisation a sa propre référence (appartements, 12 derniers mois) ; les perspectives dépendent du type (médiane de zone)
   if (S.vue === 'carte') { box.hidden = true; mapv.hidden = false; showMap(item); setStatus('ok', statusLine()); if (!item && !LAST_ADDR && matchMedia('(hover:hover)').matches) setTimeout(() => $('addr').focus(), 60); return; }
   mapv.hidden = true; box.hidden = false;
   if (S.vue === 'valo') { renderValo(); setStatus('ok', statusLine()); return; }
@@ -893,7 +1137,7 @@ function update(soft=false){
   if (!et) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Aucune vente retenue (${esc(TYPE_LBL(S.type).toLowerCase())})</h3><p>Moins de 3 ventes de ce type sur ${esc(item.nom)} entre ${META.meta.annees[0]} et ${META.meta.last_year}.</p></div></div>`; setStatus('ok', statusLine()); return; }
   let html = ''; const charts = [];
   const pt = lastEtude.parType;
-  if (S.global || pt) { html += sectionCard(`${item.nom} · ${TYPE_LBL(S.type).toLowerCase()} · toutes surfaces`, 'Marché global', et, 'c-g'); charts.push(['c-g', et]); }
+  if (S.global || pt) { html += sectionCard(`${item.nom} · ${TYPE_LBL(S.type).toLowerCase()} · toutes surfaces`, 'Marché global', et, 'c-g', pt ? pt.app : et); charts.push(['c-g', et]); }
   if (pt) {   // distinction appartements / maisons (lot 13)
     if (pt.app) { html += sectionCard(`${item.nom} · appartements · toutes surfaces`, 'Appartements', pt.app, 'c-app'); charts.push(['c-app', pt.app]); }
     if (pt.mai) { html += sectionCard(`${item.nom} · maisons · toutes surfaces`, 'Maisons', pt.mai, 'c-mai'); charts.push(['c-mai', pt.mai]); }
@@ -1291,14 +1535,13 @@ async function exportPdf(){
 // (préférence « réduire les animations » ou écran d'accès déjà masqué), passage immédiat.
 async function revealApp(){
   const gate = $('gate'), calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!gate.hidden && !calme) { gate.classList.add('out'); await new Promise(r => setTimeout(r, 340)); }
-  gate.hidden = true; gate.classList.remove('out'); $('app').hidden = false; $('foot').hidden = false;
+  if (!gate.hidden && !calme) { gate.classList.add('out'); await new Promise(r => setTimeout(r, 450)); }
+  gate.hidden = true; gate.classList.remove('out', 'ok', 'busy', 'err'); $('app').hidden = false; $('foot').hidden = false;
   if (!calme) $('app').classList.add('app-in');
 }
 async function start(){
   REF = buildRef(META);
   await revealApp();
-  $('topSub').textContent = `DVF DGFiP · ${META.meta.periode}`;
   setStatus('busy', 'Déchiffrement des ventes…');
   SALES = E.decodeSales(await (await decryptBlob(await fetchBlob('sales'), KEY)).arrayBuffer());
   S.typos = TYPO_DEFAUT(); readHash();
