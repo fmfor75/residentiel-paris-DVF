@@ -31,6 +31,8 @@ CONFIGS = {
   "albine_maisons_T5": f"niveau=rayon&id=500&per=10&gran=annee&type=Maison&global=1&vue=etude&typos={typos('T5')}&rprix=::::5:T5:1&{PERSP}&addr=2.146009,48.951536,12 Avenue Albine 78600 Maisons-Laffitte",
   # une seule série sur 10 ans : barres étroites, étiquettes de déciles au plus près des barres
   "albine_appart_10ans": f"niveau=rayon&id=500&per=10&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T3')}&rprix=6000:8000:7000:20:10::1&addr=2.146009,48.951536,12 Avenue Albine 78600 Maisons-Laffitte",
+  # Paris entier (lot 16), historique complet : tableaux à 12 colonnes, grands effectifs
+  "paris_ville_all": f"niveau=commune&id=75056&per=all&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T5')}",
   # Paris, appartements, valorisation + rayon 300 m sur 10 ans avec trois typologies et les trois prix
   "penthievre_valo_rayon10": f"niveau=rayon&id=300&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T3','T4')}&rprix=11000:14500:12000:20:10:T2,T3,T4:1&valo=50|0|1;T2:4:42:0:2,T3:3:62:0:3,T4:1:85:0:4&{PERSP}&addr=2.316624,48.87293,13 Rue de Penthièvre 75008 Paris",
   # Saint-Maur, tous logements, sections par type

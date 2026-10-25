@@ -121,6 +121,14 @@ typologies T1–T5 restent calculées sur les appartements seuls (une maison n'a
 trace une série « Appartements » (ou une par typologie cochée) et une série « Maisons » ; le PDF reprend les deux sections.
 Saint-Maur 2014–2025 : 9 882 appartements + 4 507 maisons = 14 389 ventes en « Tous » (test du 15/10/2026).
 
+**Direction visuelle V, thème clair, indicateurs (lots 15–16).** L'écran reprend la maquette « Vproject Direction Design »
+(rail rétractable de 76 px qui s'ouvre au survol, recherche ⌘K, cartes de verre, courbe lissée en dégradé, barres, anneau de
+répartition, écran d'accès animé). Thème unique clair crème → taupe (25/10/2026 ; le sombre du lot 15 a été remplacé) ; le PDF et le
+PNG du rayon gardent la charte Jadero. Indicateurs ajoutés (lot 16) : **moyenne pondérée** = Σ prix ÷ Σ surfaces (le m² réellement
+échangé) et **prix max** avec la surface et le mois de la vente — dans les cartes, les tableaux annuel et par typologie, le CSV et le
+PDF (`engine.stats` : `wmean`, `max_surf`, `max_ym`). Le max est une seule vente : à Paris entier il vaut le plafond du filtre
+(40 000 €/m²). **Paris · ville entière** en tête de l'onglet Arrond. / commune (niveau `commune`, id 75056 : 80 quartiers).
+
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
 colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates
 (page 1), « 2024 » sur « 2025 » dans les graphiques de volume, des surfaces à point décimal, un « ← » disparu (absent de la

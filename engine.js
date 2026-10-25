@@ -61,10 +61,13 @@ export function select(S, f) {
 
 export function stats(S, idx, minN = 3) {
   const n = idx.length; if (n < minN) return null;
-  const p = new Float64Array(n), s = new Float64Array(n); let sp = 0, ss = 0;
-  for (let j = 0; j < n; j++) { const i = idx[j]; p[j] = S.ppm2[i]; s[j] = S.surf[i]; sp += S.ppm2[i]; ss += S.surf[i]; }
+  const p = new Float64Array(n), s = new Float64Array(n); let sp = 0, ss = 0, sv = 0, imax = idx[0];
+  for (let j = 0; j < n; j++) { const i = idx[j]; p[j] = S.ppm2[i]; s[j] = S.surf[i]; sp += S.ppm2[i]; ss += S.surf[i]; sv += S.val[i]; if (S.ppm2[i] > S.ppm2[imax]) imax = i; }
   p.sort(); s.sort();
+  // Lot 16 (demande du 25/10) : wmean = Σ valeurs ÷ Σ surfaces, le prix du m² réellement échangé (un 400 m² pèse 400 m², un studio 30) ;
+  // max = la vente la plus chère au m², avec sa surface et son mois (une seule vente : on dit laquelle).
   return { count: n, mean: pyround(sp / n), median: pyround(percentile(p, .5)), min: pyround(p[0]), max: pyround(p[n - 1]),
+           wmean: ss > 0 ? pyround(sv / ss) : null, max_surf: pyround(S.surf[imax], 1), max_ym: S.ym[imax],
            q1: pyround(percentile(p, .25)), q3: pyround(percentile(p, .75)), p10: pyround(percentile(p, .10)), p90: pyround(percentile(p, .90)),
            surf_mean: pyround(ss / n, 1), surf_median: pyround(percentile(s, .5), 1) };
 }

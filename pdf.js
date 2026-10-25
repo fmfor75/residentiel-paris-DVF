@@ -98,16 +98,22 @@ const money = (h, v) => v == null ? '—' : h.fmt0(v);
 const dateFr = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
 // ── Blocs ──────────────────────────────────────────────────────────────────────────────────────────────────
+// Lot 16 : deux rangées — médiane, moyenne pondérée (Σ prix ÷ Σ surfaces), P90, prix max (avec la surface de la vente) ;
+// puis P10, moyenne simple, ventes. Sept tuiles sur une rangée de 174 mm ne laissaient que 22 mm par chiffre.
 function kpiRow(st, w, h, per, x, y, width, tall = true){
-  const H = tall ? 24 : 17, gap = 3, n = 5, tw = (width - gap * (n - 1)) / n;
-  const cells = [['P90', money(h, w?.p90), 'haut de marché'], ['Médiane', money(h, w?.median), '€/m²', true], ['Moyenne', money(h, w?.mean), '€/m²'], ['P10', money(h, w?.p10), 'bas de marché'], ['Ventes', money(h, w?.count), w ? `surface méd. ${h.fmtSurf(w.surf_median)} m²` : '']];
-  cells.forEach(([l, v, u, acc], i) => { const cx = x + i * (tw + gap);
-    st.rect(cx, y, tw, H, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
-    st.caps(l, cx + 3.2, y + 5, { s: tall ? 5.8 : 5.4, fit: tw - 6.4 }); st.text(v, cx + 3.2, y + (tall ? 14.5 : 11.5), { s: tall ? 15 : 11.5, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 });
-    // « Historique complet » ne tenait pas dans la tuile à côté de « haut de marché » (coupé) : forme courte
-    st.text(u + (tall && w && i < 4 ? ` · ${String(per).replace(/^Historique complet$/, 'historique')}` : ''), cx + 3.2, y + (tall ? 20 : 15.2), { s: 5.8, c: C.grey, fit: tw - 6.4 }); });
-  if (w && w.count < h.EFFECTIF_FAIBLE) st.text(`Effectif faible (${w.count} ventes) : chiffres indicatifs`, x, y + H + 4, { s: 6.5, c: C.gold });
-  return H + (w && w.count < h.EFFECTIF_FAIBLE ? 6 : 0);
+  const H = tall ? 24 : 17, gap = 3, perTxt = String(per).replace(/^Historique complet$/, 'historique');
+  const rows = [
+    [['Médiane', money(h, w?.median), '€/m²', true], ['Moyenne pondérée', money(h, w?.wmean), 'Σ prix ÷ Σ surfaces'], ['P90', money(h, w?.p90), 'haut de marché'], ['Prix max', money(h, w?.max), w?.max_surf != null ? `${h.fmtSurf(w.max_surf)} m² · ${h.fmtMois(w.max_ym)}` : '']],
+    [['P10', money(h, w?.p10), 'bas de marché'], ['Moyenne', money(h, w?.mean), '€/m² · par vente'], ['Ventes', money(h, w?.count), w ? `surface méd. ${h.fmtSurf(w.surf_median)} m²` : '']]];
+  rows.forEach((cells, r) => { const n = cells.length, tw = (width - gap * (n - 1)) / n, yy = y + r * (H + gap);
+    cells.forEach(([l, v, u, acc], i) => { const cx = x + i * (tw + gap);
+      st.rect(cx, yy, tw, H, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
+      st.caps(l, cx + 3.2, yy + 5, { s: tall ? 5.8 : 5.4, fit: tw - 6.4 }); st.text(v, cx + 3.2, yy + (tall ? 14.5 : 11.5), { s: tall ? 15 : 11.5, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 });
+      const suf = tall && w && !(r === 0 && i === 3) && !(r === 1 && i === 2) ? ` · ${perTxt}` : '';
+      st.text(u + suf, cx + 3.2, yy + (tall ? 20 : 15.2), { s: 5.8, c: C.grey, fit: tw - 6.4 }); }); });
+  const HH = 2 * H + gap;
+  if (w && w.count < h.EFFECTIF_FAIBLE) st.text(`Effectif faible (${w.count} ventes) : chiffres indicatifs`, x, y + HH + 4, { s: 6.5, c: C.gold });
+  return HH + (w && w.count < h.EFFECTIF_FAIBLE ? 6 : 0);
 }
 function evoRow(st, h, byYear, x, y, width, small = false){
   // hauteurs : légende, valeur, dates sur trois lignes distinctes (en 13 mm, la valeur chevauchait les dates — rapport du 15/10)
@@ -201,12 +207,12 @@ export async function exportPdf(ctx){
   }
   // chiffres clés
   st.caps('Chiffres clés · ' + (S.global ? 'toutes surfaces' : 'toutes surfaces (référence)'), M, y + 2, { s: 6.2 }); st.line(M, y + 4, PW - M, y + 4, C.line);
-  y += 8; kpiRow(st, w, h, periodeLabel, M, y, CW, true); y += 24 + 4;
+  y += 8; y += kpiRow(st, w, h, periodeLabel, M, y, CW, true) + 4;
   if (y + 16 < PH - 24) evoRow(st, h, et.by_year, M, y, CW, true);
 
   // ── Pages suivantes : marché global (si affiché), typologies ──────────────────────────────────
   const section = (title, badge, stat) => {
-    const ww = h.windowOf(stat); st.need(112);   // hauteur d'une section : 15 + 27 + 20 + 50 = 112 mm → deux par page
+    const ww = h.windowOf(stat); st.need(139);   // hauteur d'une section : 15 + 54 + 20 + 50 = 139 mm (deux rangées de tuiles, lot 16)
     st.caps(badge, M, st.y + 2, { s: 6, c: C.green });
     st.text(`${ww ? h.fmt0(ww.count) + ' ventes · ' : ''}${periodeLabel}${ww ? ` · ${ww.from} → ${ww.to}` : ''}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
     st.text(title, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 });   // une ligne ajustée (auparavant coupée au premier retour : fin du titre perdue)
@@ -333,16 +339,16 @@ export async function exportPdf(ctx){
     st.text(partTxt, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     const evo = (by, n) => { const ly = META.meta.last_year, a = by?.[String(ly)]?.median, b = by?.[String(ly - n)]?.median; return (a && b) ? (a / b - 1) * 100 : null; };
     const pc = v => ({ t: h.fmtPct(v), c: v == null ? C.grey2 : v > 0 ? C.good : v < 0 ? C.bad : C.text });
-    table(st, [{ l: 'Typologie', w: 2.4 }, { l: 'Part du marché', w: 1.5, align: 'right' }, { l: 'Ventes', w: 1.1, align: 'right' }, { l: 'P10', w: 1.1, align: 'right' }, { l: 'Médiane', w: 1.2, align: 'right' }, { l: 'P90', w: 1.1, align: 'right' }, { l: '1 an', w: 1, align: 'right' }, { l: '5 ans', w: 1, align: 'right' }],
+    table(st, [{ l: 'Typologie', w: 2.2 }, { l: 'Part', w: 1, align: 'right' }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'P10', w: 1.05, align: 'right' }, { l: 'Médiane', w: 1.15, align: 'right' }, { l: 'Moy. pond.', w: 1.2, align: 'right' }, { l: 'P90', w: 1.05, align: 'right' }, { l: 'Max', w: 1.05, align: 'right' }, { l: '1 an', w: .95, align: 'right' }, { l: '5 ans', w: .95, align: 'right' }],
       tIds.map(id => { const t = bt[id], ww = t.windows?.[S.per], td = typos.find(x => x.id === id), top = id === bt._top_typo;
-        return { fill: top ? [246, 248, 251] : null, cells: [{ t: `${id}  ${td.surfMin}–${td.surfMax} m²${top ? '  · dominante' : ''}`, w: 'bold' }, `${t.share.toFixed(1).replace('.', ',')} %`, money(h, ww?.count), money(h, ww?.p10), { t: money(h, ww?.median), w: 'bold' }, money(h, ww?.p90), pc(evo(t.by_year, 1)), pc(evo(t.by_year, 5))] }; }), M, CW);
+        return { fill: top ? [246, 248, 251] : null, cells: [{ t: `${id}  ${td.surfMin}–${td.surfMax} m²${top ? '  · dominante' : ''}`, w: 'bold' }, `${t.share.toFixed(1).replace('.', ',')} %`, money(h, ww?.count), money(h, ww?.p10), { t: money(h, ww?.median), w: 'bold' }, money(h, ww?.wmean), money(h, ww?.p90), money(h, ww?.max), pc(evo(t.by_year, 1)), pc(evo(t.by_year, 5))] }; }), M, CW, { s: 6.8 });
     st.y += 6;
   }
   const by = et.by_year || {}, years = Object.keys(by).sort();
   st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
-  table(st, [{ l: 'Année', w: 1 }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'P10', w: 1, align: 'right' }, { l: 'Q1', w: 1, align: 'right' }, { l: 'Médiane', w: 1.1, align: 'right' }, { l: 'Q3', w: 1, align: 'right' }, { l: 'P90', w: 1, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.2, align: 'right' }],
+  table(st, [{ l: 'Année', w: .8 }, { l: 'Ventes', w: .9, align: 'right' }, { l: 'P10', w: .95, align: 'right' }, { l: 'Q1', w: .95, align: 'right' }, { l: 'Médiane', w: 1.05, align: 'right' }, { l: 'Moy. pond.', w: 1.15, align: 'right' }, { l: 'Q3', w: .95, align: 'right' }, { l: 'P90', w: .95, align: 'right' }, { l: 'Max', w: .95, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.15, align: 'right' }],
     years.map((yy, i) => { const v = by[yy], prev = by[years[i - 1]], e = prev ? (v.median / prev.median - 1) * 100 : null;
-      return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.mean), `${h.fmtSurf(v.surf_mean)} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 7 });
+      return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.wmean), h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.max), h.fmt0(v.mean), `${h.fmtSurf(v.surf_mean)} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 6.6 });
 
   // ── Méthode ───────────────────────────────────────────────────────────────────────────────────
   st.newPage(); st.caps('Méthode', M, st.y + 2, { s: 6, c: C.green }); st.text('Méthode de calcul et sources', M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 17;
