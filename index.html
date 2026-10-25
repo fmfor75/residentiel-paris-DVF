@@ -7,10 +7,10 @@
 <link rel="icon" href="data:,">   <!-- pas de favicon : évite la requête 404 vue dans les tests -->
 <title>Data Marché Résidentiel · DVF</title>
 <meta name="color-scheme" content="light">
-<style>html,body{background:#d8d2c8}</style>   <!-- avant les feuilles externes : sans cela, page blanche le temps de charger polices et Leaflet (vu sur l'enregistrement, lot 15) -->
+<style>html,body{background:#e9e4dc}</style>   <!-- avant les feuilles externes : sans cela, page blanche le temps de charger polices et Leaflet (vu sur l'enregistrement, lot 15) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#d8d2c8">
+<meta name="theme-color" content="#e9e4dc">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 /* ── Direction visuelle « projet V » (lot 15, 15/10/2026) ─────────────────────────────────────────────
@@ -22,8 +22,8 @@
   color-scheme:light;
   /* Thème clair unique (lot 16, demande du 25/10 : « moins dark, fond beige taupe ») : variante claire de la maquette V
      (surfaces chaudes, cartes blanches translucides) tirée vers le taupe. Encres : brun-gris, jamais de noir pur. */
-  --bg-top:#eeeae3;--bg-bot:#d8d2c8;   /* gris taupe (25/10 : « va plus vers un gris taupe ») */
-  --glass:rgba(255,255,255,.58);--glass2:rgba(255,255,255,.40);--glass-hi:rgba(255,255,255,.86);--glass-strong:rgba(252,249,244,.94);
+  --bg-top:#f7f5f1;--bg-bot:#e9e4dc;   /* gris taupe clair (25/10 : « gris taupe », puis « plus clair pour le fond ») */
+  --glass:rgba(255,255,255,.66);--glass2:rgba(255,255,255,.46);--glass-hi:rgba(255,255,255,.9);--glass-strong:rgba(252,249,244,.94);
   --line:rgba(55,50,42,.11);--line2:rgba(55,50,42,.08);--line3:rgba(55,50,42,.2);
   --soft:rgba(55,50,42,.06);--soft2:rgba(55,50,42,.04);--soft3:rgba(55,50,42,.1);
   --text:#16233a;--text2:#34405a;--text3:#4c4c49;--text4:#56554f;   /* encres secondaires mesurées ≥ 4,5:1 sur le fond taupe (lot 16 : 3,9 et 2,7 au premier essai) */
@@ -349,7 +349,7 @@ footer a{color:var(--text3)}
 
 /* ── Écran d'accès ─────────────────────────────────────────────────────────────────────────────── */
 .gate{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:24px 16px;position:relative;overflow:hidden;isolation:isolate;
-  background:radial-gradient(1200px 800px at 70% 10%,#f7f5f0 0%,var(--bg-bot) 65%)}
+  background:radial-gradient(1200px 800px at 70% 10%,#fbfaf7 0%,var(--bg-bot) 65%)}
 .waves{position:absolute;inset:-10%;width:120%;height:120%;z-index:-1;pointer-events:none}
 .waves path{fill:none;stroke-linecap:round}
 .waves .w1{animation:sway 14s ease-in-out infinite alternate}.waves .w2{animation:sway 18s ease-in-out infinite alternate-reverse}.waves .w3{animation:sway 22s ease-in-out infinite alternate}
