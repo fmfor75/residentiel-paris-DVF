@@ -27,12 +27,12 @@
   --line:rgba(55,50,42,.11);--line2:rgba(55,50,42,.08);--line3:rgba(55,50,42,.2);
   --soft:rgba(55,50,42,.06);--soft2:rgba(55,50,42,.04);--soft3:rgba(55,50,42,.1);
   --text:#16233a;--text2:#34405a;--text3:#4c4c49;--text4:#56554f;   /* encres secondaires mesurées ≥ 4,5:1 sur le fond taupe (lot 16 : 3,9 et 2,7 au premier essai) */
-  --brand:#2e7d4f;--accent:#256040;--accent2:#256040;--accent3:#16233a;--accent-ink:#ffffff;--accent-soft:rgba(46,125,79,.13);   /* vert Jadero (--brand, aplats et dégradés) ; en texte, un ton plus sombre (--accent, 5:1 sur le fond) ; bleu nuit ; plus de violet (25/10) */
+  --brand:#38a468;--accent:#1a7046;--accent2:#1a7046;--accent3:#23468a;--accent-ink:#ffffff;--accent-soft:rgba(56,164,104,.14);   /* 25/10 : couleurs plus lumineuses — vert vif pour les aplats, bleu nuit éclairci, vert texte à 4,5:1 */   /* vert Jadero (--brand, aplats et dégradés) ; en texte, un ton plus sombre (--accent, 5:1 sur le fond) ; bleu nuit ; plus de violet (25/10) */
   --grad:linear-gradient(135deg,var(--accent3),var(--brand) 115%);
-  --gold:#a16207;--gold-soft:rgba(161,98,7,.12);
-  --good:#0c5c40;--good-bg:rgba(12,92,64,.12);--bad:#a32828;--bad-bg:rgba(163,40,40,.10);--warn:#8a3f06;
-  --s1:#2e7d4f;--band:rgba(46,125,79,.16);--p1090:#4f9a6f;--vol:rgba(80,70,60,.28);
-  --pill-on:rgba(22,35,58,.10);--row-hi:rgba(46,125,79,.14);
+  --gold:#b8720e;--gold-soft:rgba(184,114,14,.14);
+  --good:#0f6e44;--good-bg:rgba(19,129,79,.13);--good-vif:#13814f;--bad:#b53030;--bad-bg:rgba(196,53,53,.11);--bad-vif:#cf3a36;--warn:#9c4b08;   /* texte : ≥ 4,5:1 ; pastilles : fond vif plein, texte blanc */
+  --s1:#38a468;--band:rgba(56,164,104,.18);--p1090:#5fbc85;--vol:rgba(80,70,60,.28);
+  --pill-on:rgba(35,70,138,.12);--row-hi:rgba(56,164,104,.16);
   --r:12px;--r-lg:24px;--r-xl:28px;
   --sh-glass:0 14px 40px rgba(40,35,30,.12);
   --sh-float:0 24px 60px -14px rgba(40,35,30,.28);
@@ -472,7 +472,7 @@ footer a{color:var(--text3)}
 @media (max-width:1400px){.vk{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .vkpi{padding:18px 20px;display:grid;gap:10px;position:relative;min-width:0;border-radius:24px;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
 .vkpi:hover{transform:translateY(-4px)}
-.vkpi.hi{background:linear-gradient(150deg,#16233a,#24405a 55%,#2e7d4f 130%);border-color:transparent;color:#fff;box-shadow:0 18px 40px -16px rgba(22,35,58,.5)}
+.vkpi.hi{background:linear-gradient(150deg,#23468a,#2d6fb0 55%,#38a468 125%);border-color:transparent;color:#fff;box-shadow:0 18px 40px -16px rgba(35,70,138,.5)}
 .vkpi .lab{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text3);font-weight:500;padding-right:30px}
 .vkpi.hi .lab{color:rgba(255,255,255,.82)}
 .vkpi.hi .val em{color:rgba(255,255,255,.75)}
@@ -483,7 +483,7 @@ footer a{color:var(--text3)}
 .vkpi .val em{font-style:normal;font-size:14px;color:var(--text3);font-weight:500}
 .vkpi .sub{font-size:12px;color:var(--text4)}.vkpi.hi .sub{color:rgba(255,255,255,.78)}
 .chip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap;display:inline-block}
-.chip.up{color:var(--good);background:var(--good-bg)}.chip.dn{color:var(--bad);background:var(--bad-bg)}.chip.nd{color:var(--text4);background:var(--soft)}
+.chip.up{color:#fff;background:var(--good-vif)}.chip.dn{color:#fff;background:var(--bad-vif)}.chip.nd{color:var(--text4);background:var(--soft)}
 .ib.corner{position:absolute;top:14px;right:14px;width:28px;height:28px;margin:0;font-size:12px;background:var(--soft);border-color:var(--line3)}
 .g2{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
 .g1{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
@@ -541,7 +541,7 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
   <svg class="waves" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
       <linearGradient id="wg1" x1="0" x2="1"><stop offset="0" stop-color="#16233a" stop-opacity="0"/><stop offset=".45" stop-color="#16233a" stop-opacity=".9"/><stop offset="1" stop-color="#2e7d4f" stop-opacity="0"/></linearGradient>
-      <linearGradient id="wg2" x1="0" x2="1"><stop offset="0" stop-color="#2e7d4f" stop-opacity="0"/><stop offset=".55" stop-color="#2e7d4f" stop-opacity=".8"/><stop offset="1" stop-color="#7fb89a" stop-opacity="0"/></linearGradient>
+      <linearGradient id="wg2" x1="0" x2="1"><stop offset="0" stop-color="#2e7d4f" stop-opacity="0"/><stop offset=".55" stop-color="#2e7d4f" stop-opacity=".8"/><stop offset="1" stop-color="#6fd0a0" stop-opacity="0"/></linearGradient>
       <filter id="wglow"><feGaussianBlur stdDeviation="6"/></filter>
     </defs>
     <g class="w1"><path d="M-100 820 C 300 620, 600 980, 1000 700 S 1500 420, 1750 560" stroke="url(#wg1)" stroke-width="70" opacity=".14" filter="url(#wglow)"/><path d="M-100 820 C 300 620, 600 980, 1000 700 S 1500 420, 1750 560" stroke="url(#wg1)" stroke-width="2.5"/></g>
@@ -1026,7 +1026,7 @@ function chartBars(el, pts){
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Volume de ventes"><defs><linearGradient id="${gid}-g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent3)"/><stop offset="1" stop-color="var(--brand)" stop-opacity=".45"/></linearGradient></defs>${bars}${xlab}</svg>`;
 }
 // anneau de répartition des typologies (parts calculées sur tout l'historique, comme le tableau)
-const TYPO_COL = ['#2e7d4f','#16233a','#8fae9b','#a16207','#7a8b99','#5f5e59','#c2600f'];   // vert Jadero, bleu nuit, sauge, or, gris-bleu (lot 16b)
+const TYPO_COL = ['#38a468','#2f63c2','#86d3a8','#e3a63a','#5aa2e0','#8e939a','#f08a3c'];   // vert vif, bleu, menthe, or, bleu clair, gris, orange (25/10 : plus lumineux)
 function donutHtml(etTypo){
   const bt = etTypo?.by_typo || {}; const ids = S.typos.map(t=>t.id).filter(id=>bt[id] && bt[id].share > 0); if (!ids.length) return '';
   const C = 2*Math.PI*50; let off = 0, arcs = '';
@@ -1411,7 +1411,7 @@ $('etude').addEventListener('click', async e => {
 let MAP = null, LAYER = null, MARKER = null, LAST_ADDR = null, ADDR_HASH = null;   // LAST_ADDR : dernière adresse localisée (valorisation, PDF, hash)
 async function ensureGeo(){ if (!GEO) { setStatus('busy','Chargement des polygones…'); GEO = await (await fetch(GEO_URL)).json(); } return GEO; }
 const HUES = [212,28,152,42,332,95,265,190,12,60,300,170,230,0,120,280,35,205,320,80];
-function colorOf(key, i){ const h = HUES[i % HUES.length]; const l = 58 + (Math.floor(i / HUES.length) % 2) * 12; return `hsl(${h} 62% ${l}%)`; }
+function colorOf(key, i){ const h = HUES[i % HUES.length]; const l = 62 + (Math.floor(i / HUES.length) % 2) * 10; return `hsl(${h} 70% ${l}%)`; }   // 25/10 : teintes plus lumineuses
 function groupOfFeature(props){
   if (S.niveau==='quartier') return props.id;
   if (props.commune !== PARIS || (S.niveau === 'commune' && S.id === PARIS)) return props.commune;   // hors Paris : la commune entière, quel que soit le niveau (lot 9) ; Paris entier (lot 16)
