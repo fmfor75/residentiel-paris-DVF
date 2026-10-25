@@ -39,6 +39,9 @@ CONFIGS = {
   "saintmaur_tous": f"niveau=commune&id=94068&per=5&gran=annee&type=Tous&global=1&vue=etude&typos={typos('T2','T3')}&addr=2.487589,48.803825,20 Avenue Foch 94100 Saint-Maur-des-Fossés",
   # rayon tous logements, historique 2 ans, une typologie
   "saintmaur_rayon_tous2": f"niveau=rayon&id=500&per=2&gran=trimestre&type=Tous&global=1&vue=etude&typos={typos('T3')}&rprix=:9000:::2:T3:1&addr=2.487589,48.803825,20 Avenue Foch 94100 Saint-Maur-des-Fossés",
+  # lot 17 : page « Démographie et parc » — commune avec coefficient appliqué (+0,3), secteur = plusieurs arrondissements, Paris entier
+  "neuilly_persp_demo": f"niveau=commune&id=92051&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T4')}&persp=3.5:12:2:0.5:0:0.2:0.3",
+  "secteur_persp_demo": f"niveau=secteur&id=3&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T3')}&persp=3.5:12:2:0.5:0:0.2:0",
   # quartier parisien, appartements, historique complet, mois
   "paris_quartier_all": f"niveau=quartier&id=P30&per=all&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T1','T2','T3','T4','T5')}",
 }

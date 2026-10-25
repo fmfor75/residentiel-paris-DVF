@@ -97,6 +97,71 @@ function mk(doc){
 const money = (h, v) => v == null ? '—' : h.fmt0(v);
 const dateFr = d => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
+// ── Démographie et parc (lot 17) — mêmes chiffres que la carte de l'écran (ctx.persp.demo, calculés par engine.js) ──
+const pc1 = v => v == null ? '—' : `${v.toFixed(1).replace('.', ',')} %`;
+const pts1 = v => v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1).replace('.', ',')} pt`;
+const co2 = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2).replace('.', ',')}`;
+const hex = x => [parseInt(x.slice(1, 3), 16), parseInt(x.slice(3, 5), 16), parseInt(x.slice(5, 7), 16)];
+function pageDemographie(st, doc, h, item, D, params){
+  const { geo, ind, ref, sg, pv, bandes } = D; const c = ind.cur, r = ref?.cur || {}, y = ind.dernier, e = ind.evo, cur = params.demo || 0;
+  st.caps('Démographie et parc', M, st.y + 2, { s: 6, c: C.green }); st.text(`INSEE, recensements ${ind.premier} → ${y} · maille commune / arrondissement`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+  st.text(`Démographie et parc · ${geo.label}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+  // six tuiles
+  const refT = k => r[k] != null ? `réf. ${pc1(r[k])}` : '';
+  const tiles = [['Population', h.fmt0(c.pop), e ? `${e.pop >= 0 ? '+' : '−'}${Math.abs(e.pop).toFixed(1).replace('.', ',')} % depuis ${e.de}` : `recensement ${y}`],
+    ['65 ans et plus', pc1(c.ge65), `${e ? pts1(e.ge65) + ' · ' : ''}${refT('ge65')}`], ['80 ans et plus', pc1(c.ge80), `${e ? pts1(e.ge80) + ' · ' : ''}${refT('ge80')}`],
+    ['Moins de 15 ans', pc1(c.lt15), `${e ? pts1(e.lt15) + ' · ' : ''}${refT('lt15')}`], ['Étudiants 18–29 ans', pc1(c.etudiants), `${e ? pts1(e.etudiants) + ' · ' : ''}${refT('etudiants')}`],
+    ['Personnes seules', pc1(c.seuls), `des 15 ans et plus · ${refT('seuls')}`]];
+  const tw = (CW - 15) / 6; tiles.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+  st.y += 27;
+  // barres empilées : âges (gauche) et occupation (droite)
+  const stk = (x0, w, rows, cols, labels, titre) => {
+    st.caps(titre, x0, st.y + 2, { s: 5.8, fit: w }); let yy = st.y + 5; const lw = 24, bw = w - lw;
+    rows.forEach(([lab, parts]) => { st.text(lab, x0, yy + 3.6, { s: 5.6, c: C.text2, fit: lw - 2 }); let xx = x0 + lw;
+      parts.forEach((p, i) => { if (p == null) return; const ww = p / 100 * bw; st.rect(xx, yy, ww, 5, hex(cols[i]), null, 0); if (ww > 5) st.text(String(Math.round(p)), xx + ww / 2, yy + 3.6, { s: 5, w: 'bold', c: inkOn(cols[i]), align: 'center' }); xx += ww; });
+      yy += 6.5; });
+    // légende sur une ou deux lignes
+    let lx = x0, ly = yy + 2; labels.forEach((l, i) => { const lw2 = st.width(l, 5) + 6; if (lx + lw2 > x0 + w) { lx = x0; ly += 3.4; } st.rect(lx, ly - 1.9, 2.4, 2.4, hex(cols[i]), null, .4); st.text(l, lx + 3.4, ly, { s: 5, c: C.text2 }); lx += lw2; });
+    return ly + 3 - st.y; };
+  const inkOn = x => { const [R, G, B] = hex(x), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return (.2126 * f(R) + .7152 * f(G) + .0722 * f(B)) > .18 ? C.navy : [255, 255, 255]; };
+  const ageRows = [[`Zone · ${y}`, c.ages]]; if (e && ind.par[ind.premier]) ageRows.push([`Zone · ${ind.premier}`, ind.par[ind.premier].ages]); if (r.ages) ageRows.push([`Référence · ${y}`, r.ages]);
+  const occK = D.occ.map(o => o[0]), occC = D.occ.map(o => o[2]), occL = D.occ.map(o => o[1]); const occRows = [[`Zone · ${y}`, occK.map(k => c[k])]]; if (r.prop != null) occRows.push([`Référence · ${y}`, occK.map(k => r[k])]);
+  const lw = CW * .58, rx = M + lw + 6, rw = CW - lw - 6;
+  const h1 = stk(M, lw, ageRows, D.ageCol, D.ages.map(a => a[1]), 'Structure par âge'), h2 = stk(rx, rw, occRows, occC, occL, 'Occupation du parc');
+  const vacTxt = `Vacants : ${pc1(c.vac)} du parc total${r.vac != null ? ` (réf. ${pc1(r.vac)})` : ''} · résidences secondaires : ${pc1(c.sec)}${e?.rp != null ? ` · résidences principales ${e.rp >= 0 ? '+' : '−'}${Math.abs(e.rp).toFixed(1).replace('.', ',')} % depuis ${e.de}` : ''}`;
+  st.wrap(vacTxt, rw, 5).slice(0, 3).forEach((ln, j) => st.text(ln, rx, st.y + h2 + 1 + j * 2.7, { s: 5, c: C.grey }));
+  st.y += Math.max(h1, h2 + 9) + 5;
+  // parc par pièces face aux ventes par surface (barres groupées, vectoriel)
+  if (c.pieces) {
+    st.caps('Parc par nombre de pièces, face aux ventes par surface', M, st.y + 2, { s: 5.8 }); st.y += 5;
+    const gh = 30, gw = CW / 5, mx = Math.max(...c.pieces, ...((pv?.parts || []).filter(v => v != null)), 1); const by = st.y + gh;
+    c.pieces.forEach((p, i) => { const gx = M + i * gw + gw * .12, bw = gw * .3; const v = pv?.parts?.[i];
+      const hp = p / mx * (gh - 5); st.rect(gx, by - hp, bw, hp, C.green, null, 0); st.text(String(Math.round(p)), gx + bw / 2, by - hp - 1.2, { s: 5.2, w: 'bold', c: C.text2, align: 'center' });
+      if (v != null) { const hv = v / mx * (gh - 5); st.rect(gx + bw + gw * .06, by - hv, bw, hv, C.accent, null, 0); st.text(String(Math.round(v)), gx + bw + gw * .06 + bw / 2, by - hv - 1.2, { s: 5.2, w: 'bold', c: C.text2, align: 'center' }); }
+      st.text(['1 pièce', '2 pièces', '3 pièces', '4 pièces', '5 pièces et +'][i], M + i * gw + gw / 2, by + 3.6, { s: 5.6, w: 'bold', c: C.text2, align: 'center' });
+      if (pv) st.text(`${bandes[i].id} · ${bandes[i].surfMin}–${bandes[i].surfMax} m²`, M + i * gw + gw / 2, by + 6.4, { s: 4.8, c: C.grey2, align: 'center' }); });
+    st.line(M, by, PW - M, by, C.line, .25);
+    st.rect(M, by + 9, 2.4, 2.4, C.green, null, .4); st.text(`parc ${y} · % des résidences principales par nombre de pièces`, M + 3.4, by + 11, { s: 5, c: C.text2 });
+    if (pv) { st.rect(M + 78, by + 9, 2.4, 2.4, C.accent, null, .4); st.text(`ventes ${pv.de}–${pv.a} · % par bande de surface (${h.fmt0(pv.n)} ventes)`, M + 81.4, by + 11, { s: 5, c: C.text2 }); }
+    st.y = by + 16;
+  }
+  // coefficient suggéré : lecture, trois segments, règle
+  if (sg) {
+    st.caps('Coefficient démographique suggéré', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
+    st.para(`Vieillissement. 80 ans et plus : ${pc1(c.ge80)} contre ${pc1(r.ge80)} dans la référence (${pts1(sg.dAge)}) → ${co2(sg.age)} pt/an. Une part élevée annonce des successions et des mises en vente ; une part faible, l'inverse.`, M, CW, { s: 7 });
+    st.para(`Familles et grandes surfaces. Moins de 15 ans : ${pc1(c.lt15)} contre ${pc1(r.lt15)} (${pts1(sg.dFam)}) ; 4 pièces et plus : ${pc1(c.grands)} du parc contre ${pc1(r.grands)} — ${sg.grandsRares ? 'grandes surfaces plus rares que dans la référence' : 'grandes surfaces au moins aussi présentes que dans la référence'} → ${co2(sg.fam)} pt/an sur les grandes surfaces.`, M, CW, { s: 7 });
+    st.para(`Étudiants et petites surfaces. Étudiants de 18 à 29 ans : ${pc1(c.etudiants)} contre ${pc1(r.etudiants)} (${pts1(sg.dEtu)}) ; personnes seules : ${pc1(c.seuls)} des 15 ans et plus → ${co2(sg.etu)} pt/an sur les petites surfaces.`, M, CW, { s: 7 });
+    st.y += 2; st.need(22);
+    const segs = [['Petites surfaces · T1–T2', sg.segments.petites, 'vieillissement + étudiants'], ['Surfaces moyennes · T3', sg.segments.moyennes, 'vieillissement seul'], ['Grandes surfaces · T4 et plus', sg.segments.grandes, 'vieillissement + familles']];
+    const sw = (CW - 6) / 3; segs.forEach(([l, v, u], i) => { const cx = M + i * (sw + 3); const on = Math.abs(cur - v) < 1e-9 && v !== 0; st.rect(cx, st.y, sw, 17, on ? [234, 241, 252] : C.tile, on ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 4.5, { s: 5.2, fit: sw - 6 }); st.text(`${co2(v)} pt/an`, cx + 3, st.y + 11, { s: 10, w: 'bold', c: on ? C.accent : C.navy }); st.text(`${u}${on ? ' · appliqué' : ''}`, cx + 3, st.y + 15, { s: 5, c: C.grey, fit: sw - 6 }); });
+    st.y += 21;
+    st.para(`Règle : ±${String(D.regle.pente).replace('.', ',')} pt/an par point d'écart à la référence (ensemble des ${D.nRef} communes couvertes), chaque terme plafonné à ±${String(D.regle.plafond).replace('.', ',')}. Règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué dans les scénarios : ${co2(cur)} pt/an${cur ? '' : ' (aucun)'}.`, M, CW, { s: 6.5, c: C.grey });
+  }
+  st.y += 2;
+  st.para(`Méthode. ${h.HELP.demo_etude[1]} ${h.HELP.demo_coef[1]} Source : ${D.source || 'INSEE, recensements de la population (API Melodi)'}.`, M, CW, { s: 6.5, c: C.grey });
+  st.newPage();
+}
+
 // ── Blocs ──────────────────────────────────────────────────────────────────────────────────────────────────
 // Lot 16 : deux rangées — médiane, moyenne pondérée (Σ prix ÷ Σ surfaces), P90, prix max (avec la surface de la vente) ;
 // puis P10, moyenne simple, ventes. Sept tuiles sur une rangée de 174 mm ne laissaient que 22 mm par chiffre.
@@ -293,8 +358,8 @@ export async function exportPdf(ctx){
     st.caps('Perspectives', M, st.y + 2, { s: 6, c: C.green }); st.text(`scénarios à 3, 5 et 10 ans depuis ${h.moisLabel(o.q)}`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
     st.text(`Perspectives · ${item.nom} · ${ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
     // hypothèses
-    const hyps = [['Taux de crédit visé', `${params.tauxH.toFixed(2).replace('.', ',')} %`, `actuel ${tx.v.toFixed(2).replace('.', ',')} % (${h.moisLabel(tx.k)}) · atteint en ${params.horizonTaux / 4} an${params.horizonTaux > 4 ? 's' : ''}`], ['Inflation', `${params.inflation.toFixed(1).replace('.', ',')} %/an`, `IPCH ${h.fmtPctS(h.perAn(Mx.ipch.obs, ip.k, 12) * 100)} sur 12 mois (${h.moisLabel(ip.k)})`], ['Revenus réels', `${params.revenus.toFixed(1).replace('.', ',')} %/an`, `au-delà de l'inflation`], ['Prime locale', `${params.prime.toFixed(1).replace('.', ',')} %/an`, PP.tl != null ? `tendance 10 ans observée ${h.fmtPctS(PP.tl)}/an (non extrapolée)` : 'non calculable'], ['Vitesse d’ajustement', `${Math.round(params.lam * 100)} %/trim`, `écart prix / cible actuel ${h.fmtPctS(cal.ecartCourant * 100)}`]];
-    const tw = (CW - 12) / 5; hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+    const hyps = [['Taux de crédit visé', `${params.tauxH.toFixed(2).replace('.', ',')} %`, `actuel ${tx.v.toFixed(2).replace('.', ',')} % (${h.moisLabel(tx.k)}) · atteint en ${params.horizonTaux / 4} an${params.horizonTaux > 4 ? 's' : ''}`], ['Inflation', `${params.inflation.toFixed(1).replace('.', ',')} %/an`, `IPCH ${h.fmtPctS(h.perAn(Mx.ipch.obs, ip.k, 12) * 100)} sur 12 mois (${h.moisLabel(ip.k)})`], ['Revenus réels', `${params.revenus.toFixed(1).replace('.', ',')} %/an`, `au-delà de l'inflation`], ['Prime locale', `${params.prime.toFixed(1).replace('.', ',')} %/an`, PP.tl != null ? `tendance 10 ans observée ${h.fmtPctS(PP.tl)}/an (non extrapolée)` : 'non calculable'], ['Coef. démo.', `${(params.demo || 0) > 0 ? '+' : ''}${(params.demo || 0).toFixed(2).replace('.', ',')} pt/an`, (params.demo || 0) ? 's’ajoute à la prime locale (page suivante)' : 'non appliqué (0) — suggestion page suivante'], ['Vitesse d’ajust.', `${Math.round(params.lam * 100)} %/trim`, `écart prix / cible actuel ${h.fmtPctS(cal.ecartCourant * 100)}`]];
+    const tw = (CW - 15) / 6;   /* lot 17 : six tuiles (coefficient démographique) */ hyps.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
     st.y += 28;
     // tableau des scénarios
     // sans médiane de zone (rayon), « Valeur projetée · zone » restait sans complément (rapport du 15/10)
@@ -313,8 +378,8 @@ export async function exportPdf(ctx){
     axisLabels(st, [0, 12, 20, 40].map(t => ({ t: sc.central.at(t).q.slice(0, 4), x: X(t), align: t === 40 ? 'right' : t === 0 ? 'left' : 'center' })), cy0 + ch - 1, 5);
     // sensibilité (à droite)
     const sx = M + cw + 8, sw = CW - cw - 8; st.caps('Sensibilité à 5 ans', sx, cy0 + 2.5, { s: 5.8 });
-    const noms = { tauxH: 'Taux', inflation: 'Inflation', revenus: 'Revenus réels', prime: 'Prime locale', lam: 'Vitesse' };
-    sens.forEach((x, i) => { const yy = cy0 + 7 + i * 3.9; const lab = `${noms[x.k]} ${x.k === 'lam' ? `${x.d > 0 ? '+' : ''}${Math.round(x.d * 100)} pts` : `${x.d > 0 ? '+' : ''}${x.d} pt`}`; st.text(lab, sx, yy + .8, { s: 5.6, c: C.text2 });
+    const noms = { tauxH: 'Taux', inflation: 'Inflation', revenus: 'Revenus réels', prime: 'Prime locale', demo: 'Coef. démo.', lam: 'Vitesse' };
+    sens.forEach((x, i) => { const yy = cy0 + 7 + i * 3.9; const lab = `${noms[x.k]} ${x.k === 'lam' ? `${x.d > 0 ? '+' : ''}${Math.round(x.d * 100)} pts` : `${x.d > 0 ? '+' : ''}${String(x.d).replace('.', ',')} pt`}`; st.text(lab, sx, yy + .8, { s: 5.6, c: C.text2 });
       const mid = sx + 26 + (sw - 26 - 12) / 2, half = (sw - 26 - 12) / 2, w = Math.min(half, Math.abs(x.effet) * 100 / 12 * half); st.rect(x.effet >= 0 ? mid : mid - w, yy - 1.4, w, 2.4, x.effet >= 0 ? [4, 120, 87] : [185, 28, 28], null, .6); st.text(h.fmtPctS(x.effet * 100), sx + sw, yy + .8, { s: 5.6, w: 'bold', c: x.effet >= 0 ? C.good : C.bad, align: 'right' }); });
     st.y = cy0 + ch + 6;
     // rétrospectif
@@ -324,6 +389,10 @@ export async function exportPdf(ctx){
     st.y += 18;
     st.para(`Méthode. ${h.HELP.persp_modele[1]} ${h.HELP.persp_scen[1]} ${h.HELP.persp_retro[1]} ${h.HELP.persp_prime[1]} Sources : BCE (taux des crédits à l'habitat ${h.moisLabel(tx.k)}, OAT 10 ans ${oat.v.toFixed(2).replace('.', ',')} % en ${h.moisLabel(oat.k)}, IPCH ${h.moisLabel(ip.k)}), INSEE (indice Notaires-INSEE Paris, indice des loyers ${h.moisLabel(loy.k)}, logements autorisés à Paris ${h.fmt0(pm.v)} sur 12 mois en ${h.moisLabel(pm.k)}). Scénarios conditionnels aux hypothèses affichées : ce ne sont pas des prévisions.`, M, CW, { s: 7.2 });
     st.newPage();
+    // ── Démographie et parc (lot 17) : INSEE, recensements 2012 → 2023, référence = ensemble des communes couvertes ──
+    const D = PP.demo;
+    if (D?.ind) pageDemographie(st, doc, h, item, D, params);
+    else if (PP.demoErr) { st.caps('Démographie et parc', M, st.y + 2, { s: 6, c: C.green }); st.text(`Données INSEE indisponibles (${PP.demoErr}).`, M, st.y + 9, { s: 8, c: C.grey }); st.newPage(); }
   }
   const PT = ctx.parType, etTypo = PT ? PT.app : et;   // lot 13 : en « Tous », distinction par type et typologies sur les appartements
   if (S.global || PT) section(`${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, 'Marché global', et);

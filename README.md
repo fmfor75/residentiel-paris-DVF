@@ -24,6 +24,7 @@ scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (c
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN) ; table des communes
 scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
 scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run mensuel
+scripts/fetch_demo.py         ← démographie et parc INSEE (recensements 2012/2017/2023, API Melodi) → data/demographie.json (clair)
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
@@ -66,8 +67,8 @@ Données dans `data/loyers.json` (clair), produites par `scripts/fetch_loyers.py
 de la dernière année publiée — 2 560 combinaisons attendues — et dernier jeu « Carte des loyers » sur data.gouv, filtré
 sur les communes du référentiel). Tests : `python -m unittest tests.test_loyers`, `node tests/test_valo.mjs`.
 
-**Perspectives** (onglet, page PDF) : scénarios à 3, 5 et 10 ans, conditionnels à cinq hypothèses réglables (taux de crédit
-visé et horizon, inflation, revenus réels, prime locale, vitesse d'ajustement), avec les valeurs actuelles et leurs sources.
+**Perspectives** (onglet, page PDF) : scénarios à 3, 5 et 10 ans, conditionnels à six hypothèses réglables (taux de crédit
+visé et horizon, inflation, revenus réels, prime locale, coefficient démographique, vitesse d'ajustement), avec les valeurs actuelles et leurs sources.
 Modèle structurel à coefficients imposés : prix cible = capacité d'emprunt à mensualité constante sur 20 ans (taux décalé de
 deux trimestres) × niveau des prix ; une seule constante calée sur 2014–2025 ; ajustement partiel. Rétrospectif affiché :
 calé ≤ 2019-Q4, simulé 2020–2025 avec taux et inflation réels → erreur moyenne 4,2 %, max 8,5 % (`node tests/test_persp.mjs`
@@ -129,6 +130,24 @@ PNG du rayon gardent la charte Jadero. Indicateurs ajoutés (lot 16) : **moyenne
 PDF (`engine.stats` : `wmean`, `max_surf`, `max_ym`). Le max est une seule vente : à Paris entier il vaut le plafond du filtre
 (40 000 €/m²). **Paris · ville entière** en tête de l'onglet Arrond. / commune (niveau `commune`, id 75056 : 80 quartiers).
 
+**Démographie et parc (lot 17, 25/10/2026).** Carte « Démographie et parc » dans Perspectives et page PDF correspondante,
+à partir des recensements INSEE 2012, 2017 et 2023 (exploitation principale, API Melodi sans clé : `scripts/fetch_demo.py`
+→ `data/demographie.json`, 36 géographies = 16 communes du référentiel + 20 arrondissements). Maille commune / arrondissement :
+un quartier est lu par son arrondissement, un secteur ou une zone par la somme de ses arrondissements, un rayon par la commune ou
+l'arrondissement de l'adresse (`engine.demoAgreger` : sommes de comptages, parts calculées après). Affiché : population et
+structure par âge (sept tranches, 2012 → 2023, face à la référence = ensemble des communes couvertes), 65 et 80 ans et plus,
+moins de 15 ans, étudiants de 18 à 29 ans (`DS_RP_EDUCATION_PRINC`, STUD=1), personnes seules, parc par nombre de pièces
+face aux ventes DVF par bande de surface sur 5 ans (la surface tient lieu de nombre de pièces : rapprochement assumé), statut
+d'occupation (propriétaires, locataires privé, **HLM = code TSH 221** — la lecture « 212_222 » a été écartée par la mesure :
+Saint-Ouen 29 % contre Neuilly 5,5 %), vacance, résidences secondaires. **Coefficient démographique** (`params.demo`,
+s'ajoute à la prime locale dans la trajectoire, 7e champ du hash `persp=`, 0 par défaut) : suggestion par segment selon une
+règle explicite et affichée — ±0,10 pt/an par point d'écart à la référence, plafonné à ±0,5 par terme ; vieillissement (part des
+80 ans et plus) sur tous les segments, familles (part des < 15 ans, seulement si les 4 pièces et plus sont plus rares que dans la
+référence) sur les grandes surfaces, étudiants sur les petites — appliquée d'un clic, jamais d'office. C'est une règle de
+lecture, pas une élasticité mesurée : rien ne permet aujourd'hui de la calibrer. Gardes : `tests/test_demo.py` (API locale :
+parsing, codes TSH, cellules incomplètes comptées, jeu en échec conservé, no-op), `tests/test_demographie.mjs` (somme des
+arrondissements = Paris, parts sommant à 100, règle, projection), deux configurations dans `tests/audit_pdf.py`.
+
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
 colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates
 (page 1), « 2024 » sur « 2025 » dans les graphiques de volume, des surfaces à point décimal, un « ← » disparu (absent de la
@@ -174,4 +193,5 @@ communes entières, secteurs (listes de quartiers, Paris), zones officielles d'e
 ## Sources
 
 DGFiP « Demandes de valeurs foncières » via Etalab (geo-dvf, opendatarchives) · Ville de Paris (quartiers,
-encadrement des loyers) · IGN géoplateforme (IRIS, fond de carte, géocodage) · Licence Ouverte 2.0.
+encadrement des loyers) · IGN géoplateforme (IRIS, fond de carte, géocodage) · INSEE (recensements de la population, API
+Melodi) · Licence Ouverte 2.0.

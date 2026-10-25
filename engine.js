@@ -221,9 +221,10 @@ export function retrospectif(macro, serie, { lag = 2, lam = .2, trainUntil = '20
 }
 // Projection : depuis le dernier trimestre DVF, prolongé par l'indice INSEE (pont) jusqu'au dernier trimestre publié
 // params : tauxH (taux crédit visé, %), horizonTaux (trimestres pour l'atteindre), inflation (%/an), revenus (% réels/an),
-//          prime (%/an, propre à la zone), lam (vitesse), lag ; quarters = 40 (10 ans)
+//          prime (%/an, propre à la zone), demo (%/an, coefficient démographique — lot 17, s'ajoute à la prime), lam (vitesse), lag ;
+//          quarters = 40 (10 ans)
 export function projeter(macro, serie, cal, params, quarters = 40){
-  const { tauxH, horizonTaux = 12, inflation = 2, revenus = .5, prime = 0, lam = .2 } = params; const lag = cal.lag;
+  const { tauxH, horizonTaux = 12, inflation = 2, revenus = .5, prime = 0, demo = 0, lam = .2 } = params; const lag = cal.lag;
   const R = macro.series.taux_credit.obs, H = macro.series.ipch.obs, I = macro.series.insee_paris_appart?.obs || {};
   const qs = Object.keys(serie).sort(); const qDvf = qs[qs.length - 1]; let P0 = serie[qDvf], q0 = qDvf, pont = null;
   const qIns = Object.keys(I).sort().filter(q => q > qDvf).pop();
@@ -235,7 +236,7 @@ export function projeter(macro, serie, cal, params, quarters = 40){
   const qEndMonth = q => `${q.slice(0, 4)}-${String(3 * +q.slice(-1)).padStart(2, '0')}`;
   const hAt = q => { const v = hQ(q); if (v != null) return v; const m = monthsBetween(hLast, qEndMonth(q)) - 1; return h0 * Math.pow(1 + inflation / 100, Math.max(0, m) / 12); };
   const rAt = (q, t) => { const v = rObs(q); if (v != null && t <= 0) return v; const tt = Math.max(0, t); return r0 + (tauxH - r0) * Math.min(1, tt / horizonTaux); };
-  let lp = Math.log(P0); const path = [{ q: q0, t: 0, prix: P0, ratio: 1 }]; const g = Math.log(1 + revenus / 100) / 4, pr = Math.log(1 + prime / 100) / 4;
+  let lp = Math.log(P0); const path = [{ q: q0, t: 0, prix: P0, ratio: 1 }]; const g = Math.log(1 + revenus / 100) / 4, pr = Math.log(1 + (prime + (demo || 0)) / 100) / 4;
   for (let t = 1; t <= quarters; t++) { const q = qNext(q0, t); const r = rAt(qNext(q, -lag), t - lag);
     const cible = cal.a + Math.log(K20(r)) + Math.log(hAt(q)) + g * t; lp = lp + lam * (cible - lp);
     const prix = Math.exp(lp + pr * t); path.push({ q, t, prix, ratio: prix / P0, taux: r }); }
@@ -247,8 +248,8 @@ export function scenarios(macro, serie, cal, params){
 }
 export function sensibilite(macro, serie, cal, params, n = 20){
   const base = projeter(macro, serie, cal, params).at(n).ratio;
-  const test = (k, d) => ({ k, d, ratio: projeter(macro, serie, cal, { ...params, [k]: params[k] + d }).at(n).ratio });
-  return [['tauxH', 1], ['tauxH', -1], ['inflation', 1], ['inflation', -1], ['revenus', 1], ['revenus', -1], ['prime', 1], ['prime', -1], ['lam', .1], ['lam', -.1]].map(([k, d]) => { const r = test(k, d); return { ...r, effet: r.ratio / base - 1 }; });
+  const test = (k, d) => ({ k, d, ratio: projeter(macro, serie, cal, { ...params, [k]: (params[k] || 0) + d }).at(n).ratio });
+  return [['tauxH', 1], ['tauxH', -1], ['inflation', 1], ['inflation', -1], ['revenus', 1], ['revenus', -1], ['prime', 1], ['prime', -1], ['demo', .25], ['demo', -.25], ['lam', .1], ['lam', -.1]].map(([k, d]) => { const r = test(k, d); return { ...r, effet: r.ratio / base - 1 }; });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -338,4 +339,58 @@ export function couvertureRayon(lon, lat, rayon, quartierAt, { anneaux = 4, parA
     }
   }
   return { couverte: dedans / total, points: total };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Démographie et parc (lot 17) — data/demographie.json (INSEE, recensements 2012/2017/2023, communes et arrondissements).
+// Les géographies s'agrègent par somme de comptages (un secteur ou une zone = ses arrondissements), les parts se
+// calculent après. La référence est l'ensemble des communes couvertes. Le coefficient suggéré est une RÈGLE DE LECTURE
+// explicite, pas une élasticité mesurée : nous n'avons pas de série assez longue pour calibrer l'effet de la démographie sur
+// les prix — la règle est affichée avec ses chiffres, l'utilisateur l'applique ou non (0 par défaut).
+// ═══════════════════════════════════════════════════════════════════════════════
+export const DEMO_AGES = [['lt15', '< 15 ans'], ['a15_24', '15–24'], ['a25_39', '25–39'], ['a40_54', '40–54'], ['a55_64', '55–64'], ['a65_79', '65–79'], ['ge80', '80 et +']];
+export const DEMO_REGLE = { pente: .10, plafond: .5 };   // ±0,10 pt/an par point d'écart à la référence, plafonné à ±0,5 pt/an
+function sommer(dst, src){ for (const [k, v] of Object.entries(src || {})) { if (v && typeof v === 'object') sommer(dst[k] ||= {}, v); else if (typeof v === 'number') dst[k] = (dst[k] || 0) + v; } return dst; }
+// Agrège les géographies `ids` (codes INSEE : commune ou arrondissement 751xx) ; manquants = ids absents du fichier
+export function demoAgreger(D, ids){
+  const out = { n: 0, manquants: [], pop: {}, parc: {}, menages: {}, etudiants: {} };
+  for (const id of ids) { const g = D?.geos?.[id]; if (!g) { out.manquants.push(id); continue; } out.n++;
+    for (const jeu of ['pop', 'parc', 'menages', 'etudiants']) sommer(out[jeu], g[jeu]); }
+  return out.n ? out : null;
+}
+const part = (a, b) => (a != null && b) ? a / b * 100 : null;
+// Indicateurs d'un agrégat, par millésime : parts en %, plus l'évolution 2012 → dernier millésime en points
+export function demoIndicateurs(agg, millesimes = ['2012', '2017', '2023']){
+  if (!agg) return null; const par = {};
+  for (const y of millesimes) { const p = agg.pop[y] || {}, c = agg.parc[y] || {}, m = agg.menages[y] || {}, e = agg.etudiants[y] || {};
+    if (!p.t) continue;
+    const rp = c.rp || ((c.p1 || 0) + (c.p2 || 0) + (c.p3 || 0) + (c.p4 || 0) + (c.p5 || 0)) || null;
+    par[y] = { pop: p.t, lt15: part(p.lt15, p.t), a15_24: part(p.a15_24, p.t), ge65: part(p.ge65, p.t), ge80: part(p.ge80, p.t), ages: DEMO_AGES.map(([k]) => part(p[k], p.t)),
+      etudiants: part((e.e18_24 || 0) + (e.e25_29 || 0), p.t), seuls: part(m.seuls_t, m.pop15), seuls_ge65: part((m.seuls?.a65_79 || 0) + (m.seuls?.ge80 || 0), m.pop15),
+      rp, pieces: rp ? [c.p1, c.p2, c.p3, c.p4, c.p5].map(v => part(v, rp)) : null, grands: part((c.p4 || 0) + (c.p5 || 0), rp), petits: part((c.p1 || 0) + (c.p2 || 0), rp),
+      prop: part(c.prop, rp), hlm: part(c.hlm, rp), loc_prive: part(c.loc_prive, rp), meuble: part(c.meuble, rp), gratuit: part(c.gratuit, rp), vac: part(c.vac, c.tot), sec: part(c.sec, c.tot) };
+  }
+  const ys = Object.keys(par).sort(); if (!ys.length) return null; const y0 = ys[0], y1 = ys[ys.length - 1], a = par[y0], b = par[y1];
+  const evo = y0 !== y1 ? { de: y0, a: y1, pop: (b.pop / a.pop - 1) * 100, ge65: b.ge65 - a.ge65, ge80: b.ge80 - a.ge80, lt15: b.lt15 - a.lt15, etudiants: b.etudiants - a.etudiants, grands: (b.grands != null && a.grands != null) ? b.grands - a.grands : null, rp: a.rp && b.rp ? (b.rp / a.rp - 1) * 100 : null } : null;
+  return { par, dernier: y1, premier: y0, cur: b, evo, n: agg.n, manquants: agg.manquants };
+}
+// Suggestion de coefficient (pt/an) par segment, à partir des écarts à la référence (en points de %) :
+//   âge      : −pente × (part des 80 ans et plus − référence) — une part élevée annonce des successions et des ventes ;
+//   familial : +pente × (part des < 15 ans − référence)⁺, seulement si les 4 pièces et plus sont moins présents que dans la
+//              référence (demande familiale face à un parc de grandes surfaces rare) — segment « grandes surfaces » ;
+//   étudiant : +pente × (part d'étudiants 18–29 ans − référence)⁺ — segment « petites surfaces » ;
+// chaque terme est plafonné à ±plafond. Segments : petites (T1–T2) = âge + étudiant ; moyennes (T3) = âge ; grandes (T4+) = âge + familial.
+export function demoSuggestion(ind, ref, regle = DEMO_REGLE){
+  if (!ind?.cur || !ref?.cur) return null; const c = ind.cur, r = ref.cur, cap = v => Math.max(-regle.plafond, Math.min(regle.plafond, v)), r1 = v => Math.round(v * 100) / 100;
+  const dAge = c.ge80 != null && r.ge80 != null ? c.ge80 - r.ge80 : null, dFam = c.lt15 != null && r.lt15 != null ? c.lt15 - r.lt15 : null, dEtu = c.etudiants != null && r.etudiants != null ? c.etudiants - r.etudiants : null;
+  const grandsRares = c.grands != null && r.grands != null && c.grands < r.grands;
+  const age = dAge == null ? 0 : r1(cap(-regle.pente * dAge)), fam = dFam == null || !grandsRares ? 0 : r1(cap(regle.pente * Math.max(0, dFam))), etu = dEtu == null ? 0 : r1(cap(regle.pente * Math.max(0, dEtu)));
+  return { age, fam, etu, dAge, dFam, dEtu, grandsRares, segments: { petites: r1(age + etu), moyennes: age, grandes: r1(age + fam) } };
+}
+// Part des ventes par bande de surface (typologies de référence, dans l'ordre 1 → 5 pièces) sur les `years` dernières années —
+// à mettre en face du parc par nombre de pièces ; proxy assumé : la surface tient lieu de nombre de pièces
+export function partsParSurface(S, idx, bandes, lastYear, years = 5){
+  const n = new Array(bandes.length).fill(0); let tot = 0; const y0 = lastYear - years + 1;
+  for (const i of idx) { if (S.year[i] < y0) continue; const s = S.surf[i]; const k = bandes.findIndex(b => s >= b.surfMin && s < b.surfMax); if (k < 0) continue; n[k]++; tot++; }
+  return { parts: n.map(v => tot ? v / tot * 100 : null), n: tot, de: y0, a: lastYear };
 }
