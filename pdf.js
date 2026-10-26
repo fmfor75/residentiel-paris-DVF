@@ -106,13 +106,33 @@ function pageDemographie(st, doc, h, item, D, params){
   const { geo, ind, ref, sg, pv, bandes } = D; const c = ind.cur, r = ref?.cur || {}, y = ind.dernier, e = ind.evo, cur = params.demo || 0;
   st.caps('Démographie et parc', M, st.y + 2, { s: 6, c: C.green }); st.text(`INSEE, recensements ${ind.premier} → ${y} · maille commune / arrondissement`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
   st.text(`Démographie et parc · ${geo.label}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
+  // conclusions et impact sur le prix (26/10) : mêmes textes que l'écran (D.lecture, calculée par demoLecture dans index.html)
+  const L = D.lecture;
+  if (L) {
+    st.need(40); st.caps('Ce qu’il faut retenir', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 8;
+    const COL = { pression: C.bad, soutien: C.good, neutre: C.grey, contexte: C.accent2 }, LBL = { pression: 'PRESSION SUR LES PRIX', soutien: 'SOUTIEN AUX PRIX', neutre: 'NEUTRE', contexte: 'CONTEXTE' };
+    L.verdicts.forEach(v => { const lines = st.wrap(v.txt, CW - 8, 7); const hh = 6 + lines.length * 7 * pt2mm * 1.45 + 1; st.need(hh + 2);
+      st.rect(M, st.y, 1.2, hh, COL[v.sens], null, 0);
+      st.caps(LBL[v.sens], M + 4, st.y + 3.4, { s: 5, c: COL[v.sens], ls: .4 }); const lw = st.width(LBL[v.sens], 5, 'bold', .4);
+      st.text(v.t, M + 4 + lw + 3, st.y + 3.5, { s: 7.5, w: 'bold', c: C.navy, fit: CW - lw - 30 });
+      if (v.coef != null && v.coef !== 0) st.text(`${co2(v.coef)} pt/an`, PW - M, st.y + 3.5, { s: 7, w: 'bold', c: C.text2, align: 'right' });
+      lines.forEach((ln, j) => st.text(ln, M + 4, st.y + 7.2 + j * 7 * pt2mm * 1.45, { s: 7, c: C.text })); st.y += hh + 2.5; });
+    st.y += 2; st.need(34);
+    st.caps('Impact sur le prix si le coefficient est appliqué', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
+    const eur = v => v == null ? '' : `  ·  ${v > 0 ? '+' : v < 0 ? '−' : ''}${h.fmt0(Math.abs(v))} €/m²`;
+    table(st, [{ l: 'Segment', w: 2 }, { l: 'Coefficient', w: 1.1, align: 'right' }, { l: 'Effet à 5 ans', w: 1.6, align: 'right' }, { l: 'Effet à 10 ans', w: 1.6, align: 'right' }, { l: 'Central à 5 ans', w: 1.5, align: 'right' }],
+      L.impacts.map(x => { const on = Math.abs(cur - x.coef) < 1e-9 && x.coef !== 0; return { cells: [{ t: `${x.lab}${on ? ' · appliqué' : ''}`, w: on ? 'bold' : 'normal' }, { t: `${co2(x.coef)} pt/an`, w: 'bold', c: on ? C.accent : C.navy }, { t: `${h.fmtPctS(x.p5)}${eur(x.e5)}` }, { t: `${h.fmtPctS(x.p10)}${eur(x.e10)}` }, { t: x.s5 != null ? `${h.fmtPctS(x.s5)} (au lieu de ${h.fmtPctS(L.central5)})` : '—' }] }; }), M, CW, { s: 6.6, rh: 6.4 });
+    st.y += 3;
+    st.para(`Effet du seul coefficient, en % puis en €/m² sur la médiane 12 mois de la zone${L.median ? ` (${h.fmt0(L.median)} €/m²)` : ''} ; la dernière colonne le combine au scénario central. Règle : ±${String(D.regle.pente).replace('.', ',')} pt/an par point d'écart à l'ensemble des ${D.nRef} communes couvertes, chaque terme plafonné à ±${String(D.regle.plafond).replace('.', ',')} — règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué dans les scénarios : ${co2(cur)} pt/an${cur ? '' : ' (aucun)'}.`, M, CW, { s: 6.5, c: C.grey });
+  }
+  st.y += 2; st.need(60); st.caps('Le détail des chiffres INSEE', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 8;
   // six tuiles
   const refT = k => r[k] != null ? `réf. ${pc1(r[k])}` : '';
   const tiles = [['Population', h.fmt0(c.pop), e ? `${e.pop >= 0 ? '+' : '−'}${Math.abs(e.pop).toFixed(1).replace('.', ',')} % depuis ${e.de}` : `recensement ${y}`],
     ['65 ans et plus', pc1(c.ge65), `${e ? pts1(e.ge65) + ' · ' : ''}${refT('ge65')}`], ['80 ans et plus', pc1(c.ge80), `${e ? pts1(e.ge80) + ' · ' : ''}${refT('ge80')}`],
     ['Moins de 15 ans', pc1(c.lt15), `${e ? pts1(e.lt15) + ' · ' : ''}${refT('lt15')}`], ['Étudiants 18–29 ans', pc1(c.etudiants), `${e ? pts1(e.etudiants) + ' · ' : ''}${refT('etudiants')}`],
     ['Personnes seules', pc1(c.seuls), `des 15 ans et plus · ${refT('seuls')}`]];
-  const tw = (CW - 15) / 6; tiles.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+  const tw = (CW - 15) / 6; st.need(30); tiles.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
   st.y += 27;
   // barres empilées : âges (gauche) et occupation (droite)
   const stk = (x0, w, rows, cols, labels, titre) => {
@@ -126,13 +146,13 @@ function pageDemographie(st, doc, h, item, D, params){
   const inkOn = x => { const [R, G, B] = hex(x), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return (.2126 * f(R) + .7152 * f(G) + .0722 * f(B)) > .18 ? C.navy : [255, 255, 255]; };
   const ageRows = [[`Zone · ${y}`, c.ages]]; if (e && ind.par[ind.premier]) ageRows.push([`Zone · ${ind.premier}`, ind.par[ind.premier].ages]); if (r.ages) ageRows.push([`Référence · ${y}`, r.ages]);
   const occK = D.occ.map(o => o[0]), occC = D.occ.map(o => o[2]), occL = D.occ.map(o => o[1]); const occRows = [[`Zone · ${y}`, occK.map(k => c[k])]]; if (r.prop != null) occRows.push([`Référence · ${y}`, occK.map(k => r[k])]);
-  const lw = CW * .58, rx = M + lw + 6, rw = CW - lw - 6;
+  const lw = CW * .58, rx = M + lw + 6, rw = CW - lw - 6; st.need(48);
   const h1 = stk(M, lw, ageRows, D.ageCol, D.ages.map(a => a[1]), 'Structure par âge'), h2 = stk(rx, rw, occRows, occC, occL, 'Occupation du parc');
   const vacTxt = `Vacants : ${pc1(c.vac)} du parc total${r.vac != null ? ` (réf. ${pc1(r.vac)})` : ''} · résidences secondaires : ${pc1(c.sec)}${e?.rp != null ? ` · résidences principales ${e.rp >= 0 ? '+' : '−'}${Math.abs(e.rp).toFixed(1).replace('.', ',')} % depuis ${e.de}` : ''}`;
   st.wrap(vacTxt, rw, 5).slice(0, 3).forEach((ln, j) => st.text(ln, rx, st.y + h2 + 1 + j * 2.7, { s: 5, c: C.grey }));
   st.y += Math.max(h1, h2 + 9) + 5;
   // parc par pièces face aux ventes par surface (barres groupées, vectoriel)
-  if (c.pieces) {
+  if (c.pieces) { st.need(54);   // 5 + 30 + 16 + marge : le graphique passait sur le pied de page (audit du 26/10)
     st.caps('Parc par nombre de pièces, face aux ventes par surface', M, st.y + 2, { s: 5.8 }); st.y += 5;
     const gh = 30, gw = CW / 5, mx = Math.max(...c.pieces, ...((pv?.parts || []).filter(v => v != null)), 1); const by = st.y + gh;
     c.pieces.forEach((p, i) => { const gx = M + i * gw + gw * .12, bw = gw * .3; const v = pv?.parts?.[i];
@@ -144,18 +164,6 @@ function pageDemographie(st, doc, h, item, D, params){
     st.rect(M, by + 9, 2.4, 2.4, C.green, null, .4); st.text(`parc ${y} · % des résidences principales par nombre de pièces`, M + 3.4, by + 11, { s: 5, c: C.text2 });
     if (pv) { st.rect(M + 78, by + 9, 2.4, 2.4, C.accent, null, .4); st.text(`ventes ${pv.de}–${pv.a} · % par bande de surface (${h.fmt0(pv.n)} ventes)`, M + 81.4, by + 11, { s: 5, c: C.text2 }); }
     st.y = by + 16;
-  }
-  // coefficient suggéré : lecture, trois segments, règle
-  if (sg) {
-    st.caps('Coefficient démographique suggéré', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
-    st.para(`Vieillissement. 80 ans et plus : ${pc1(c.ge80)} contre ${pc1(r.ge80)} dans la référence (${pts1(sg.dAge)}) → ${co2(sg.age)} pt/an. Une part élevée annonce des successions et des mises en vente ; une part faible, l'inverse.`, M, CW, { s: 7 });
-    st.para(`Familles et grandes surfaces. Moins de 15 ans : ${pc1(c.lt15)} contre ${pc1(r.lt15)} (${pts1(sg.dFam)}) ; 4 pièces et plus : ${pc1(c.grands)} du parc contre ${pc1(r.grands)} — ${sg.grandsRares ? 'grandes surfaces plus rares que dans la référence' : 'grandes surfaces au moins aussi présentes que dans la référence'} → ${co2(sg.fam)} pt/an sur les grandes surfaces.`, M, CW, { s: 7 });
-    st.para(`Étudiants et petites surfaces. Étudiants de 18 à 29 ans : ${pc1(c.etudiants)} contre ${pc1(r.etudiants)} (${pts1(sg.dEtu)}) ; personnes seules : ${pc1(c.seuls)} des 15 ans et plus → ${co2(sg.etu)} pt/an sur les petites surfaces.`, M, CW, { s: 7 });
-    st.y += 2; st.need(22);
-    const segs = [['Petites surfaces · T1–T2', sg.segments.petites, 'vieillissement + étudiants'], ['Surfaces moyennes · T3', sg.segments.moyennes, 'vieillissement seul'], ['Grandes surfaces · T4 et plus', sg.segments.grandes, 'vieillissement + familles']];
-    const sw = (CW - 6) / 3; segs.forEach(([l, v, u], i) => { const cx = M + i * (sw + 3); const on = Math.abs(cur - v) < 1e-9 && v !== 0; st.rect(cx, st.y, sw, 17, on ? [234, 241, 252] : C.tile, on ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 4.5, { s: 5.2, fit: sw - 6 }); st.text(`${co2(v)} pt/an`, cx + 3, st.y + 11, { s: 10, w: 'bold', c: on ? C.accent : C.navy }); st.text(`${u}${on ? ' · appliqué' : ''}`, cx + 3, st.y + 15, { s: 5, c: C.grey, fit: sw - 6 }); });
-    st.y += 21;
-    st.para(`Règle : ±${String(D.regle.pente).replace('.', ',')} pt/an par point d'écart à la référence (ensemble des ${D.nRef} communes couvertes), chaque terme plafonné à ±${String(D.regle.plafond).replace('.', ',')}. Règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué dans les scénarios : ${co2(cur)} pt/an${cur ? '' : ' (aucun)'}.`, M, CW, { s: 6.5, c: C.grey });
   }
   st.y += 2;
   st.para(`Méthode. ${h.HELP.demo_etude[1]} ${h.HELP.demo_coef[1]} Source : ${D.source || 'INSEE, recensements de la population (API Melodi)'}.`, M, CW, { s: 6.5, c: C.grey });
@@ -292,9 +300,10 @@ export async function exportPdf(ctx){
   // ── Valorisation de l'immeuble (lot 6) : page dédiée juste après la couverture ───────────────
   const V = ctx.valo;
   if (V && V.lots > 0 && address) {
-    st.caps('Valorisation', M, st.y + 2, { s: 6, c: C.green }); st.text(`Positionnement P${V.pos} · référence 12 derniers mois`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+    st.caps('Valorisation', M, st.y + 2, { s: 6, c: C.green }); const refLbl = V.mode === 'mean' ? 'moyenne' : V.mode === 'wmean' ? 'moyenne pondérée' : `P${V.pos}`;   // 26/10 : référence choisie
+    st.text(`Référence ${refLbl} · 12 derniers mois`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
     st.text(`Valorisation de l'immeuble · ${address.label}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
-    const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · P${V.pos}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au P10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au P90 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
+    const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · ${refLbl}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au P10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au P90 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
     const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
       st.caps(l, cx + 3.2, st.y + 5, { s: 5.6, fit: tw - 6.4 }); st.text(v, cx + 3.2, st.y + 14.5, { s: v.length > 12 ? 11 : 13, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 }); st.text(u, cx + 3.2, st.y + 20, { s: 5.6, c: C.grey, fit: tw - 6.4 }); });
     st.y += 30;
@@ -311,7 +320,7 @@ export async function exportPdf(ctx){
     if (RT && RT.loyerAnnuel > 0) {
       const srcTxt = RT.paris ? `encadrement ${RT.src.annee} (applicable ${RT.src.application}) · loyer de référence majoré, hors charges · ${RT.meuble ? 'meublé' : 'vide'} · immeuble ${RT.epoque.toLowerCase().replace('apres', 'après')}` : `carte des loyers ${RT.src.edition} · loyers d'annonce charges comprises · ${RT.meuble ? 'meublé' : 'vide'}`;
       st.need(64); st.caps('Loyers et rentabilité brute', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.text(srcTxt, M, st.y + 7.5, { s: 6.2, c: C.grey, maxWidth: CW }); st.y += 11;
-      const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (P${V.pos})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (P90)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (P10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
+      const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (${refLbl})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (P90)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (P10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
       const tw = (CW - 9) / 4; tl.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 5, { s: 5.4, fit: tw - 6 }); st.text(v, cx + 3, st.y + 13.5, { s: 12, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6 }); st.text(u, cx + 3, st.y + 19, { s: 5.4, c: C.grey, maxWidth: tw - 5 }); });
       st.y += 27;
       table(st, [{ l: 'Typologie', w: 1.1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Pièces', w: .75, align: 'right' }, { l: RT.paris ? 'Majoré €/m²' : 'Loyer €/m²', w: 1.25, align: 'right' }, { l: RT.paris ? 'Réf. · minoré' : 'Bas → haut', w: 1.35, align: 'right' }, { l: 'Loyer / lot', w: 1.25, align: 'right' }, { l: 'Loyer annuel', w: 1.35, align: 'right' }, { l: 'Rentab.', w: 1, align: 'right' }],

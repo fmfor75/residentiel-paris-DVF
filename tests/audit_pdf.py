@@ -42,6 +42,8 @@ CONFIGS = {
   # lot 17 : page « Démographie et parc » — commune avec coefficient appliqué (+0,3), secteur = plusieurs arrondissements, Paris entier
   "neuilly_persp_demo": f"niveau=commune&id=92051&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T4')}&persp=3.5:12:2:0.5:0:0.2:0.3",
   "secteur_persp_demo": f"niveau=secteur&id=3&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T3')}&persp=3.5:12:2:0.5:0:0.2:0",
+  # 26/10 : valorisation à la moyenne pondérée + démographie
+  "penthievre_valo_wmean": f"niveau=quartier&id=P30&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T3')}&valo=50|0|1|wmean;T2:4:42:0:2,T3:3:62:0:3&persp=3.5:12:2:0.5:0:0.2:0.18&addr=2.316624,48.87293,13 Rue de Penthièvre 75008 Paris",
   # quartier parisien, appartements, historique complet, mois
   "paris_quartier_all": f"niveau=quartier&id=P30&per=all&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T1','T2','T3','T4','T5')}",
 }

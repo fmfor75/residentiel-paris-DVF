@@ -153,6 +153,14 @@ change le niveau) ; puis, à la demande de Franck, la pastille du haut est deven
 résultats de tous les niveaux s'ouvrent dessous (nom commençant par la saisie d'abord, flèches / Entrée / Échap, ⌘K), choisir
 garde la vue courante ; collision de classe `.seg` (segments démographiques vs sélecteurs du rail) → `.dseg`, avec la garde
 `tests/test_css.mjs` (une classe nue définie deux fois hors blocs @ doit être une surcharge déclarée du même composant).
+Retours du 26/10 : (1) « les points i ne fonctionnent pas tous » — mesuré bouton par bouton (survol, maintien, clic) : l'infobulle
+s'affichait mais hors écran dès que la page avait défilé, parce que l'animation d'entrée de `#app` (transform, fill-mode both)
+faisait de `#app` le bloc conteneur des positions fixes ; le rail et la barre du bas défilaient de même. La classe d'animation
+est retirée à sa fin. (2) Valorisation : la référence se choisit — percentile du curseur (défaut), moyenne, ou moyenne
+pondérée Σ prix ÷ Σ surfaces de l'échantillon (`valoriser({mode})`, 4e champ de `valo=` dans le hash, PDF). (3) La carte
+« Démographie et parc » commence par les conclusions (pression / soutien / neutre, avec les chiffres qui les fondent, et la
+rotation des ventes face au parc) et par l'impact chiffré du coefficient suggéré (% et €/m² à 5 et 10 ans sur la médiane 12 mois
+de la zone, scénario central avec et sans) ; le détail INSEE est replié dessous. Même lecture dans le PDF (`demoLecture`).
 
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
 colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates

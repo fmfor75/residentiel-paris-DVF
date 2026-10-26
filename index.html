@@ -539,16 +539,25 @@ footer a{color:var(--text3)}
 .gb .g .c i.a{background:var(--brand)}.gb .g .c i.b{background:var(--accent3)}
 .gbx{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;font-size:12.5px;font-weight:500;color:var(--text2);text-align:center;padding:8px 6px 0;border-top:1px solid var(--line)}
 .gbx small{display:block;font-weight:400;color:var(--text4);font-size:11px}
-.dseg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}   /* « dseg », pas « seg » : .seg est le sélecteur du rail (collision constatée le 26/10) */
-.dseg .s{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--glass2);display:grid;gap:6px;align-content:start}
-.dseg .s .l{font-size:12.5px;color:var(--text3);font-weight:500}.dseg .s .v{font-size:24px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.seg .s .v small{font-size:12px;color:var(--text4);font-weight:500}
-.dseg .s small.d{font-size:11px;color:var(--text4);line-height:1.4}
-.dseg .s button{justify-self:start;padding:6px 12px;border-radius:9px;border:1px solid var(--line3);background:var(--soft);font-size:12px;font-weight:600;color:var(--text);transition:background .16s,border-color .16s}
-.dseg .s button:hover{border-color:var(--accent)}.dseg .s button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 .lect{display:grid;gap:8px}.lect p{font-size:13px;line-height:1.55;color:var(--text2);padding:10px 14px;border-radius:12px;background:var(--soft2)}.lect p b{color:var(--text)}
+.verd{display:grid;gap:10px}
+.vd{border:1px solid var(--line);border-left:4px solid var(--text4);border-radius:14px;padding:12px 16px;background:var(--glass2)}
+.vd.pression{border-left-color:var(--bad-vif)}.vd.soutien{border-left-color:var(--good-vif)}.vd.neutre{border-left-color:var(--text4)}.vd.contexte{border-left-color:var(--accent3)}
+.vd-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}.vd-h b{font-size:14px;font-weight:600}.vd-c{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
+.vd p{font-size:13px;line-height:1.55;color:var(--text2)}
+.vchip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;color:#fff;background:var(--text4);white-space:nowrap}
+.vchip.pression{background:var(--bad-vif)}.vchip.soutien{background:var(--good-vif)}.vchip.contexte{background:var(--accent3)}
+.imp{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:13px}
+.imp th{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text4);padding:4px 10px;text-align:left}.imp th.num,.imp td.num{text-align:right}
+.imp td{padding:9px 10px;background:var(--soft2);vertical-align:middle;font-variant-numeric:tabular-nums}.imp td:first-child{border-radius:12px 0 0 12px}.imp td:last-child{border-radius:0 12px 12px 0;text-align:right}
+.imp tr.on td{background:var(--row-hi)}.imp td small{display:block;font-size:11px;color:var(--text4);font-weight:400}
+.imp td button{padding:6px 12px;border-radius:9px;border:1px solid var(--line3);background:var(--soft);font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;transition:background .16s,border-color .16s}
+.imp td button:hover{border-color:var(--accent)}.imp td button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.ddet{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}.ddet summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);list-style:none;display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ddet summary::before{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .16s;margin-left:2px}.ddet[open] summary::before{transform:rotate(45deg)}
 .lnkb{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;font-weight:600;cursor:pointer}
 @media (max-width:1100px){.dk{grid-template-columns:repeat(3,minmax(0,1fr))}.hyp{grid-template-columns:1fr 1fr}}
-@media (max-width:700px){.dk{grid-template-columns:1fr 1fr}.dseg{grid-template-columns:1fr}.stk .row{grid-template-columns:1fr;gap:4px}.gb{height:128px}.gbx{font-size:11px}.gbx small{display:none}}
+@media (max-width:700px){.dk{grid-template-columns:1fr 1fr}.imp{font-size:12px}.imp th{display:none}.imp td{display:block;border-radius:0!important;padding:4px 10px}.imp td:first-child{border-radius:12px 12px 0 0!important;padding-top:9px}.imp td:last-child{border-radius:0 0 12px 12px!important;padding-bottom:9px;text-align:left}.imp td.num{text-align:left}.imp td.num::before{content:attr(data-l) ' : ';color:var(--text4);font-size:11px}.imp td small{display:inline;margin-left:6px}.stk .row{grid-template-columns:1fr;gap:4px}.gb{height:128px}.gbx{font-size:11px}.gbx small{display:none}}
 
 footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:1320px}
 /* tablette : rail replié, s'ouvre au toucher du logo ou du bouton Filtres */
@@ -735,9 +744,9 @@ const HELP = {
   q:       ['Quartiles Q1 · Q3', "25 % des ventes sont en dessous du Q1, 75 % en dessous du Q3 : la moitié centrale du marché se situe entre les deux.", 'percentiles 0,25 · 0,75'],
   surf:    ['Surface', "Surface Carrez de l'acte quand elle est cohérente avec la surface bâtie (écart ≤ 30 %), sinon surface bâtie. Moyenne des surfaces des logements vendus dans l'année.", 'Carrez ou bâtie'],
   yoy:     ['Médiane vs n−1', "Médiane de l'année rapportée à la médiane de l'année précédente.", 'méd(A) ÷ méd(A−1) − 1'],
-  valo_ref:['Prix au m² retenu', "Percentile choisi par le curseur (P10 → P90) parmi les prix au m² des ventes d'appartements de référence, multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
+  valo_ref:['Prix au m² retenu', "Selon la référence choisie : le percentile du curseur (P10 → P90) parmi les prix au m² des ventes d'appartements de référence, leur moyenne simple, ou leur moyenne pondérée par la surface (Σ prix ÷ Σ surfaces, le m² réellement échangé) ; multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
   valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune hors Paris). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
-  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 à P90 · défaut 50'],
+  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. Le curseur ne joue que si la référence est « Percentile » ; avec la moyenne ou la moyenne pondérée, l'ajustement par ligne reste votre levier. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 à P90 · défaut 50'],
   valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
   loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
   rayon_med:['Médiane dans le rayon', "Prix au m² médian des ventes situées à moins de la distance choisie (à vol d'oiseau, depuis le point géocodé de l'adresse ; DVF donne le centre de la parcelle vendue). Ventes de la plateforme : un logement par mutation, surface Carrez si cohérente sinon bâtie, 1 000–40 000 €/m², 9–400 m². Une année de moins de 5 ventes n'est pas tracée.", '€/m²'],
@@ -840,7 +849,7 @@ let MACRO = null, MACRO_ERR = null, CAL = null, SERIE_PARIS = null;   // lot 7 :
 const PERSP_DEFAUT = () => ({tauxH: null, hz: 12, inflation: 2, revenus: 0.5, prime: 0, lam: 0.2, demo: 0});   // demo : coefficient démographique (lot 17), 0 tant que l'utilisateur ne l'applique pas
 // Lignes par défaut de la valorisation : une par typologie, 0 lot, surface représentative de la fourchette (T5 : 130 m² plutôt que 250)
 const EPOQUES = ['Avant 1946', '1946-1970', '1971-1990', 'Apres 1990'];
-const VALO_DEFAUT = () => ({pos: 50, meuble: false, epoque: 0, lignes: (META.typologies_ref||[]).map(t => ({id:t.id, lots:0, surf:Math.min(Math.round((t.surfMin+t.surfMax)/2), t.surfMin+30), adj:0, pieces:E.piecesDefaut(t.id)}))});
+const VALO_DEFAUT = () => ({pos: 50, mode: 'pct', meuble: false, epoque: 0, lignes: (META.typologies_ref||[]).map(t => ({id:t.id, lots:0, surf:Math.min(Math.round((t.surfMin+t.surfMax)/2), t.surfMin+30), adj:0, pieces:E.piecesDefaut(t.id)}))});
 let LOYERS = null, LOYERS_ERR = null;
 // Lot 17 : démographie et parc (INSEE, data/demographie.json, clair) — chargé à la première vue Perspectives
 let DEMO = null, DEMO_ERR = null;
@@ -890,9 +899,9 @@ function readHash(){
   const pp = h.get('persp');   // tauxH:hz:inflation:revenus:prime:lam[:demo] — le 7e champ (lot 17) est optionnel, les anciens liens restent valides
   if (pp) { const m = pp.split(':').map(Number); if ((m.length === 6 || m.length === 7) && m.every(x => !isNaN(x))) S.persp = {tauxH: m[0], hz: m[1], inflation: m[2], revenus: m[3], prime: m[4], lam: m[5], demo: m[6] || 0}; }
   const v = h.get('valo');   // pos;T1:lots:surf:adj,…
-  if (v) { const [head, rows] = v.split(';'); const [pos, meuble, epoque] = head.split('|');   // pos|meuble|epoque;T1:lots:surf:adj:pieces,… (ancien format : pos;T1:lots:surf:adj)
+  if (v) { const [head, rows] = v.split(';'); const [pos, meuble, epoque, mode] = head.split('|');   // pos|meuble|epoque[|mode];T1:lots:surf:adj:pieces,… (ancien format : pos;T1:lots:surf:adj) ; mode (26/10) : pct, mean, wmean
     const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)(?::(\d))?$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4], pieces: m[5] ? +m[5] : E.piecesDefaut(m[1])} : null; }).filter(Boolean);
-    if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), meuble: meuble === '1', epoque: Math.min(3, Math.max(0, +epoque||0)), lignes}; }
+    if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), mode: ['mean','wmean'].includes(mode) ? mode : 'pct', meuble: meuble === '1', epoque: Math.min(3, Math.max(0, +epoque||0)), lignes}; }
   const a = h.get('addr');   // lon,lat,libellé
   if (a) { const m = a.match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(.+)$/); if (m) ADDR_HASH = {lon:+m[1], lat:+m[2], label:m[3]}; }
   const t = h.get('typos');   // T1:9-30:1,T2:30-50:1,…
@@ -902,7 +911,7 @@ function readHash(){
 function writeHash(){
   const p = new URLSearchParams({niveau:S.niveau, id:S.id||'', per:S.per, gran:S.gran, type:S.type, global:S.global?'1':'0', vue:S.vue,
     typos:S.typos.map(t=>`${t.id}:${t.surfMin}-${t.surfMax}:${t.on?1:0}`).join(',')});
-  if (S.valo) p.set('valo', `${S.valo.pos}|${S.valo.meuble?1:0}|${S.valo.epoque||0};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}:${l.pieces||E.piecesDefaut(l.id)}`).join(',')}`);
+  if (S.valo) p.set('valo', `${S.valo.pos}|${S.valo.meuble?1:0}|${S.valo.epoque||0}|${S.valo.mode||'pct'};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}:${l.pieces||E.piecesDefaut(l.id)}`).join(',')}`);
   if (S.rprix) p.set('rprix', `${S.rprix.acq||''}:${S.rprix.libre||''}:${S.rprix.occupe||''}:${S.rprix.decote ?? ''}:${S.rprix.hist}:${S.rprix.typo||''}:${S.rprix.pdf?1:0}`);
   if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam, S.persp.demo || 0].join(':'));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
@@ -1253,7 +1262,7 @@ const fmtMois = ym => { const l = E.ymLabel(ym); return `${MOIS[l.month-1]} ${l.
 const NIV_COURT = {quartier:'quartier', secteur:'secteur', arrondissement:'arrond.', commune:'commune'};
 function computeValo(){
   if (!LAST_ADDR?.props) return null; if (!S.valo) S.valo = VALO_DEFAUT();
-  return E.valoriser(SALES, META, LAST_ADDR.props.id, S.valo.lignes, {position: S.valo.pos/100, typos: S.typos.filter(t=>t.surfMax>t.surfMin), months: VALO_MOIS, minN: VALO_MIN_N});
+  return E.valoriser(SALES, META, LAST_ADDR.props.id, S.valo.lignes, {position: S.valo.pos/100, mode: S.valo.mode || 'pct', typos: S.typos.filter(t=>t.surfMax>t.surfMin), months: VALO_MOIS, minN: VALO_MIN_N});
 }
 function computeRent(v){
   if (!LOYERS || !v || !LAST_ADDR?.props) return null;
@@ -1286,8 +1295,9 @@ async function renderValo(){
   if (!LAST_ADDR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Localisez d'abord une adresse</h3><p>Saisissez l'adresse de l'immeuble dans l'onglet Carte : la valorisation utilise les ventes de son quartier.</p><p style="margin-top:12px"><button class="btn btn-primary" type="button" data-vue="carte" style="width:auto">Ouvrir la carte</button></p></div></div>`; return; }
   if (!LAST_ADDR.props) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Adresse hors périmètre</h3><p>${esc(LAST_ADDR.label)} n'est pas dans les communes couvertes (${esc(communesCouvertes())}).</p></div></div>`; return; }
   const focus = document.activeElement?.dataset?.k ? {i: document.activeElement.dataset.i, k: document.activeElement.dataset.k, s: document.activeElement.selectionStart} : null;
-  const v = computeValo(); const pos = S.valo.pos; const from = v.rows.find(r=>r.ref)?.ref;
-  const posLabel = pos===50 ? 'médiane' : pos<50 ? (pos<=25?'bas de marché':'sous la médiane') : (pos>=75?'haut de marché':'au-dessus de la médiane');
+  const v = computeValo(); const pos = S.valo.pos, mode = S.valo.mode || 'pct'; const from = v.rows.find(r=>r.ref)?.ref;
+  const posLabel = mode === 'mean' ? 'moyenne des ventes de référence' : mode === 'wmean' ? 'moyenne pondérée par la surface' : pos===50 ? 'médiane' : pos<50 ? (pos<=25?'bas de marché':'sous la médiane') : (pos>=75?'haut de marché':'au-dessus de la médiane');
+  const refLbl = mode === 'mean' ? 'moyenne' : mode === 'wmean' ? 'moy. pondérée' : `P${pos}`;
   const rows = v.rows.map((r,i) => { const ref = r.ref; const ech = !ref ? '<span class="warn">surface manquante</span>' : `${ref.n} ventes · ${NIV_COURT[ref.niveau]}${ref.niveau==='quartier'?'':' '+esc(ref.niveau==='arrondissement' ? (ref.id==='1'?'1er':ref.id+'e') : ref.niveau==='secteur' ? (REF.sr[ref.id]?.nom||ref.id) : communeNom(ref.id))}${ref.bande.id ? ` · ${ref.bande.id} ${ref.bande.surfMin}–${ref.bande.surfMax} m²` : ` · ${ref.bande.surfMin}–${ref.bande.surfMax} m² (±25 %)`}${ref.suffisant ? '' : ' · <b>insuffisant</b>'}`;
     return `<tr class="${r.lots?'':'dim'}"><td data-l="Typologie"><input class="vi id" value="${esc(r.id)}" data-i="${i}" data-k="id" maxlength="8" aria-label="Typologie"></td>
       <td data-l="Lots"><input class="vi" type="number" min="0" step="1" value="${r.lots}" data-i="${i}" data-k="lots" aria-label="Nombre de lots"></td>
@@ -1301,9 +1311,10 @@ async function renderValo(){
         <tbody id="valoRows">${rows}</tbody>
         <tfoot><tr><td data-l="Total">Total</td><td data-l="Lots">${v.lots}</td><td data-l="Surface">${v.surfTot ? nb(v.surfTot)+' m²' : '—'}</td><td class="delc"></td><td data-l="€/m² moyen">${fmt0(v.ppm2Moyen)}</td><td class="ech delc">moyenne pondérée</td><td class="delc"></td><td data-l="Valeur">${fmtEur(v.valeur)}</td><td class="delc"></td></tr></tfoot></table></div>
       <div class="hint" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>Surface : moyenne par lot, en m² Carrez. Ajustement : ± % appliqué au prix retenu de la ligne (étage, état, vue…).${v.incomplet ? ` <span style="color:var(--warn)">${v.incomplet} ligne(s) avec des lots mais sans surface.</span>` : ''}</span><button class="link" type="button" id="valoAdd">+ ajouter une ligne</button></div></div></div>
-    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Positionnement</span>Où placer l'immeuble dans le marché${ib('valo_pos')}</div><span class="card-sub">P${pos} · ${esc(posLabel)}</span></div>
-      <div class="card-b"><div class="slider"><input type="range" id="valoPos" min="10" max="90" step="1" value="${pos}" aria-label="Positionnement"><div class="marks"><span>P10 · bas</span><span>Q1</span><b>Médiane</b><span>Q3</span><span>P90 · haut</span></div></div>
-      <div class="valo-kpis"><div class="kpi med big"><div class="l">Valeur estimée${ib('valo_tot')}</div><div class="v">${fmtEur(v.valeur)}</div><div class="u">${v.lots} lot${v.lots>1?'s':''} · ${nb(v.surfTot)} m² · P${pos}</div></div>
+    <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Positionnement</span>Où placer l'immeuble dans le marché${ib('valo_pos')}</div><span class="card-sub">${esc(refLbl)} · ${esc(posLabel)}</span></div>
+      <div class="card-b"><div class="loy-ctl" style="margin-bottom:12px"><span><span class="lbl">Référence</span></span><div class="seg seg-3" id="segRef"><button type="button" data-v="pct" class="${mode==='pct'?'on':''}">Percentile</button><button type="button" data-v="mean" class="${mode==='mean'?'on':''}">Moyenne</button><button type="button" data-v="wmean" class="${mode==='wmean'?'on':''}">Moy. pondérée</button></div>${from ? `<span class="hint">${from.bande.id ? from.bande.id + ' · ' : ''}médiane ${fmt0(from.median)} · moyenne ${fmt0(from.mean)} · moy. pondérée ${fmt0(from.wmean)} €/m²</span>` : ''}</div>
+      <div class="slider" ${mode==='pct' ? '' : 'style="opacity:.45" title="Le curseur ne joue qu\'avec la référence Percentile"'}><input type="range" id="valoPos" min="10" max="90" step="1" value="${pos}" aria-label="Positionnement" ${mode==='pct' ? '' : 'disabled'}><div class="marks"><span>P10 · bas</span><span>Q1</span><b>Médiane</b><span>Q3</span><span>P90 · haut</span></div></div>
+      <div class="valo-kpis"><div class="kpi med big"><div class="l">Valeur estimée${ib('valo_tot')}</div><div class="v">${fmtEur(v.valeur)}</div><div class="u">${v.lots} lot${v.lots>1?'s':''} · ${nb(v.surfTot)} m² · ${esc(refLbl)}</div></div>
         <div class="kpi"><div class="l">Fourchette basse</div><div class="v small">${fmtEur(v.valeurBas)}</div><div class="u">au P10 de chaque ligne</div></div><div class="kpi"><div class="l">Fourchette haute</div><div class="v small">${fmtEur(v.valeurHaut)}</div><div class="u">au P90 de chaque ligne</div></div></div>
       <div class="valo-sub"><div class="kpi"><div class="l">€/m² moyen retenu</div><div class="v small">${fmt0(v.ppm2Moyen)}</div><div class="u">pondéré par les surfaces</div></div><div class="kpi"><div class="l">Quartier</div><div class="v small" style="font-family:var(--sans)">${esc(LAST_ADDR.props.nom)}</div><div class="u">${LAST_ADDR.props.commune===PARIS ? `Paris ${LAST_ADDR.props.arr===1?'1er':LAST_ADDR.props.arr+'e'} · ${esc(REF.sr[LAST_ADDR.props.secteur]?.nom||'')}` : esc(communeNom(LAST_ADDR.props.commune))}</div></div><div class="kpi"><div class="l">Référence</div><div class="v small" style="font-family:var(--sans)">${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '—'}</div><div class="u">12 derniers mois de ventes disponibles</div></div></div>
       <div class="method"><b>Méthode.</b> ${esc(HELP.valo_ref[1])} ${esc(HELP.valo_ech[1])} ${esc(HELP.valo_pos[1])}</div></div></div>
@@ -1312,6 +1323,7 @@ async function renderValo(){
   if (!LOYERS && !LOYERS_ERR) { await ensureLoyers(); const rc = $('rentCard'); if (rc && S.vue === 'valo') rc.innerHTML = rentCard(v); }
 }
 $('etude').addEventListener('click', e => { const b = e.target.closest('#segMeuble button'); if (!b) return; S.valo.meuble = b.dataset.v === '1'; writeHash(); renderValo(); });
+$('etude').addEventListener('click', e => { const b = e.target.closest('#segRef button'); if (!b) return; S.valo.mode = b.dataset.v; writeHash(); renderValo(); });
 $('etude').addEventListener('change', e => { if (e.target.id !== 'selEpoque') return; S.valo.epoque = +e.target.value; writeHash(); renderValo(); });
 let valoTimer = null;
 $('etude').addEventListener('input', e => { const el = e.target; if (!el.closest('.valo-tbl') && el.id !== 'valoPos') return;
@@ -1373,11 +1385,45 @@ function demoEtude(item){
 const pct1 = v => v == null ? '—' : v.toFixed(1).replace('.',',') + ' %';
 const fmtPt = v => v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1).replace('.',',')} pt`;
 const fmtCo = v => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2).replace('.',',')}`;
-function demoCard(item){
+// Conclusions en clair et impact sur le prix (26/10 : « je ne comprends pas tes chiffres, quelle conclusion en tirer, impact sur le
+// prix »). sens : 'pression' | 'soutien' | 'neutre' | 'contexte'. L'impact traduit le coefficient suggéré en % à 5 et 10 ans et en
+// €/m² sur la médiane 12 mois de la zone, et montre ce que devient le scénario central si on l'applique.
+function demoLecture(d, zone, sc){
+  const {ind, ref, sg, pv} = d; if (!ind || !sg) return null; const c = ind.cur, r = ref?.cur || {}, e = ind.evo, label = d.geo.label.split(' · ')[0];
+  const V = [];
+  // 1. vieillissement
+  const evo80 = e && Math.abs(e.ge80) >= .5 ? `, ${e.ge80 > 0 ? 'en hausse' : 'en baisse'} de ${fmtPt(e.ge80)} depuis ${e.de}` : '';
+  if (sg.dAge != null && sg.dAge >= 1) V.push({t: 'Vieillissement', sens: 'pression', coef: sg.age, txt: `${label} compte ${pct1(c.ge80)} d'habitants de 80 ans et plus, contre ${pct1(r.ge80)} dans l'ensemble couvert (${fmtPt(sg.dAge)}${evo80}). Davantage de successions et de mises en vente à attendre dans les 5 à 10 ans : une offre supplémentaire, souvent de logements anciens à rénover, qui pèse sur les prix.`});
+  else if (sg.dAge != null && sg.dAge <= -1) V.push({t: 'Vieillissement', sens: 'soutien', coef: sg.age, txt: `Population plus jeune que l'ensemble couvert : ${pct1(c.ge80)} de 80 ans et plus contre ${pct1(r.ge80)} (${fmtPt(sg.dAge)}${evo80}). Moins de ventes de succession à attendre, donc moins d'offre subie : un soutien aux prix.`});
+  else V.push({t: 'Vieillissement', sens: 'neutre', coef: sg.age, txt: `${pct1(c.ge80)} de 80 ans et plus, proche de l'ensemble couvert (${pct1(r.ge80)}${evo80}) : pas de vague de successions particulière à attendre.`});
+  // 2. familles et grandes surfaces (parc + rotation des ventes)
+  const gP = c.grands, gV = pv?.parts ? (pv.parts[3] || 0) + (pv.parts[4] || 0) : null;
+  const rot = gV == null ? '' : gV > gP + 5 ? ` Les 4 pièces et plus font ${pct1(gP)} du parc mais ${pct1(gV)} des ventes : ils tournent plus vite que leur poids, le segment est liquide.` : gV < gP - 5 ? ` Les 4 pièces et plus font ${pct1(gP)} du parc mais seulement ${pct1(gV)} des ventes : ils tournent moins que leur poids, les délais de vente y sont plus longs.` : ` Les 4 pièces et plus font ${pct1(gP)} du parc et ${pct1(gV)} des ventes : rotation en ligne avec leur poids.`;
+  if (sg.fam > 0) V.push({t: 'Familles et grandes surfaces', sens: 'soutien', seg: 'grandes', coef: sg.fam, txt: `Secteur familial (${pct1(c.lt15)} de moins de 15 ans contre ${pct1(r.lt15)}) alors que les grands logements sont plus rares qu'ailleurs (${pct1(c.grands)} de 4 pièces et plus dans le parc contre ${pct1(r.grands)}) : les familles se disputent peu de grands logements, ce qui soutient les prix des T4 et plus.${rot}`});
+  else if (sg.dFam != null && sg.dFam > 0) V.push({t: 'Familles et grandes surfaces', sens: 'neutre', seg: 'grandes', coef: 0, txt: `Secteur familial (${pct1(c.lt15)} de moins de 15 ans contre ${pct1(r.lt15)}), mais le parc de grands logements suit (${pct1(c.grands)} de 4 pièces et plus contre ${pct1(r.grands)}) : pas de rareté particulière, donc pas de prime.${rot}`});
+  else V.push({t: 'Familles et grandes surfaces', sens: 'neutre', seg: 'grandes', coef: 0, txt: `Moins de familles que l'ensemble couvert (${pct1(c.lt15)} de moins de 15 ans contre ${pct1(r.lt15)}) : pas de tension spécifique sur les grandes surfaces.${rot}`});
+  // 3. étudiants, personnes seules et petites surfaces
+  const pP = c.petits, pV = pv?.parts ? (pv.parts[0] || 0) + (pv.parts[1] || 0) : null;
+  const rotP = pV == null ? '' : pV > pP + 5 ? ` Les 1 et 2 pièces font ${pct1(pP)} du parc mais ${pct1(pV)} des ventes : segment très liquide.` : pV < pP - 5 ? ` Les 1 et 2 pièces font ${pct1(pP)} du parc mais seulement ${pct1(pV)} des ventes : ils se vendent moins que leur poids.` : '';
+  if (sg.etu > 0) V.push({t: 'Étudiants et petites surfaces', sens: 'soutien', seg: 'petites', coef: sg.etu, txt: `${pct1(c.etudiants)} d'étudiants de 18 à 29 ans (contre ${pct1(r.etudiants)}) et ${pct1(c.seuls)} de personnes seules : une demande locative soutenue sur les studios et 2 pièces, qui les rend liquides et en soutient les prix.${rotP}`});
+  else V.push({t: 'Étudiants et petites surfaces', sens: 'neutre', seg: 'petites', coef: 0, txt: `Population étudiante dans la norme ou en dessous (${pct1(c.etudiants)} contre ${pct1(r.etudiants)}) ; ${pct1(c.seuls)} de personnes seules (réf. ${pct1(r.seuls)}) : pas de surcroît de demande sur les petites surfaces.${rotP}`});
+  // 4. occupation : contexte, sans coefficient
+  const occ = c.prop != null ? `${pct1(c.prop)} de propriétaires occupants (réf. ${pct1(r.prop)}) : ${c.prop >= (r.prop || 0) + 5 ? 'parc patrimonial, rotation lente, offre rare' : c.prop <= (r.prop || 0) - 5 ? 'parc locatif, rotation plus rapide, offre plus abondante' : 'rotation dans la norme'} · ${pct1(c.hlm)} de logement social${r.hlm != null ? ` (réf. ${pct1(r.hlm)})` : ''} · vacance ${pct1(c.vac)}${r.vac != null ? ` (réf. ${pct1(r.vac)}${c.vac > r.vac + 2 ? ' : vacance élevée, logements inoccupés ou en attente' : c.vac < r.vac - 2 ? ' : vacance faible, marché tendu' : ''})` : ''}.` : null;
+  if (occ) V.push({t: 'Occupation du parc', sens: 'contexte', coef: null, txt: occ});
+  // impact chiffré par segment
+  const med = zone?.median || null, c5 = sc ? sc.central.at(20).ratio - 1 : null, c10 = sc ? sc.central.at(40).ratio - 1 : null;
+  const imp = [['petites', 'Petites surfaces · T1–T2', 'vieillissement + étudiants'], ['moyennes', 'Surfaces moyennes · T3', 'vieillissement seul'], ['grandes', 'Grandes surfaces · T4 et plus', 'vieillissement + familles']].map(([k, lab, sub]) => {
+    const co = sg.segments[k], f5 = Math.pow(1 + co / 100, 5) - 1, f10 = Math.pow(1 + co / 100, 10) - 1;
+    return {k, lab, sub, coef: co, p5: f5 * 100, p10: f10 * 100, e5: med ? med * f5 : null, e10: med ? med * f10 : null, s5: c5 != null ? ((1 + c5) * (1 + f5) - 1) * 100 : null, s10: c10 != null ? ((1 + c10) * (1 + f10) - 1) * 100 : null}; });
+  return {verdicts: V, impacts: imp, median: med, central5: c5 != null ? c5 * 100 : null, central10: c10 != null ? c10 * 100 : null};
+}
+const SENS_LBL = {pression: 'Pression sur les prix', soutien: 'Soutien aux prix', neutre: 'Neutre', contexte: 'Contexte'};
+function demoCard(item, sc){
   if (DEMO_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Données INSEE indisponibles (${esc(DEMO_ERR)}) — data/demographie.json est produit par le run mensuel (scripts/fetch_demo.py).</p></div></div></div>`;
   const d = demoEtude(item); if (!d) return '';
   if (!d.ind) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc · ${esc(d.geo.label)}</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Aucune donnée INSEE pour cette géographie (${d.geo.ids.join(', ')}).</p></div></div></div>`;
   const {ind, ref, sg, pv, bandes} = d; const c = ind.cur, r = ref?.cur || {}, y = ind.dernier, e = ind.evo, P = S.persp, cur = +P.demo || 0;
+  const L = demoLecture(d, refZone(item), sc);
   const chipPt = v => v == null ? '' : `<span class="chip nd">${fmtPt(v)}</span>`;
   const kpi = (l, v, u) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="u">${u}</div></div>`;
   const refTxt = k => r[k] != null ? `réf. ${pct1(r[k])}` : '';
@@ -1403,18 +1449,20 @@ function demoCard(item){
   const gb = c.pieces ? `<div class="gb">${c.pieces.map((p,i) => { const v = pv?.parts?.[i]; return `<div class="g"><span class="c"><b>${Math.round(p)}</b><i class="a" style="height:${(p/mx*BARH).toFixed(0)}px"></i></span>${v != null ? `<span class="c"><b>${Math.round(v)}</b><i class="b" style="height:${(v/mx*BARH).toFixed(0)}px"></i></span>` : '<span class="c"></span>'}</div>`; }).join('')}</div>
     <div class="gbx">${['1 pièce','2 pièces','3 pièces','4 pièces','5 pièces et +'].map((l,i) => `<div>${l}${pv ? `<small>${esc(bandes[i].id)} · ${bandes[i].surfMin}–${bandes[i].surfMax} m²</small>` : ''}</div>`).join('')}</div>
     <div class="dleg h"><div><i style="background:var(--brand)"></i>parc ${y} · % des résidences principales par nombre de pièces</div>${pv ? `<div><i style="background:var(--accent3)"></i>ventes ${pv.de}–${pv.a} · % par bande de surface (${fmt0(pv.n)} ventes${S.type === 'Tous' ? ', appartements et maisons' : S.type === 'Maisons' ? ', maisons' : ''})</div>` : '<div>ventes par surface : non calculées (aucune sélection)</div>'}</div>` : '<div class="hint">Parc par nombre de pièces indisponible.</div>';
-  const segBox = (lab, sub, v) => { const on = Math.abs(cur - v) < 1e-9 && v !== 0; return `<div class="s"><div class="l">${lab}</div><div class="v">${fmtCo(v)} <small>pt/an</small></div><small class="d">${sub}</small><button type="button" data-demo="${v}" aria-pressed="${on}">${on ? 'Appliqué' : 'Appliquer'}</button></div>`; };
-  const lect = sg ? `<div class="lect">
-    <p><b>Vieillissement.</b> 80 ans et plus : ${pct1(c.ge80)} contre ${pct1(r.ge80)} dans la référence (${fmtPt(sg.dAge)}) → <b>${fmtCo(sg.age)} pt/an</b>. Une part élevée annonce des successions et des mises en vente dans les années à venir ; une part faible, l'inverse.</p>
-    <p><b>Familles et grandes surfaces.</b> Moins de 15 ans : ${pct1(c.lt15)} contre ${pct1(r.lt15)} (${fmtPt(sg.dFam)}) ; 4 pièces et plus : ${pct1(c.grands)} du parc contre ${pct1(r.grands)} — ${sg.grandsRares ? 'grandes surfaces plus rares que dans la référence' : 'grandes surfaces au moins aussi présentes que dans la référence'} → <b>${fmtCo(sg.fam)} pt/an</b> sur les grandes surfaces${sg.fam === 0 && sg.dFam > 0 && !sg.grandsRares ? ' (demande familiale, mais parc suffisant)' : sg.fam === 0 && sg.dFam != null && sg.dFam <= 0 ? ' (part de familles sous la référence)' : ''}.</p>
-    <p><b>Étudiants et petites surfaces.</b> Étudiants de 18 à 29 ans : ${pct1(c.etudiants)} contre ${pct1(r.etudiants)} (${fmtPt(sg.dEtu)}) ; personnes seules : ${pct1(c.seuls)} des 15 ans et plus${r.seuls != null ? ` (réf. ${pct1(r.seuls)})` : ''} → <b>${fmtCo(sg.etu)} pt/an</b> sur les petites surfaces.</p></div>
-    <div class="dseg">${segBox('Petites surfaces · T1–T2', 'vieillissement + étudiants', sg.segments.petites)}${segBox('Surfaces moyennes · T3', 'vieillissement seul', sg.segments.moyennes)}${segBox('Grandes surfaces · T4 et plus', 'vieillissement + familles', sg.segments.grandes)}</div>
-    <div class="hint" style="margin-top:10px">Règle : ±${String(d.regle.pente).replace('.',',')} pt/an par point d'écart à la référence (ensemble des ${d.nRef} communes couvertes), chaque terme plafonné à ±${String(d.regle.plafond).replace('.',',')}. C'est une règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué : <b>${fmtCo(cur)} pt/an</b>${cur ? ` · <button type="button" class="lnkb" data-demo="0">retirer</button>` : ' (aucun)'}.</div>` : '<div class="hint">Suggestion non calculable (référence manquante).</div>';
+  const chipS = sens => `<span class="vchip ${sens}">${SENS_LBL[sens]}</span>`;
+  const verdicts = L ? `<div class="verd">${L.verdicts.map(v => `<div class="vd ${v.sens}"><div class="vd-h">${chipS(v.sens)}<b>${esc(v.t)}</b>${v.coef != null && v.coef !== 0 ? `<span class="vd-c">${fmtCo(v.coef)} pt/an</span>` : ''}</div><p>${esc(v.txt)}</p></div>`).join('')}</div>` : '';
+  const impRow = x => { const on = Math.abs(cur - x.coef) < 1e-9 && x.coef !== 0; return `<tr class="${on ? 'on' : ''}"><td><b>${x.lab}</b><small>${x.sub}</small></td><td class="num" data-l="Coefficient"><b>${fmtCo(x.coef)}</b> pt/an</td><td class="num" data-l="À 5 ans">${fmtPctS(x.p5)}${x.e5 != null ? `<small>${x.e5 > 0 ? '+' : x.e5 < 0 ? '−' : ''}${fmt0(Math.abs(x.e5))} €/m²</small>` : ''}</td><td class="num" data-l="À 10 ans">${fmtPctS(x.p10)}${x.e10 != null ? `<small>${x.e10 > 0 ? '+' : x.e10 < 0 ? '−' : ''}${fmt0(Math.abs(x.e10))} €/m²</small>` : ''}</td><td class="num" data-l="Scénario central à 5 ans">${x.s5 != null ? `${fmtPctS(x.s5)}<small>au lieu de ${fmtPctS(L.central5)}</small>` : '—'}</td><td><button type="button" data-demo="${x.coef}" aria-pressed="${on}">${on ? 'Appliqué' : x.coef === 0 ? 'Aucun effet' : 'Appliquer'}</button></td></tr>`; };
+  const impact = L ? `<div class="tbl-wrap"><table class="imp"><thead><tr><th>Segment</th><th class="num">Coefficient suggéré</th><th class="num">Effet à 5 ans</th><th class="num">Effet à 10 ans</th><th class="num">Scénario central à 5 ans</th><th></th></tr></thead><tbody>${L.impacts.map(impRow).join('')}</tbody></table></div>
+    <div class="hint" style="margin-top:8px">Effet du seul coefficient, en % puis en €/m² sur la médiane 12 mois de la zone${L.median ? ` (${fmt0(L.median)} €/m²)` : ''} ; la dernière colonne le combine au scénario central des Perspectives. Règle : ±${String(d.regle.pente).replace('.',',')} pt/an par point d'écart à l'ensemble des ${d.nRef} communes couvertes, chaque terme plafonné à ±${String(d.regle.plafond).replace('.',',')} — une règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué : <b>${fmtCo(cur)} pt/an</b>${cur ? ` · <button type="button" class="lnkb" data-demo="0">retirer</button>` : ' (aucun)'}.</div>` : '<div class="hint">Suggestion non calculable (référence manquante).</div>';
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc · ${esc(d.geo.label)}${ib('demo_etude')}</div><span class="card-sub">INSEE, recensements ${ind.premier} → ${y} · maille commune / arrondissement${ind.manquants.length ? ` · ${ind.manquants.length} géographie(s) manquante(s)` : ''}${d.stale.length ? ` · <span style="color:var(--warn)">jeux conservés d'un run précédent : ${d.stale.join(', ')}</span>` : ''}</span></div>
-    <div class="card-b">${kpis}
+    <div class="card-b">
+      <h4 class="sh">Ce qu'il faut retenir</h4>${verdicts}
+      <h4 class="sh" style="margin-top:18px">Impact sur le prix si vous appliquez le coefficient${ib('demo_coef')}</h4>${impact}
+      <details class="ddet"><summary>Le détail des chiffres INSEE</summary>
+      ${kpis}
       <div class="g2" style="margin-top:16px"><div><h4 class="sh">Structure par âge</h4>${ages}</div><div><h4 class="sh">Occupation du parc</h4>${occ}</div></div>
       <h4 class="sh" style="margin-top:18px">Parc par nombre de pièces, face aux ventes par surface</h4>${gb}
-      <h4 class="sh" style="margin-top:18px">Coefficient démographique suggéré${ib('demo_coef')}</h4>${lect}
+      </details>
     </div></div>`;
 }
 async function renderPersp(item){
@@ -1445,7 +1493,7 @@ async function renderPersp(item){
         <div class="h"><div class="l">Vitesse d'ajustement</div><div class="row"><select data-pk="lam" aria-label="Vitesse d'ajustement"><option value="0.12" ${P.lam==0.12?'selected':''}>lente · 12 %/trim</option><option value="0.2" ${P.lam==0.2?'selected':''}>20 %/trim (rétrospectif)</option><option value="0.35" ${P.lam==0.35?'selected':''}>rapide · 35 %/trim</option></select></div><div class="src">Part de l'écart entre prix et cible comblée chaque trimestre. Écart actuel : <b>${fmtPctS(CAL.ecartCourant*100)}</b> (prix ${CAL.ecartCourant<0?'sous':'au-dessus de'} la cible).</div></div>
       </div>
       <div class="hint">Point de départ${ib('persp_pont')} : Paris ${fmt0(SERIE_PARIS[o.qDvf])} €/m² au ${moisLabel(o.qDvf)} (DVF)${o.pont ? ` × ${o.pont.ratio.toFixed(3).replace('.',',')} (indice Notaires-INSEE ${moisLabel(o.pont.de)} → ${moisLabel(o.pont.a)})` : ''} = <b>${fmt0(o.prix)} €/m²</b> au ${moisLabel(o.q)}. Zone : ${ref.median ? `<b>${fmt0(ref.median)} €/m²</b> (${ref.n} ventes, ${fmtMois(ref.from)} → ${fmtMois(ref.to)})` : 'effectif insuffisant sur 12 mois'}${valo?.valeur ? ` · immeuble valorisé <b>${fmtEur(valo.valeur)}</b>` : ''}.${stale.length ? ` <span style="color:var(--warn)">Séries à surveiller : ${esc(stale.join(' ; '))}.</span>` : ''}</div></div></div>
-    ${demoCard(item)}
+    ${demoCard(item, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : sc)}
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
       <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
         ${horizons.map(([n,l]) => `<tr><td>${l}<small>${moisLabel(sc.central.at(n).q)}</small></td>${cell(sc.bas,n,'b')}${cell(sc.central,n,'c')}${cell(sc.haut,n,'h')}</tr>`).join('')}</tbody></table></div>
@@ -1672,7 +1720,8 @@ async function perspPourPdf(item){   // scénarios avec les hypothèses courante
   const tx = lastOf(MACRO.series.taux_credit.obs); if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v*100)/100;
   await ensureDemo(); const P = S.persp, params = {tauxH: P.tauxH, horizonTaux: P.hz, inflation: P.inflation, revenus: P.revenus, prime: P.prime, demo: P.demo || 0, lam: P.lam};
   const ref = refZone(item); const valo = LAST_ADDR?.props && S.valo ? computeValo() : null;
-  return {demo: demoEtude(item), demoErr: DEMO_ERR, params, sc: E.scenarios(MACRO, SERIE_PARIS, CAL, params), sens: E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro: E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'}), cal: CAL, ref, valoValeur: valo?.valeur || null, macro: MACRO, tl: tendanceLocale(item)};
+  const demoD = demoEtude(item); const scPdf = E.scenarios(MACRO, SERIE_PARIS, CAL, params); if (demoD?.ind) demoD.lecture = demoLecture(demoD, ref, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : scPdf);   // scénario sans coefficient, sinon compté deux fois
+  return {demo: demoD, demoErr: DEMO_ERR, params, sc: scPdf, sens: E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro: E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'}), cal: CAL, ref, valoValeur: valo?.valeur || null, macro: MACRO, tl: tendanceLocale(item)};
 }
 async function exportPdf(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
@@ -1699,7 +1748,10 @@ async function revealApp(){
   const gate = $('gate'), calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!gate.hidden && !calme) { gate.classList.add('out'); await new Promise(r => setTimeout(r, 450)); }
   gate.hidden = true; gate.classList.remove('out', 'ok', 'busy', 'err'); $('app').hidden = false; $('foot').hidden = false;
-  if (!calme) $('app').classList.add('app-in');
+  // L'animation d'entrée translate #app : tant que la classe reste (fill-mode both), Chrome traite #app comme bloc conteneur des
+  // positions fixes — le rail, la barre du bas et l'infobulle « i » défilaient avec la page (infobulle hors écran dès qu'on
+  // avait fait défiler ; signalé le 26/10 : « les points i ne fonctionnent pas tous »). On retire la classe dès la fin.
+  if (!calme) { const app = $('app'); app.classList.add('app-in'); const fin = () => app.classList.remove('app-in'); app.addEventListener('animationend', fin, {once: true}); setTimeout(fin, 900); }
 }
 async function start(){
   REF = buildRef(META);

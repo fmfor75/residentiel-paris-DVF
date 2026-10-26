@@ -50,6 +50,12 @@ ok(v.incomplet === 1 && v.rows[3].ref === null, 'ligne sans surface : comptée i
 ok(v.valeurBas <= v.valeur && v.valeur <= v.valeurHaut, 'fourchette bas ≤ retenu ≤ haut');
 const vHaut = E.valoriser(S, meta, gros, lignes, { position: .9, typos: TYPOS }), vBas = E.valoriser(S, meta, gros, lignes, { position: .1, typos: TYPOS });
 ok(vHaut.valeur > v.valeur && vBas.valeur < v.valeur, 'position 0,9 > 0,5 > 0,1');
+// 26/10 : référence à la moyenne ou à la moyenne pondérée (Σ prix ÷ Σ surfaces) de l'échantillon, recalculées ici à la main
+const vM = E.valoriser(S, meta, gros, lignes, { mode: 'mean', typos: TYPOS }), vW = E.valoriser(S, meta, gros, lignes, { mode: 'wmean', typos: TYPOS });
+{ const r = vW.rows[1].ref; const idx = E.select(S, { quartiers: E.masqueZone(meta, r.niveau, r.id), type: 0, surfMin: r.bande.surfMin, surfMax: r.bande.surfMax, ymFrom: r.ymFrom, ymTo: r.ymTo });
+  let sp = 0, ss = 0, sm = 0; for (const i of idx) { sp += S.val[i]; ss += S.surf[i]; sm += S.ppm2[i]; }
+  ok(vW.rows[1].ppm2 === E.pyround(E.pyround(sp / ss) * 1.05) && vM.rows[1].ppm2 === E.pyround(E.pyround(sm / idx.length) * 1.05), `mode wmean ${vW.rows[1].ppm2} = Σ/Σ × 1,05, mode mean ${vM.rows[1].ppm2} = moyenne × 1,05 (${idx.length} ventes)`);
+  ok(vW.mode === 'wmean' && v.mode === 'pct' && vM.rows[1].ref.mean != null && vM.rows[1].ref.wmean != null, 'mode exposé, moyenne et moyenne pondérée dans la référence'); }
 ok(vHaut.rows[0].ppm2 === vHaut.rows[0].ppm2Haut && vBas.rows[0].ppm2 === vBas.rows[0].ppm2Bas, 'aux extrémités, retenu = P90 / P10');
 console.log(`  immeuble test sur ${gros} : ${v.lots} lots, ${v.surfTot} m², ${v.valeur.toLocaleString('fr-FR')} € (bas ${v.valeurBas.toLocaleString('fr-FR')}, haut ${v.valeurHaut.toLocaleString('fr-FR')}), ${v.ppm2Moyen} €/m²`);
 // 5. loyers et rentabilité (lot 8) : encadrement Paris, carte des loyers Boulogne, arithmétique

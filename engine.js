@@ -160,28 +160,31 @@ export function refSurface(S, meta, quartierId, surf, typos, { type = 0, months 
   let dernier = null;
   for (const [niveau, id] of niveauxRepli(meta, quartierId)) {
     const idx = select(S, { quartiers: masqueZone(meta, niveau, id), type, surfMin: b.surfMin, surfMax: b.surfMax, ymFrom: from, ymTo: to });
-    dernier = { niveau, id, n: idx.length, idx, bande: b, ymFrom: from, ymTo: to, p10: percentileOf(S, idx, .10), median: percentileOf(S, idx, .50), p90: percentileOf(S, idx, .90) };
+    const st = stats(S, idx);   // moyenne et moyenne pondérée de l'échantillon (26/10 : la valorisation peut s'y référer)
+    dernier = { niveau, id, n: idx.length, idx, bande: b, ymFrom: from, ymTo: to, p10: percentileOf(S, idx, .10), median: percentileOf(S, idx, .50), p90: percentileOf(S, idx, .90), mean: st ? st.mean : null, wmean: st ? st.wmean : null };
     if (idx.length >= minN) return { ...dernier, suffisant: true };
   }
   return dernier ? { ...dernier, suffisant: false } : null;   // dernier niveau même insuffisant : affiché avec avertissement
 }
-// lignes : [{id, lots, surf, adj}] (adj en %) ; position : rang du percentile retenu (0,10 → 0,90)
-export function valoriser(S, meta, quartierId, lignes, { position = .5, typos, type = 0, months = 12, minN = 30, ymTo = null } = {}){
+// lignes : [{id, lots, surf, adj}] (adj en %) ; position : rang du percentile retenu (0,10 → 0,90) ;
+// mode : 'pct' (percentile à la position), 'mean' (moyenne simple des €/m² de l'échantillon) ou 'wmean' (Σ prix ÷ Σ surfaces) — 26/10
+export function valoriser(S, meta, quartierId, lignes, { position = .5, mode = 'pct', typos, type = 0, months = 12, minN = 30, ymTo = null } = {}){
   const rows = lignes.map(l => {
     const lots = Math.max(0, Math.floor(+l.lots || 0)), surf = +l.surf || 0, adj = +l.adj || 0;
     const ref = surf > 0 ? refSurface(S, meta, quartierId, surf, typos, { type, months, minN, ymTo }) : null;
     const k = 1 + adj / 100;
-    const ppm2 = ref && ref.n >= 3 ? pyround(percentileOf(S, ref.idx, position) * k) : null;
+    const base = !ref || ref.n < 3 ? null : mode === 'mean' ? ref.mean : mode === 'wmean' ? ref.wmean : percentileOf(S, ref.idx, position);
+    const ppm2 = base != null ? pyround(base * k) : null;
     const bas = ref?.p10 != null ? pyround(ref.p10 * k) : null, haut = ref?.p90 != null ? pyround(ref.p90 * k) : null;
     const v = x => (x == null || !lots) ? null : pyround(x * surf * lots);   // 0 lot : référence affichée, pas de valeur
-    return { ...l, lots, surf, adj, ref: ref ? { niveau: ref.niveau, id: ref.id, n: ref.n, suffisant: ref.suffisant, bande: ref.bande, ymFrom: ref.ymFrom, ymTo: ref.ymTo, p10: ref.p10, median: ref.median, p90: ref.p90 } : null,
+    return { ...l, lots, surf, adj, ref: ref ? { niveau: ref.niveau, id: ref.id, n: ref.n, suffisant: ref.suffisant, bande: ref.bande, ymFrom: ref.ymFrom, ymTo: ref.ymTo, p10: ref.p10, median: ref.median, p90: ref.p90, mean: ref.mean, wmean: ref.wmean } : null,
              ppm2, ppm2Bas: bas, ppm2Haut: haut, valeurLot: ppm2 != null ? pyround(ppm2 * surf) : null, valeur: v(ppm2), valeurBas: v(bas), valeurHaut: v(haut), surfTot: surf * lots };
   });
   const actives = rows.filter(r => r.lots > 0 && r.valeur != null);
   const sum = k => actives.reduce((a, r) => a + r[k], 0);
   const surfTot = sum('surfTot'), lots = sum('lots'), valeur = sum('valeur'), valeurBas = sum('valeurBas'), valeurHaut = sum('valeurHaut');
   const incomplet = rows.filter(r => r.lots > 0 && r.valeur == null).length;   // lignes avec lots mais sans référence : comptées, jamais tues
-  return { rows, lots, surfTot, valeur, valeurBas, valeurHaut, ppm2Moyen: surfTot ? pyround(valeur / surfTot) : null, position, incomplet };
+  return { rows, lots, surfTot, valeur, valeurBas, valeurHaut, ppm2Moyen: surfTot ? pyround(valeur / surfTot) : null, position, mode, incomplet };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
