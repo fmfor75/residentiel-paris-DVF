@@ -437,10 +437,16 @@ footer a{color:var(--text3)}
 /* ── Contenu : barre du haut, grand titre, pilules ────────────────────────────────────────────── */
 .main{margin-left:calc(var(--rail) + 32px);padding:22px 28px 30px 0;max-width:1320px;display:flex;flex-direction:column;gap:16px;min-width:0}
 /* « .topnav » et non « .top » : .top est la ligne de typologie dominante (tr.top) — la collision passait ses cellules en flex (mesuré, lot 15b) */
-.topnav{display:flex;align-items:center;gap:12px}
-.searchpill{flex:1;max-width:520px;display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:999px;border:1px solid var(--line3);background:var(--glass);color:var(--text4);font-size:13.5px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:left;transition:border-color .16s,background .16s}
+.topnav{display:flex;align-items:center;gap:12px;position:relative;z-index:930}   /* au-dessus des cartes (verre = contexte d'empilement propre) et des pilules, sous le rail (960) et le voile (950) */
+.searchpill{flex:1;max-width:520px;position:relative;cursor:text;display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border-radius:999px;border:1px solid var(--line3);background:var(--glass);color:var(--text4);font-size:13.5px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);text-align:left;transition:border-color .16s,background .16s}
 .searchpill:hover{border-color:rgba(46,125,79,.45);background:var(--glass-hi)}
-.searchpill .sp-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.searchpill:focus-within{border-color:var(--accent);background:var(--glass-hi)}
+.searchpill input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:13.5px;color:var(--text);outline:none;padding:0;height:100%}
+.searchpill input::placeholder{color:var(--text4)}
+/* 26/10 : la pastille est un vrai champ (elle ouvrait le rail et plaçait le curseur dans son champ, qui n'existait qu'au niveau Quartier) ; la liste s'ouvre dessous */
+.toplist{position:absolute;top:calc(100% + 8px);left:0;width:min(100%,520px);z-index:5;background:rgba(252,249,244,.98);border:1px solid var(--line3);border-radius:18px;box-shadow:0 30px 70px -20px rgba(80,60,10,.4);padding:8px;max-height:min(62vh,520px);overflow-y:auto;display:flex;flex-direction:column;gap:2px;cursor:default}
+.toplist .zbtn[aria-selected=true]{background:var(--accent-soft);border-color:rgba(46,125,79,.4)}
+.toplist .hint{padding:8px}
 .searchpill kbd{margin-left:auto;font:600 11px var(--sans);color:var(--text3);border:1px solid var(--line3);border-radius:7px;padding:2px 7px}
 .topnav .grow{flex:1}
 .round{width:46px;height:46px;border-radius:50%;border:1px solid var(--line3);background:var(--glass);display:grid;place-items:center;color:var(--text);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);flex:none;transition:background .16s}
@@ -555,7 +561,7 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
   .rail .rail-more{opacity:1;width:auto;overflow:visible;flex:none}
   .rail .sheet-head{display:flex;flex-direction:column;align-items:center;gap:6px;position:sticky;top:-8px;background:inherit;padding:4px 0 8px;margin-top:-8px;z-index:1}
   .main{margin-left:0;padding:12px 12px calc(88px + env(safe-area-inset-bottom))}footer{margin-left:0;padding:0 14px calc(96px + env(safe-area-inset-bottom))}
-  .topnav .pill{display:none}.searchpill{height:44px}
+  .topnav .pill{display:none}.searchpill{height:44px;max-width:none}.searchpill kbd{display:none}.toplist{max-height:min(52vh,420px);width:100%}
   .hdr h2{font-size:26px}.viewtabs{display:inline-grid;width:100%}
   .vk{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vkpi{padding:14px 14px}.vkpi .val b{font-size:24px}.vkpi .lab{font-size:12px}
   .g2{grid-template-columns:minmax(0,1fr)}.sec-title .sub{margin-left:0;flex-basis:100%}
@@ -635,7 +641,8 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
 
 <main class="main" id="main">
   <div class="topnav">
-    <button class="searchpill" type="button" id="topSearch"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="sp-txt">Quartier, commune ou zone…</span><kbd>⌘K</kbd></button>
+    <div class="searchpill" id="topSearch"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="topQ" type="text" placeholder="Quartier, commune ou zone…" aria-label="Rechercher une zone" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="topList" aria-autocomplete="list"><kbd>⌘K</kbd></div>
+    <div class="toplist" id="topList" role="listbox" hidden></div>
     <div class="grow"></div>
     <span class="pill" id="statusPill"><span class="dot"></span><span id="statusTxt">Chargement…</span></span>
     <button class="round" type="button" id="topMap" title="Carte et adresse" aria-label="Carte et adresse"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></button>
@@ -927,6 +934,7 @@ window.addEventListener('scroll', () => { if (tipFor) hideTip(); }, {passive:tru
 // Sidebar
 // ═══════════════════════════════════════════════════════════════════════════════
 const isPhone = () => matchMedia('(max-width:700px)').matches;
+const normTxt = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
 function openSheet(){ $('sidebar').classList.add('open'); $('scrim').classList.add('show'); $('mbarFiltres').textContent = 'Fermer'; }
 function closeSheet(){ $('sidebar').classList.remove('open'); $('scrim').classList.remove('show'); $('mbarFiltres').textContent = 'Filtres'; }
 $('mbarFiltres').addEventListener('click', () => $('sidebar').classList.contains('open') ? closeSheet() : openSheet());
@@ -937,12 +945,34 @@ $('railToggle').addEventListener('click', () => railOpen(!$('sidebar').classList
 $('railFiltres').addEventListener('click', () => railOpen(!$('sidebar').classList.contains('open')));
 $('railNav').addEventListener('click', e => { const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; railOpen(false); update(); scrollTo({top:0}); });
 // recherche : champ des quartiers s'il est affiché, sinon la zone sélectionnée (ou la première) de la liste — le niveau d'étude ne change pas
-function openSearch(){ railOpen(true);
-  setTimeout(() => { const i = $('search'); if (i && !i.closest('[hidden]')) { i.focus(); i.select(); } else (document.querySelector('#zlist .zbtn.on') || document.querySelector('#zlist .zbtn'))?.focus(); }, isPhone() ? 300 : 120); }
-$('topSearch').addEventListener('click', openSearch);
+// Recherche du haut (26/10) : un vrai champ, résultats de tous les niveaux dessous (le nom qui commence par la saisie d'abord),
+// flèches / Entrée / Échap ; choisir une zone garde la vue courante (sauf valorisation, propre à une adresse). Le rail n'intervient pas.
+const topQ = $('topQ'), topList = $('topList'); let topHits = [], topSel = -1;
+function searchAll(raw){ const q = normTxt(raw.trim()); if (!q) return [];
+  const hits = [];
+  for (const n of ['quartier', 'arrondissement', 'secteur', 'zone']) for (const it of itemsOf(n)) { const nom = normTxt(it.nom), tout = nom + ' ' + normTxt((it.meta||'') + ' ' + (it.grp||''));
+    if (!tout.includes(q)) continue; hits.push({it, niv: it.niv || n, rang: nom.startsWith(q) ? 0 : nom.includes(q) ? 1 : 2}); }
+  return hits.sort((a, b) => a.rang - b.rang).slice(0, 14); }
+const idLabelOf = (niv, id) => niv==='secteur'&&/^\d+$/.test(id) ? 'S'+id : niv==='arrondissement' ? (id==='1'?'1er':id+'e') : id;
+function renderTop(){ topHits = searchAll(topQ.value); topSel = topHits.length ? 0 : -1;
+  if (!topQ.value.trim()) { closeTop(); return; }
+  topList.innerHTML = topHits.length ? topHits.map((h, i) => `<button type="button" class="zbtn" role="option" data-i="${i}" aria-selected="${i===topSel}"><span><span class="n">${esc(h.it.nom)}</span><span class="m">${esc(NIVEAUX[h.niv])}${h.it.meta ? ' · ' + esc(h.it.meta) : h.it.grp && h.it.grp !== h.it.nom ? ' · ' + esc(h.it.grp) : ''}</span></span><span class="id">${esc(idLabelOf(h.niv, h.it.id))}</span></button>`).join('')
+    : '<div class="hint">Aucune zone ne correspond.</div>';
+  topList.hidden = false; topQ.setAttribute('aria-expanded', 'true'); }
+function closeTop(){ topList.hidden = true; topQ.setAttribute('aria-expanded', 'false'); topHits = []; topSel = -1; }
+function chooseTop(i){ const h = topHits[i]; if (!h) return; S.niveau = h.niv; S.id = h.it.id; if (S.vue === 'valo') S.vue = 'etude'; S.q = ''; $('search').value = ''; topQ.value = ''; closeTop(); topQ.blur(); update(); scrollTo({top:0}); }
+topQ.addEventListener('input', renderTop);
+topQ.addEventListener('focus', () => { if (topQ.value.trim()) renderTop(); });
+topQ.addEventListener('keydown', e => { if (e.key === 'Escape') { if (topList.hidden) topQ.blur(); else closeTop(); return; } if (topList.hidden || !topHits.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); topSel = (topSel + (e.key === 'ArrowDown' ? 1 : topHits.length - 1)) % topHits.length; topList.querySelectorAll('[role=option]').forEach((b, i) => b.setAttribute('aria-selected', i === topSel)); topList.querySelector('[aria-selected=true]')?.scrollIntoView({block:'nearest'}); }
+  else if (e.key === 'Enter') { e.preventDefault(); chooseTop(topSel); } });
+topList.addEventListener('pointerdown', e => e.preventDefault());   // garde le focus dans le champ
+topList.addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) chooseTop(+b.dataset.i); });
+function openSearch(){ topQ.focus(); topQ.select(); }
+$('topSearch').addEventListener('click', e => { if (e.target === topQ) return; openSearch(); });
 $('topMap').addEventListener('click', () => { S.vue = 'carte'; update(); scrollTo({top:0}); });
 document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && !$('app').hidden) { e.preventDefault(); openSearch(); } });
-document.addEventListener('pointerdown', e => { const r = $('sidebar'); if (!isPhone() && r.classList.contains('open') && !r.contains(e.target) && !e.target.closest('#topSearch')) railOpen(false); });
+document.addEventListener('pointerdown', e => { const r = $('sidebar'); if (!isPhone() && r.classList.contains('open') && !r.contains(e.target)) railOpen(false); if (!e.target.closest('#topSearch')) closeTop(); });
 $('sheetClose').addEventListener('click', closeSheet); $('scrim').addEventListener('click', closeSheet);
 $('mbarVue').addEventListener('click', () => { S.vue = S.vue === 'carte' ? 'etude' : 'carte'; update(); scrollTo({top:0}); });
 // (PDF sur téléphone : bouton « Exporter en PDF » de l'en-tête ; la barre du bas garde Vue · Valo · Filtres)
@@ -954,7 +984,7 @@ function renderSidebar(){
   const ly = META.meta.last_year, y0 = META.meta.annees[0];
   $('perHint').textContent = S.per==='all' ? `${y0} → ${ly} (${META.meta.annees.length} années)` : `${ly-(+S.per)+1} → ${ly}` + (META.meta.last_year_complete ? '' : ` · ${ly} incomplète`);
   const list = $('zlist'); list.innerHTML = '';
-  const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); const q = norm(S.q.trim());
+  const norm = normTxt; const q = norm(S.q.trim());
   let grp = null, shown = 0;
   itemsOf(S.niveau).forEach(it => {
     if (q && !norm(it.nom+' '+(it.meta||'')+' '+it.grp).includes(q)) return;
