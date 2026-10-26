@@ -372,6 +372,7 @@ footer a{color:var(--text3)}
 .gate h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:16px}
 .gate h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent3),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
 .gate .gate-sub{color:var(--text3);font-size:13px;margin-top:6px;line-height:1.55}
+.gate-user{position:absolute;left:-10000px;width:1px;height:1px;opacity:0;pointer-events:none}   /* hors écran, pas display:none : un champ non rendu est ignoré par certains gestionnaires */
 .gate-field{margin:26px 0 8px}
 .gate-field input{width:100%;height:56px;border-radius:16px;border:1px solid rgba(46,125,79,.45);background:rgba(255,255,255,.8);color:var(--text);font:600 18px var(--sans);letter-spacing:.24em;text-align:center;outline:none;
   box-shadow:0 0 22px -8px rgba(46,125,79,.4);transition:box-shadow .3s,border-color .3s}
@@ -585,17 +586,20 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
   </svg>
   <div class="stage">
     <span class="shard tl"></span><span class="shard br"></span>
-    <form class="gate-card" id="gateForm" autocomplete="off">
+    <form class="gate-card" id="gateForm" method="post" action="#">
       <svg class="gate-edge" aria-hidden="true"><path id="gateEdge" d=""/></svg>
       <div class="gate-badge" style="--i:0"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14 9l2 2"/></svg></div>
       <img class="gate-logo" src="assets/logo-jadero.png" alt="Jadero" width="900" height="228" style="--i:1">
       <h1 style="--i:2" id="gateTitle">Accès <em>réservé</em></h1>
       <p class="gate-sub" style="--i:3" id="gateSub">Saisissez le code d'accès : il déchiffre les données dans votre navigateur.</p>
       <div class="gate-check"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
-      <div class="gate-field" style="--i:4"><input id="code" type="password" autocomplete="current-password" placeholder="••••••••" aria-label="Code d'accès" required></div>
+      <!-- 26/10 : identifiant fixe, masqué, pour que le navigateur propose d'enregistrer le code (les gestionnaires de mots de passe
+           n'enregistrent qu'un couple identifiant + mot de passe soumis par un formulaire ; autocomplete="off" l'empêchait) -->
+      <input type="text" name="username" value="jadero" autocomplete="username" aria-hidden="true" tabindex="-1" readonly class="gate-user">
+      <div class="gate-field" style="--i:4"><input id="code" name="password" type="password" autocomplete="current-password" placeholder="••••••••" aria-label="Code d'accès" required></div>
       <div class="gate-note" style="--i:5" id="gateErr" role="status">Le code ne quitte jamais votre appareil.</div>
       <button class="gate-btn" id="gateBtn" type="submit" style="--i:6">Ouvrir la plateforme <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-      <div class="gate-foot" style="--i:7">Data Marché Résidentiel · DVF DGFiP. Le code sert uniquement à dériver la clé de déchiffrement, localement ; il reste actif jusqu'à la fermeture de l'onglet.</div>
+      <div class="gate-foot" style="--i:7">Data Marché Résidentiel · DVF DGFiP. Le code sert uniquement à dériver la clé de déchiffrement, localement ; il reste actif jusqu'à la fermeture de l'onglet. Votre navigateur peut proposer de l'enregistrer.</div>
     </form>
   </div>
 </div>

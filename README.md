@@ -184,6 +184,11 @@ il sert à dériver une clé (PBKDF2-SHA256, 200 000 itérations) avec laquelle 
 au build et déchiffrés dans le navigateur. Pour changer le code : modifier le secret puis lancer le workflow avec
 `force`. Localement : `DVF_CODE="…" python scripts/process_dvf.py && DVF_CODE="…" python scripts/build_site.py`.
 
+Depuis le 26/10, le formulaire d'accès porte un identifiant fixe masqué (« jadero », `autocomplete="username"`) et le champ du
+code est en `current-password` : les navigateurs proposent d'enregistrer le code dans leur gestionnaire de mots de passe et le
+préremplissent ensuite (décision de Franck ; le code est alors stocké dans le profil de chaque personne, synchronisé si elle
+synchronise ses mots de passe). Rien ne change côté dépôt : le code n'y est écrit nulle part.
+
 ## Règles de traitement (v13)
 
 Ventes (« Vente » strict, VEFA exclue) d'un logement unique (appartement ou maison), dépendances tolérées, local
