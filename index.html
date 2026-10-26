@@ -213,7 +213,7 @@ table{border-collapse:collapse;width:100%}
 .slider .marks{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}.slider .marks b{color:var(--accent);font-weight:700}
 .valo-kpis{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
 /* Perspectives */
-.hyp{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.hyp{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}   /* 4 colonnes depuis le lot 17 (six hypothèses + horizon) */
 .hyp .h{border:1px solid var(--line);border-radius:16px;padding:11px 13px;background:var(--glass2);display:flex;flex-direction:column;gap:5px}
 .hyp .h .l{font-size:12px;font-weight:500;color:var(--text3);display:flex;align-items:center}
 .hyp .h .row{display:flex;align-items:center;gap:8px}.hyp .h input,.hyp .h select{border:1px solid var(--line3);border-radius:10px;background:var(--soft);font-size:14px;padding:6px 8px;width:96px}
@@ -515,7 +515,6 @@ footer a{color:var(--text3)}
 .card-t{font-size:15px}
 
 /* lot 17 : démographie et parc (Perspectives) */
-.hyp{grid-template-columns:repeat(4,1fr)}
 .dk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .dk .kpi .v{font-size:22px}.dk .kpi .u{white-space:normal;line-height:1.5}.dk .kpi .u .chip{margin-right:4px}
 .sh{font-size:13.5px;font-weight:600;margin:0 0 6px;color:var(--text)}
@@ -533,16 +532,16 @@ footer a{color:var(--text3)}
 .gb .g .c i.a{background:var(--brand)}.gb .g .c i.b{background:var(--accent3)}
 .gbx{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;font-size:12.5px;font-weight:500;color:var(--text2);text-align:center;padding:8px 6px 0;border-top:1px solid var(--line)}
 .gbx small{display:block;font-weight:400;color:var(--text4);font-size:11px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}
-.seg .s{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--glass2);display:grid;gap:6px;align-content:start}
-.seg .s .l{font-size:12.5px;color:var(--text3);font-weight:500}.seg .s .v{font-size:24px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.seg .s .v small{font-size:12px;color:var(--text4);font-weight:500}
-.seg .s small.d{font-size:11px;color:var(--text4);line-height:1.4}
-.seg .s button{justify-self:start;padding:6px 12px;border-radius:9px;border:1px solid var(--line3);background:var(--soft);font-size:12px;font-weight:600;color:var(--text);transition:background .16s,border-color .16s}
-.seg .s button:hover{border-color:var(--accent)}.seg .s button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.dseg{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:10px}   /* « dseg », pas « seg » : .seg est le sélecteur du rail (collision constatée le 26/10) */
+.dseg .s{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--glass2);display:grid;gap:6px;align-content:start}
+.dseg .s .l{font-size:12.5px;color:var(--text3);font-weight:500}.dseg .s .v{font-size:24px;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.seg .s .v small{font-size:12px;color:var(--text4);font-weight:500}
+.dseg .s small.d{font-size:11px;color:var(--text4);line-height:1.4}
+.dseg .s button{justify-self:start;padding:6px 12px;border-radius:9px;border:1px solid var(--line3);background:var(--soft);font-size:12px;font-weight:600;color:var(--text);transition:background .16s,border-color .16s}
+.dseg .s button:hover{border-color:var(--accent)}.dseg .s button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 .lect{display:grid;gap:8px}.lect p{font-size:13px;line-height:1.55;color:var(--text2);padding:10px 14px;border-radius:12px;background:var(--soft2)}.lect p b{color:var(--text)}
 .lnkb{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;font-weight:600;cursor:pointer}
 @media (max-width:1100px){.dk{grid-template-columns:repeat(3,minmax(0,1fr))}.hyp{grid-template-columns:1fr 1fr}}
-@media (max-width:700px){.dk{grid-template-columns:1fr 1fr}.seg{grid-template-columns:1fr}.stk .row{grid-template-columns:1fr;gap:4px}.gb{height:128px}.gbx{font-size:11px}.gbx small{display:none}}
+@media (max-width:700px){.dk{grid-template-columns:1fr 1fr}.dseg{grid-template-columns:1fr}.stk .row{grid-template-columns:1fr;gap:4px}.gb{height:128px}.gbx{font-size:11px}.gbx small{display:none}}
 
 footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:1320px}
 /* tablette : rail replié, s'ouvre au toucher du logo ou du bouton Filtres */
@@ -614,7 +613,7 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
     <div class="seg seg-4" id="segNiveau">
       <button data-v="arrondissement"><span class="lg">Arrond. / commune</span><span class="sh">Arr. / com.</span></button><button data-v="secteur">Secteur</button><button data-v="zone">Zone</button><button data-v="quartier">Quartier</button><button data-v="rayon" hidden>Rayon</button>
     </div>
-    <div class="search" id="searchWrap"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg><input class="input" id="search" placeholder="Rechercher un quartier…" aria-label="Rechercher"></div>
+    <div class="search" id="searchWrap"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="6"/><path d="m14 14 4 4"/></svg><input class="input" id="search" placeholder="Quartier, commune, arrondissement, zone…" aria-label="Rechercher une zone" autocomplete="off"></div>
     <div class="zlist" id="zlist"></div>
     <div class="hint" id="niveauHint"></div>
   </div>
@@ -951,7 +950,7 @@ function setSeg(id, v){ document.querySelectorAll(`#${id} button`).forEach(b=>b.
 function renderSidebar(){
   setSeg('segNiveau', TAB_OF(S.niveau)); setSeg('segPer', S.per); setSeg('segGran', S.gran); setSeg('segType', S.type);
   const rb = document.querySelector('#segNiveau button[data-v=rayon]'); rb.hidden = !LAST_ADDR?.props; $('segNiveau').classList.toggle('seg-5', !rb.hidden); $('segNiveau').classList.toggle('seg-4', rb.hidden);
-  $('niveauHint').textContent = NIVEAU_HINT[S.niveau]; $('searchWrap').hidden = S.niveau !== 'quartier';
+  $('niveauHint').textContent = NIVEAU_HINT[S.niveau]; $('searchWrap').hidden = S.niveau === 'rayon';   // 26/10 : le champ sert à tous les niveaux (il n'existait qu'au niveau quartier : la pastille « Quartier, commune ou zone… » ouvrait un rail sans champ)
   const ly = META.meta.last_year, y0 = META.meta.annees[0];
   $('perHint').textContent = S.per==='all' ? `${y0} → ${ly} (${META.meta.annees.length} années)` : `${ly-(+S.per)+1} → ${ly}` + (META.meta.last_year_complete ? '' : ` · ${ly} incomplète`);
   const list = $('zlist'); list.innerHTML = '';
@@ -966,7 +965,16 @@ function renderSidebar(){
     b.innerHTML = `<span><span class="n">${esc(it.nom)}</span>${it.meta?`<span class="m">${esc(it.meta)}</span>`:''}</span><span class="id">${esc(idLabel)}</span>`;
     b.onclick = () => { S.niveau = niv; S.id = it.id; S.vue = 'etude'; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } else { railOpen(false); document.activeElement?.blur(); } }; list.appendChild(b); shown++;
   });
-  if (!shown) { const e = document.createElement('div'); e.className='hint'; e.style.padding='8px'; e.textContent='Aucun quartier ne correspond.'; list.appendChild(e); }
+  // avec une saisie, les autres niveaux répondent aussi (une commune tapée depuis l'onglet Quartier, un quartier depuis Arrond. / commune…) : choisir change le niveau
+  if (q.length >= 2) { let autres = 0, hdr = false;
+    for (const n of ['arrondissement', 'secteur', 'zone', 'quartier']) { if (n === TAB_OF(S.niveau)) continue;
+      for (const it of itemsOf(n)) { if (autres >= 12) break; if (!norm(it.nom+' '+(it.meta||'')+' '+it.grp).includes(q)) continue;
+        if (!hdr) { hdr = true; const g = document.createElement('div'); g.className='zgrp'; g.textContent = 'Autres niveaux'; list.appendChild(g); }
+        const niv = it.niv || n; const b = document.createElement('button'); b.type='button'; b.className='zbtn';
+        b.innerHTML = `<span><span class="n">${esc(it.nom)}</span><span class="m">${esc(NIVEAUX[niv])}${it.meta ? ' · ' + esc(it.meta) : ''}</span></span><span class="id">${esc(niv==='secteur'&&/^\d+$/.test(it.id) ? 'S'+it.id : niv==='arrondissement' ? (it.id==='1'?'1er':it.id+'e') : it.id)}</span>`;
+        b.onclick = () => { S.niveau = niv; S.id = it.id; S.vue = 'etude'; S.q = ''; $('search').value = ''; update(); if (isPhone()) { closeSheet(); scrollTo({top:0}); } else { railOpen(false); document.activeElement?.blur(); } };
+        list.appendChild(b); autres++; shown++; } } }
+  if (!shown) { const e = document.createElement('div'); e.className='hint'; e.style.padding='8px'; e.textContent='Aucune zone ne correspond.'; list.appendChild(e); }
   if (S.niveau === 'rayon' && LAST_ADDR?.props) { const e = document.createElement('div'); e.className = 'hint'; e.style.padding = '6px 8px'; e.innerHTML = `Autre rayon : <input class="vi" type="number" min="50" max="5000" step="50" value="${/^\d+$/.test(S.id||'') && !RAYONS.includes(+S.id) ? S.id : ''}" placeholder="m" id="rayonLibre" aria-label="Rayon libre en mètres" style="width:72px"> m`; list.appendChild(e);
     $('rayonLibre').addEventListener('change', ev => { const r = Math.round(+ev.target.value / 50) * 50; if (r >= 50 && r <= 5000) { S.id = String(r); S.vue = 'etude'; update(); } }); }
   // typologies éditables
@@ -1366,7 +1374,7 @@ function demoCard(item){
     <p><b>Vieillissement.</b> 80 ans et plus : ${pct1(c.ge80)} contre ${pct1(r.ge80)} dans la référence (${fmtPt(sg.dAge)}) → <b>${fmtCo(sg.age)} pt/an</b>. Une part élevée annonce des successions et des mises en vente dans les années à venir ; une part faible, l'inverse.</p>
     <p><b>Familles et grandes surfaces.</b> Moins de 15 ans : ${pct1(c.lt15)} contre ${pct1(r.lt15)} (${fmtPt(sg.dFam)}) ; 4 pièces et plus : ${pct1(c.grands)} du parc contre ${pct1(r.grands)} — ${sg.grandsRares ? 'grandes surfaces plus rares que dans la référence' : 'grandes surfaces au moins aussi présentes que dans la référence'} → <b>${fmtCo(sg.fam)} pt/an</b> sur les grandes surfaces${sg.fam === 0 && sg.dFam > 0 && !sg.grandsRares ? ' (demande familiale, mais parc suffisant)' : sg.fam === 0 && sg.dFam != null && sg.dFam <= 0 ? ' (part de familles sous la référence)' : ''}.</p>
     <p><b>Étudiants et petites surfaces.</b> Étudiants de 18 à 29 ans : ${pct1(c.etudiants)} contre ${pct1(r.etudiants)} (${fmtPt(sg.dEtu)}) ; personnes seules : ${pct1(c.seuls)} des 15 ans et plus${r.seuls != null ? ` (réf. ${pct1(r.seuls)})` : ''} → <b>${fmtCo(sg.etu)} pt/an</b> sur les petites surfaces.</p></div>
-    <div class="seg">${segBox('Petites surfaces · T1–T2', 'vieillissement + étudiants', sg.segments.petites)}${segBox('Surfaces moyennes · T3', 'vieillissement seul', sg.segments.moyennes)}${segBox('Grandes surfaces · T4 et plus', 'vieillissement + familles', sg.segments.grandes)}</div>
+    <div class="dseg">${segBox('Petites surfaces · T1–T2', 'vieillissement + étudiants', sg.segments.petites)}${segBox('Surfaces moyennes · T3', 'vieillissement seul', sg.segments.moyennes)}${segBox('Grandes surfaces · T4 et plus', 'vieillissement + familles', sg.segments.grandes)}</div>
     <div class="hint" style="margin-top:10px">Règle : ±${String(d.regle.pente).replace('.',',')} pt/an par point d'écart à la référence (ensemble des ${d.nRef} communes couvertes), chaque terme plafonné à ±${String(d.regle.plafond).replace('.',',')}. C'est une règle de lecture explicite, pas une élasticité mesurée. Coefficient appliqué : <b>${fmtCo(cur)} pt/an</b>${cur ? ` · <button type="button" class="lnkb" data-demo="0">retirer</button>` : ' (aucun)'}.</div>` : '<div class="hint">Suggestion non calculable (référence manquante).</div>';
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc · ${esc(d.geo.label)}${ib('demo_etude')}</div><span class="card-sub">INSEE, recensements ${ind.premier} → ${y} · maille commune / arrondissement${ind.manquants.length ? ` · ${ind.manquants.length} géographie(s) manquante(s)` : ''}${d.stale.length ? ` · <span style="color:var(--warn)">jeux conservés d'un run précédent : ${d.stale.join(', ')}</span>` : ''}</span></div>
     <div class="card-b">${kpis}

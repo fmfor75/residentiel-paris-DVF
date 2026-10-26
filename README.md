@@ -147,6 +147,10 @@ référence) sur les grandes surfaces, étudiants sur les petites — appliquée
 lecture, pas une élasticité mesurée : rien ne permet aujourd'hui de la calibrer. Gardes : `tests/test_demo.py` (API locale :
 parsing, codes TSH, cellules incomplètes comptées, jeu en échec conservé, no-op), `tests/test_demographie.mjs` (somme des
 arrondissements = Paris, parts sommant à 100, règle, projection), deux configurations dans `tests/audit_pdf.py`.
+Correctif du 26/10 : la pastille « Quartier, commune ou zone… » ouvrait le rail sans champ hors du niveau Quartier (le champ
+n'existait qu'à ce niveau) — le champ sert désormais à tous les niveaux et propose aussi les zones des autres niveaux (choisir
+change le niveau) ; collision de classe `.seg` (segments démographiques vs sélecteurs du rail) → `.dseg`, avec la garde
+`tests/test_css.mjs` (une classe nue définie deux fois hors blocs @ doit être une surcharge déclarée du même composant).
 
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
 colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates
