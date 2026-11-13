@@ -5,13 +5,20 @@
 // Les polices du deck ne sont pas embarquées : une pile système (Segoe UI / Helvetica / Arial) donne le même rendu à l'écran
 // et dans le PNG — une police web ne serait pas chargée dans une image SVG rasterisée.
 //
+// 13/11/2026 (« le visuel du graph fait très ancien ») : même mise en page, habillage rajeuni dans la charte du deck — barres à
+// coins arrondis en dégradé, intervalle P10–P90 en capsule translucide sans embouts, grille plus légère, légende à pastilles
+// arrondies, filet vert sous le titre. Les barres restent des <rect> : tests/audit_pdf.py s'en sert pour détecter un texte posé dessus.
+//
 // Lot 10c (retours de Franck du 13/10) : plusieurs séries (typologies) sur le même graphique en barres groupées ; les
 // étiquettes de déciles passent au-dessus / en dessous des moustaches (à droite, elles chevauchaient la barre suivante dès
 // 6 ans) ; l'axe est en €/m² ; une ligne de lecture explique médiane et déciles sous le graphique.
 export const RAYON_W = 838, RAYON_H = 511, RAYON_DPI_SCALE = 2;   // 8,38 × 5,11 in × 100 → ×2 = 200 dpi
-const GREY = '#4A5058', GREY2 = '#B8BCC2', GREEN = '#2E7D4F', INK = '#1F2429', MUTED = '#6B7078', GRID = '#E3E6EA';
+const GREY = '#4A5058', GREY2 = '#B8BCC2', GREEN = '#2E7D4F', INK = '#1F2429', MUTED = '#6B7078', GRID = '#ECEEF1', WHISK = 'rgba(74,80,88,.32)';
 // Couleurs des séries quand plusieurs typologies sont tracées : gris clair du deck, vert du deck, puis gris moyen, vert clair, gris foncé
 export const SERIES_COLORS = [GREY2, GREEN, '#7A8089', '#8FB79F', '#4A5058'];
+// dégradé par couleur de série (haut plus soutenu → bas plus clair) : la barre seule reprend le gris clair du deck
+const LIGHT = { [GREY2]: ['#9EA3AA', '#C9CCD1'], [GREEN]: ['#2E7D4F', '#5FA97E'], '#7A8089': ['#6A7079', '#9DA3AB'], '#8FB79F': ['#7FAA90', '#B5D2C0'], '#4A5058': ['#3C424A', '#6B7279'] };
+const gradId = col => 'g' + col.replace('#', '');
 const FONT = "'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif";
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmtN = v => Math.round(v).toLocaleString('fr-FR').replace(/ /g, ' ');
@@ -59,17 +66,19 @@ export function rayonSvg(series, years, opts){
   const vertical = multi && medMax > bw * 0.95, decLabels = nb <= 20 && !vertical;
   const out = [], barsOut = [], whiskOut = [], labOut = [];   // ordre de dessin : barres, moustaches, puis toutes les étiquettes (plus rien ne les recouvre)
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="${FONT}">`);
+  out.push(`<defs><clipPath id="plotclip"><rect x="0" y="0" width="${W}" height="${bottom}"/></clipPath>${Object.entries(LIGHT).map(([c, [a, b]]) => `<linearGradient id="${gradId(c)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')}</defs>`);
   // titre
   const typoTxt = opts.type === 'Tous' ? '' : multi ? ` ${series.map(s => s.typo ? s.typo.id : 'toutes surfaces').join(' / ')}` : (series[0].typo ? ` ${series[0].typo.id} (${series[0].typo.surfMin}–${series[0].typo.surfMax} m²)` : '');
   const titre = `Ventes ${typeDe(opts.type)}${typoTxt} à moins de ${fmtN(opts.rayon)} m du ${opts.titre} : prix au m² (DVF, ${years[0]} à ${years[years.length - 1]})`;
-  out.push(`<text x="${0.01 * W}" y="${(1 - 0.965) * H + 6}" font-size="${titre.length > 95 ? 14.5 : 16.7}" fill="${INK}">${esc(titre)}</text>`);
+  out.push(`<text x="${0.01 * W}" y="${(1 - 0.965) * H + 6}" font-size="${titre.length > 95 ? 14.5 : 16.7}" font-weight="600" fill="${INK}">${esc(titre)}</text>`);
+  out.push(`<rect x="${0.01 * W}" y="${(1 - 0.965) * H + 12}" width="42" height="3" rx="1.5" fill="${GREEN}"/>`);
   // grille + axe Y (en €/m², demande de Franck)
   const pas = pasAxe(hi - lo); const y0 = Math.ceil(lo / pas) * pas;
   for (let v = y0; v <= hi; v += pas) {
-    out.push(`<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GRID}" stroke-width="1.1"/>`);
-    out.push(`<text x="${left - 8}" y="${Y(v) + 5}" text-anchor="end" font-size="13" fill="${GREY}">${esc(fmtN(v) + ' €/m²')}</text>`);
+    out.push(`<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GRID}" stroke-width="1"/>`);
+    out.push(`<text x="${left - 8}" y="${Y(v) + 4.5}" text-anchor="end" font-size="12.5" fill="${MUTED}">${esc(fmtN(v) + ' €/m²')}</text>`);
   }
-  out.push(`<line x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}" stroke="${GREY2}" stroke-width="1.1"/>`);
+  out.push(`<line x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}" stroke="${GREY2}" stroke-width="1.2" stroke-linecap="round"/>`);
   // lignes de référence (zorder 1 : sous les barres)
   if (opts.acq > 0) out.push(`<line x1="${left}" x2="${right}" y1="${Y(opts.acq)}" y2="${Y(opts.acq)}" stroke="${GREY}" stroke-width="1.9" ${dash}/>`);
   if (opts.libre > 0) out.push(`<line x1="${left}" x2="${right}" y1="${Y(opts.libre)}" y2="${Y(opts.libre)}" stroke="${GREEN}" stroke-width="2.8" ${dash}/>`);
@@ -84,11 +93,13 @@ export function rayonSvg(series, years, opts){
       const xb = xc - grp / 2 + bw * (k + 0.5);   // centre de la barre
       // en groupé, texte vertical posé sur l'axe et montant (centré sur l'axe, sa moitié basse recouvrait l'année — lot 14)
       if (!s) { barsOut.push(multi ? `<text x="${xb}" y="${bottom - 4}" dy="0.35em" text-anchor="start" font-size="8.5" fill="${MUTED}" transform="rotate(-90 ${xb} ${bottom - 4})">` : `<text x="${xb}" y="${bottom - 8}" text-anchor="middle" font-size="11.1" fill="${MUTED}">`); barsOut.push(`${esc(multi ? '< 5 ventes' : `moins de ${opts.minN || 5} ventes`)}</text>`); return; }
-      barsOut.push(`<rect x="${xb - bw * (multi ? 0.46 : 0.5)}" y="${Y(s.median)}" width="${bw * (multi ? 0.92 : 1)}" height="${Math.max(0, bottom - Y(s.median))}" fill="${col}"/>`);
+      const bwid = bw * (multi ? 0.92 : 1), rx = Math.min(7, bwid / 4);
+      barsOut.push(`<rect x="${xb - bwid / 2}" y="${Y(s.median)}" width="${bwid}" height="${Math.max(0, bottom - Y(s.median)) + rx}" rx="${rx}" fill="url(#${gradId(col)})" clip-path="url(#plotclip)"/>`);
       // moustache : à droite de la barre quand il n'y a qu'une série (comme le script), centrée sur la barre sinon
-      const xw = multi ? xb : xc + slot * 0.34, cap = multi ? bw * 0.18 : slot * 0.03, wcol = multi && col === GREY ? '#1F2429' : GREY;
-      whiskOut.push(`<line x1="${xw}" x2="${xw}" y1="${Y(s.p10)}" y2="${Y(s.p90)}" stroke="${wcol}" stroke-width="1.8"/>`);
-      for (const v of [s.p10, s.p90]) whiskOut.push(`<line x1="${xw - cap}" x2="${xw + cap}" y1="${Y(v)}" y2="${Y(v)}" stroke="${wcol}" stroke-width="1.8"/>`);
+      // intervalle P10–P90 : capsule translucide (sans embouts) et deux points aux déciles
+      const xw = multi ? xb : xc + slot * 0.34, wcol = multi && col === GREY ? '#1F2429' : GREY;
+      whiskOut.push(`<line x1="${xw}" x2="${xw}" y1="${Y(s.p10)}" y2="${Y(s.p90)}" stroke="${WHISK}" stroke-width="${multi ? Math.min(6, bw * 0.3) : 7}" stroke-linecap="round"/>`);
+      for (const v of [s.p10, s.p90]) whiskOut.push(`<circle cx="${xw}" cy="${Y(v)}" r="2.4" fill="${wcol}"/>`);
       // étiquettes de déciles au-dessus du 9e et en dessous du 1er (à droite, elles chevauchaient la barre voisine dès 6 ans — retour du 13/10)
       const halo = multi ? 'paint-order="stroke" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"' : '';   // en groupé, l'étiquette du 1er décile tombe sur la barre
       // une série : l'étiquette du 1er décile, sous la moustache, mordait sur le bord de la barre (1 à 3 px, rapport du 15/10) → décalée
@@ -110,8 +121,9 @@ export function rayonSvg(series, years, opts){
   // légende
   items.forEach((it, k) => {
     const col = Math.floor(k / nrow), row = k % nrow; const x = left + col * colW + 20, y = legTop + row * rowH + 10;
-    if (it[0] === 'patch') out.push(`<rect x="${x}" y="${y - 6}" width="40" height="12" fill="${it[1]}"/>`);
-    else out.push(`<line x1="${x}" x2="${x + 40}" y1="${y}" y2="${y}" stroke="${it[1]}" stroke-width="${it[4] || 1.8}" ${it[3] || ''}/>`);
+    if (it[0] === 'patch') out.push(`<rect x="${x}" y="${y - 6}" width="40" height="12" rx="4" fill="url(#${gradId(it[1])})"/>`);
+    else if (it[2].startsWith('1er')) out.push(`<line x1="${x + 2}" x2="${x + 38}" y1="${y}" y2="${y}" stroke="${WHISK}" stroke-width="7" stroke-linecap="round"/><circle cx="${x + 2}" cy="${y}" r="2.4" fill="${GREY}"/><circle cx="${x + 38}" cy="${y}" r="2.4" fill="${GREY}"/>`);
+    else out.push(`<line x1="${x}" x2="${x + 40}" y1="${y}" y2="${y}" stroke="${it[1]}" stroke-width="${it[4] || 1.8}" stroke-linecap="round" ${it[3] || ''}/>`);
     out.push(`<text x="${x + 50}" y="${y + 4.5}" font-size="${fLeg}" fill="${GREY}">${esc(it[2])}</text>`);
   });
   // source + lecture (demande de Franck : expliquer les déciles sous le graphique)

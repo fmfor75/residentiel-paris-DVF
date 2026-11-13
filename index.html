@@ -555,6 +555,20 @@ footer a{color:var(--text3)}
 .imp td button:hover{border-color:var(--accent)}.imp td button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
 .ddet{margin-top:18px;border-top:1px solid var(--line);padding-top:12px}.ddet summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);list-style:none;display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .ddet summary::before{content:'';width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .16s;margin-left:2px}.ddet[open] summary::before{transform:rotate(45deg)}
+/* lot 18 : composition du rapport (au-dessus du rail 960 et du voile 950) */
+.pdfdlg{position:fixed;inset:0;z-index:980;background:rgba(40,30,20,.38);display:grid;place-items:center;padding:16px;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.pdfbox{width:min(600px,100%);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:rgba(252,249,244,.98);border:1px solid var(--line3);border-radius:24px;padding:22px 24px 20px;box-shadow:0 40px 90px -20px rgba(80,60,10,.5);animation:appIn .3s cubic-bezier(.2,.8,.2,1) both}
+.pdfhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}.pdfhead h3{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.pdfsecs{display:grid;gap:5px;margin:12px 0 14px;overflow:auto;min-height:0;flex:1;padding-right:2px}   /* la liste défile, les boutons restent visibles */
+.pdfsecs label{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start;padding:8px 12px;border-radius:14px;border:1px solid var(--line);background:var(--glass2);cursor:pointer;transition:border-color .16s,background .16s}
+.pdfsecs label:hover{border-color:var(--accent)}.pdfsecs label.off{opacity:.55;cursor:not-allowed}.pdfsecs label.fixe{background:var(--soft2)}
+.pdfsecs input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.pdfsecs b{font-size:13.5px;font-weight:600;display:block}.pdfsecs small{font-size:11.5px;color:var(--text3);line-height:1.4;display:block;margin-top:2px}
+.pdfbtns{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pdfbtns .grow{flex:1}
+.pbtn{padding:8px 14px;border-radius:999px;border:1px solid var(--line3);background:var(--soft);font-size:12.5px;font-weight:600;color:var(--text);transition:border-color .16s}.pbtn:hover{border-color:var(--accent)}
+.hdr-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn-pill{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border-radius:999px;border:1px solid var(--line3);background:var(--glass);color:var(--text);font-weight:600;font-size:13px;transition:border-color .16s,background .16s}
+.btn-pill:hover{border-color:var(--accent);background:var(--glass-hi)}.btn-pill:disabled{opacity:.6}
 .lnkb{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;font-weight:600;cursor:pointer}
 @media (max-width:1100px){.dk{grid-template-columns:repeat(3,minmax(0,1fr))}.hyp{grid-template-columns:1fr 1fr}}
 @media (max-width:700px){.dk{grid-template-columns:1fr 1fr}.imp{font-size:12px}.imp th{display:none}.imp td{display:block;border-radius:0!important;padding:4px 10px}.imp td:first-child{border-radius:12px 12px 0 0!important;padding-top:9px}.imp td:last-child{border-radius:0 0 12px 12px!important;padding-bottom:9px;text-align:left}.imp td.num{text-align:left}.imp td.num::before{content:attr(data-l) ' : ';color:var(--text4);font-size:11px}.imp td small{display:inline;margin-left:6px}.stk .row{grid-template-columns:1fr;gap:4px}.gb{height:128px}.gbx{font-size:11px}.gbx small{display:none}}
@@ -681,6 +695,14 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
 </main>
 <div class="scrim" id="scrim"></div>
 <nav class="mbar" id="mbar"><div class="sum"><b id="mbarT">—</b><span id="mbarS"></span></div><button type="button" id="mbarVue">Carte</button><button type="button" id="mbarValo" hidden>Valo</button><button type="button" class="primary" id="mbarFiltres">Filtres</button></nav>
+<div class="pdfdlg" id="pdfDlg" hidden>
+  <div class="pdfbox" role="dialog" aria-modal="true" aria-labelledby="pdfTitle">
+    <div class="pdfhead"><h3 id="pdfTitle">Composer le rapport</h3><button type="button" class="round" id="pdfClose" aria-label="Fermer"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <p class="hint">Cochez les parties à inclure. La page de garde (carte, repères, évolution) est toujours présente. Votre choix est gardé dans le lien de l'étude.</p>
+    <div class="pdfsecs" id="pdfSecs"></div>
+    <div class="pdfbtns"><button type="button" class="pbtn" data-pdfpreset="tout">Tout</button><button type="button" class="pbtn" data-pdfpreset="essentiel">L’essentiel</button><span class="grow"></span><button type="button" class="pbtn" id="pdfCancel">Annuler</button><button type="button" class="btn-grad" id="pdfGo"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></svg>Générer le PDF</button></div>
+  </div>
+</div>
 <div id="tipbox" role="tooltip"></div>
 
 <footer id="foot" hidden>
@@ -727,12 +749,12 @@ const communesCouvertes = () => Object.values(META?.communes_ref || {}).map(c =>
 const EFFECTIF_FAIBLE = 30;
 // Méthode de calcul de chaque chiffre affiché. Source unique : infobulles « i » à l'écran et page « Méthode » du PDF.
 const HELP = {
-  p90:     ['P90 · haut de marché', "90 % des ventes de la période sont en dessous de ce prix au m². Percentile calculé par interpolation linéaire sur les prix au m² triés, sur les seules ventes de la zone et de la période.", 'percentile 0,90'],
+  p90:     ['Top 10 % (P90)', "Seuil des 10 % des ventes les plus chères : 90 % des ventes de la période sont en dessous de ce prix au m². Percentile calculé par interpolation linéaire sur les prix au m² triés, sur les seules ventes de la zone et de la période.", 'percentile 0,90'],
   median:  ['Médiane', "La moitié des ventes est au-dessus, l'autre moitié en dessous. Robuste aux valeurs extrêmes : c'est la référence utilisée pour toutes les évolutions.", 'percentile 0,50'],
   wmean:   ['Moyenne pondérée', "Somme des prix de vente divisée par la somme des surfaces vendues : le prix moyen du mètre carré réellement échangé. Un 400 m² pèse 400 m², un studio 30 : c'est la moyenne « marché », là où la moyenne simple compte chaque vente pour un.", 'Σ prix ÷ Σ surfaces'],
   max:     ['Prix max', "Le prix au m² le plus élevé parmi les ventes de la période : une seule vente, dont la surface et le mois sont indiqués. À lire comme un plafond observé, pas comme une référence : une vente atypique suffit à le déplacer (le pipeline garde tout entre 1 000 et 40 000 €/m²).", 'max prix/m²'],
   mean:    ['Moyenne', "Somme des prix au m² divisée par le nombre de ventes. Sensible aux ventes atypiques : à lire avec la médiane.", 'Σ prix/m² ÷ n'],
-  p10:     ['P10 · bas de marché', "10 % des ventes de la période sont en dessous de ce prix au m². Même méthode que le P90.", 'percentile 0,10'],
+  p10:     ['Point bas (P10)', "Seuil des 10 % des ventes les moins chères : 10 % des ventes de la période sont en dessous de ce prix au m². Même méthode que le P90.", 'percentile 0,10'],
   count:   ['Ventes', "Nombre de transactions retenues sur la zone et la période : vente (hors VEFA) d'un logement unique, prix entre 1 000 et 40 000 €/m², surface entre 9 et 400 m². En dessous, la surface médiane des logements vendus.", 'n'],
   evo_n:   ['Évolution sur n ans', "Médiane de la dernière année rapportée à la médiane de l'année n années plus tôt (années civiles complètes). N/D si l'une des deux années compte moins de 3 ventes.", 'méd(A) ÷ méd(A−n) − 1'],
   evo_per: ['Évolution sur la période', "Médiane de la dernière année rapportée à celle de la première année de la période sélectionnée.", 'méd(A) ÷ méd(A₀) − 1'],
@@ -843,7 +865,7 @@ $('btnLogout').addEventListener('click', () => { try { sessionStorage.removeItem
 // État & référentiels
 // ═══════════════════════════════════════════════════════════════════════════════
 const TYPO_DEFAUT = () => (META.typologies_ref||[]).map(t=>({id:t.id, surfMin:t.surfMin, surfMax:t.surfMax, on:['T2','T3','T4'].includes(t.id)}));
-const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null, persp:null};
+const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null, persp:null, pdfOff:[]};   // pdfOff : parties exclues du rapport (lot 18)
 const VALO_MIN_N = 30, VALO_MOIS = 12;
 let MACRO = null, MACRO_ERR = null, CAL = null, SERIE_PARIS = null;   // lot 7 : séries macro (data/macro.json) et calibration
 const PERSP_DEFAUT = () => ({tauxH: null, hz: 12, inflation: 2, revenus: 0.5, prime: 0, lam: 0.2, demo: 0});   // demo : coefficient démographique (lot 17), 0 tant que l'utilisateur ne l'applique pas
@@ -902,6 +924,8 @@ function readHash(){
   if (v) { const [head, rows] = v.split(';'); const [pos, meuble, epoque, mode] = head.split('|');   // pos|meuble|epoque[|mode];T1:lots:surf:adj:pieces,… (ancien format : pos;T1:lots:surf:adj) ; mode (26/10) : pct, mean, wmean
     const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)(?::(\d))?$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4], pieces: m[5] ? +m[5] : E.piecesDefaut(m[1])} : null; }).filter(Boolean);
     if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), mode: ['mean','wmean'].includes(mode) ? mode : 'pct', meuble: meuble === '1', epoque: Math.min(3, Math.max(0, +epoque||0)), lignes}; }
+  const px = h.get('pdf');   // lot 18 : parties EXCLUES du rapport (vide = tout)
+  S.pdfOff = px ? px.split(',').filter(k => PDF_SECS.some(x => x.k === k)) : [];
   const a = h.get('addr');   // lon,lat,libellé
   if (a) { const m = a.match(/^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(.+)$/); if (m) ADDR_HASH = {lon:+m[1], lat:+m[2], label:m[3]}; }
   const t = h.get('typos');   // T1:9-30:1,T2:30-50:1,…
@@ -914,6 +938,7 @@ function writeHash(){
   if (S.valo) p.set('valo', `${S.valo.pos}|${S.valo.meuble?1:0}|${S.valo.epoque||0}|${S.valo.mode||'pct'};${S.valo.lignes.map(l=>`${l.id}:${l.lots}:${l.surf}:${l.adj}:${l.pieces||E.piecesDefaut(l.id)}`).join(',')}`);
   if (S.rprix) p.set('rprix', `${S.rprix.acq||''}:${S.rprix.libre||''}:${S.rprix.occupe||''}:${S.rprix.decote ?? ''}:${S.rprix.hist}:${S.rprix.typo||''}:${S.rprix.pdf?1:0}`);
   if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam, S.persp.demo || 0].join(':'));
+  if (S.pdfOff?.length) p.set('pdf', S.pdfOff.join(','));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
   history.replaceState(null, '', '#'+p.toString());
 }
@@ -1145,12 +1170,12 @@ function sectionCard(title, badge, st, chartId, donutSrc = null){
   const w = windowOf(st), faible = w && w.count < EFFECTIF_FAIBLE, per = esc(PERIODES[S.per]).toLowerCase(), e1 = evoN(st.by_year, 1);
   const kpis = w ? `<section class="vk">
       <article class="vkpi glass hi"><div class="lab">${icoK('<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>')}Prix médian</div>${ibC('median')}
-        <div class="val"><b>${fmt0(w.median)}</b><em>€/m²</em>${chipEvo(e1)}</div><div class="sub">moyenne ${fmt0(w.mean)} €/m² · ${w.from} → ${w.to}${faible?' · <span style="color:var(--warn)">effectif faible</span>':''}</div></article>
+        <div class="val"><b>${fmt0(w.median)}</b><em>€/m²</em>${chipEvo(e1)}</div><div class="sub">${w.from} → ${w.to} · ${per}${faible?' · <span style="color:var(--warn)">effectif faible</span>':''}</div></article>
       <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 20h16M6 16l4-5 4 3 4-6"/>')}Moy. pondérée</div>${ibC('wmean')}<div class="val"><b>${fmt0(w.wmean)}</b><em>€/m²</em></div><div class="sub">Σ prix ÷ Σ surfaces · ${per}</div></article>
-      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 19V5M5 12l7-7 7 7"/>')}Haut de marché</div>${ibC('p90')}<div class="val"><b>${fmt0(w.p90)}</b><em>€/m²</em></div><div class="sub">P90 · 10 % des ventes au-dessus</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 19V5M5 12l7-7 7 7"/>')}Top 10 %</div>${ibC('p90')}<div class="val"><b>${fmt0(w.p90)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les plus chers (P90)</div></article>
       <article class="vkpi glass"><div class="lab">${icoK('<path d="M5 19V9l7-5 7 5v10"/><path d="M12 4v8"/>')}Prix max</div>${ibC('max')}<div class="val"><b>${fmt0(w.max)}</b><em>€/m²</em></div><div class="sub">${w.max_surf != null ? `${fmtSurf(w.max_surf)} m² · ${fmtMois(w.max_ym)}` : per}</div></article>
-      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 5v14M5 12l7 7 7-7"/>')}Bas de marché</div>${ibC('p10')}<div class="val"><b>${fmt0(w.p10)}</b><em>€/m²</em></div><div class="sub">P10 · 10 % des ventes en dessous</div></article>
-      <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 7h16M4 12h16M4 17h10"/>')}Ventes</div>${ibC('count')}<div class="val"><b>${fmt0(w.count)}</b></div><div class="sub">surface médiane ${fmtSurf(w.surf_median)} m²</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 5v14M5 12l7 7 7-7"/>')}Point bas</div>${ibC('p10')}<div class="val"><b>${fmt0(w.p10)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les moins chers (P10)</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 7h16M4 12h16M4 17h10"/>')}Ventes</div>${ibC('count')}<div class="val"><b>${fmt0(w.count)}</b></div><div class="sub">${w.from} → ${w.to} · ${per} · surface méd. ${fmtSurf(w.surf_median)} m²</div></article>
     </section>` : `<div class="vcard glass"><div class="vempty">Moins de 3 ventes sur cette période.</div></div>`;
   const evo = `<article class="vcard glass"><h4>Évolution de la médiane</h4>${ibC('evo_n')}<div class="evl">${evoData(st.by_year).map(c => `<div class="${c.on?'on':''}">${c.l}<small>${c.s}</small>${chipEvo(c.v, c.pa)}</div>`).join('')}</div></article>`;
   const donut = donutSrc ? donutHtml(donutSrc) : '';
@@ -1187,7 +1212,7 @@ function crumbsOf(item){
 }
 function headerHtml(item, count){
   const tabs = `<div class="viewtabs" role="tablist"><button type="button" data-vue="etude" class="${S.vue==='etude'?'on':''}">Étude</button><button type="button" data-vue="carte" class="${S.vue==='carte'?'on':''}">Carte</button>${LAST_ADDR?.props ? `<button type="button" data-vue="valo" class="${S.vue==='valo'?'on':''}">Valorisation</button>` : ''}<button type="button" data-vue="persp" class="${S.vue==='persp'?'on':''}">Perspectives</button></div>`;
-  const pdf = item && lastEtude?.et ? `<button class="btn-grad" type="button" id="btnPdf"><svg class="icon" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></svg>Exporter en PDF</button>` : '';
+  const pdf = item && lastEtude?.et ? `<div class="hdr-actions"><button class="btn-grad" type="button" id="btnPdf"><svg class="icon" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></svg>Exporter en PDF</button><button class="btn-pill" type="button" id="btnXlsx" title="Les ventes de référence de la sélection, sur la période, au format Excel"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>Références Excel</button></div>` : '';
   // lot 15b : sur-titre (fil d'Ariane), grand titre, pastilles d'information ; onglets de vue seulement sur téléphone (rail ailleurs)
   const hero = (over, titre, meta, right = '') => `<div><small class="over">${over}</small><h2>${titre}</h2>${meta ? `<div class="meta">${meta}</div>` : ''}</div><div class="tags">${tabs}${right}</div>`;
   if (S.vue === 'valo' && LAST_ADDR?.props) { const p = LAST_ADDR.props; const cr = p.commune===PARIS ? [p.nom, `Paris ${p.arr===1?'1er':p.arr+'e'}`, REF.sr[p.secteur]?.nom, `Zone ${String(p.zone).slice(1)} (encadrement)`] : [p.nom, communeNom(p.commune)];
@@ -1197,7 +1222,7 @@ function headerHtml(item, count){
   return hero(`${esc(NIVEAUX[S.niveau])} · ${crumbsOf(item).map(esc).join(' · ')}`, esc(item.nom),
     `<span class="tag acc">${esc(NIVEAUX[S.niveau])}</span><span class="tag">${nb(count)} ventes · ${esc(META.meta.periode)}</span><span class="tag">MàJ ${fmtDate(META.meta.generated_at)}</span>${META.meta.last_year_complete?'':`<span class="tag warn">${META.meta.last_year} incomplète</span>`}`, pdf);
 }
-$('hdr').addEventListener('click', e => { if (e.target.closest('#btnPdf')) { exportPdf(); return; } const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; update(); });
+$('hdr').addEventListener('click', e => { if (e.target.closest('#btnPdf')) { openPdfDlg(); return; } if (e.target.closest('#btnXlsx')) { exportXlsx(); return; } const b = e.target.closest('button[data-vue]'); if (!b) return; S.vue = b.dataset.vue; update(); });
 function renderMbar(item){
   $('mbarT').textContent = item ? item.nom : 'Choisissez une zone';
   $('mbarS').textContent = item ? `${NIVEAUX[S.niveau]} · ${PERIODES[S.per]} · ${S.type === 'Tous' ? 'Tous logements' : TYPE_LBL(S.type)}` : NIVEAUX[S.niveau];
@@ -1572,7 +1597,7 @@ function rayonCard(item, idx){
     <div class="card-b" style="padding-top:12px">
       <div class="loy-ctl"><span><span class="lbl">Historique</span></span><div class="seg seg-3" id="segHist">${[2,5,10].map(hh=>`<button type="button" data-v="${hh}" class="${R.hist===hh?'on':''}">${hh} ans</button>`).join('')}</div>
         <span><span class="lbl">Surfaces</span><span class="typo-checks">${typos.map(t=>`<label><input type="checkbox" data-rt="${t.id}" ${chosen.includes(t.id)?'checked':''}> ${t.id} <small>${t.surfMin}–${t.surfMax} m²</small></label>`).join('')}<small class="hint">aucune case = toutes surfaces · bornes dans le panneau Typologies${S.type === 'Tous' ? ' · en « Tous », les typologies portent sur les appartements et une série Maisons est ajoutée' : ''}</small></span></span>
-        <label class="sw-row" style="gap:8px;margin:0"><input type="checkbox" data-rk="pdf" ${R.pdf?'checked':''}> <span>Intégrer le visuel au rapport PDF</span></label></div>
+        <span class="hint">Dans le rapport PDF : à cocher dans « Composer le rapport » (bouton Exporter en PDF).</span></div>
       <div class="loy-ctl" style="margin-top:10px"><span><span class="lbl">Acquisition €/m² HD${ib('rayon_prix')}</span>${num('acq', R.acq, 'ex. 8 650', 10)}</span>
         <span><span class="lbl">Sortie libre €/m² HD</span>${num('libre', R.libre, 'ex. 12 600', 10)}</span>
         <span><span class="lbl">Sortie occupé €/m² HD</span>${num('occupe', R.occupe, 'ou décote', 10)}</span>
@@ -1709,8 +1734,8 @@ async function valoPourPdf(){
   if (!LAST_ADDR?.props || !S.valo) return null; await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
   return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === PARIS, src: LAST_ADDR.props.commune === PARIS ? LOYERS.paris : LOYERS.carte} : null};
 }
-async function rayonPourPdf(item){   // visuel du deck pour la page du PDF : la même image PNG que le téléchargement (un seul dessin)
-  if (S.niveau !== 'rayon' || !SALES.lon || !(S.rprix?.pdf ?? true)) return null;
+async function rayonPourPdf(item, force = false){   // visuel du deck pour la page du PDF : la même image PNG que le téléchargement (un seul dessin)
+  if (S.niveau !== 'rayon' || !SALES.lon || !(force || (S.rprix?.pdf ?? true))) return null;
   const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)})); if (!d) return null;
   try { d.png = await RY.svgToPngDataUrl(d.svg); } catch(ex) { d.png = null; d.pngErreur = ex.message; }
   return d;
@@ -1723,6 +1748,83 @@ async function perspPourPdf(item){   // scénarios avec les hypothèses courante
   const demoD = demoEtude(item); const scPdf = E.scenarios(MACRO, SERIE_PARIS, CAL, params); if (demoD?.ind) demoD.lecture = demoLecture(demoD, ref, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : scPdf);   // scénario sans coefficient, sinon compté deux fois
   return {demo: demoD, demoErr: DEMO_ERR, params, sc: scPdf, sens: E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro: E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'}), cal: CAL, ref, valoValeur: valo?.valeur || null, macro: MACRO, tl: tendanceLocale(item)};
 }
+// ── Lot 18 : composition du rapport ───────────────────────────────────────────────────────────────────────────
+// Clés des parties (celles du PDF : pdf.js `sec(k)`), description et disponibilité selon l'étude courante
+const PDF_SECS = [
+  {k:'garde', l:'Page de garde', d:'Carte de la zone, repères (adresse, quartier, secteur, zone) et évolution de la médiane.', fixe:true},
+  {k:'global', l:'Marché global', d:'Chiffres clés toutes surfaces, évolution sur 1, 3, 5 et 10 ans, courbe des prix et volumes.'},
+  {k:'types', l:'Appartements et maisons séparés', d:'En type « Tous » : une section pour les appartements, une pour les maisons.'},
+  {k:'typos', l:'Typologies', d:'Une section par typologie cochée (T1 → T5) et le tableau de répartition et de prix par surface.'},
+  {k:'annuel', l:'Tableau annuel', d:'Ventes, déciles, quartiles, médiane, moyennes et prix max par année.'},
+  {k:'valo', l:'Valorisation de l’immeuble', d:'Lots saisis, prix retenus par ligne, valeur et fourchette.'},
+  {k:'loyers', l:'Loyers et rentabilité brute', d:'Loyers de référence (encadrement ou carte des loyers) et rendement de l’immeuble.'},
+  {k:'rayon', l:'Visuel « marché autour de l’immeuble »', d:'Le graphique du deck (médiane et déciles par année dans le rayon) et son tableau.'},
+  {k:'persp', l:'Perspectives', d:'Hypothèses, scénarios à 3, 5 et 10 ans, sensibilité, rétrospectif du modèle.'},
+  {k:'demo', l:'Démographie et parc', d:'Ce qu’il faut retenir, impact du coefficient démographique, détail INSEE.'},
+  {k:'methode', l:'Méthode et sources', d:'Périmètre, règles de traitement DVF, définition des indicateurs, sources.'},
+];
+const PDF_ESSENTIEL = ['garde', 'global', 'typos', 'valo', 'persp'];
+function pdfDispo(item){   // disponibilité de chaque partie pour l'étude courante (même logique que les blocs de pdf.js)
+  const et = lastEtude?.et, PT = lastEtude?.parType, etTypo = PT ? PT.app : et, hasValo = !!(LAST_ADDR?.props && S.valo && S.valo.lignes.some(l => l.lots > 0));
+  return {garde: true, global: !!(S.global || PT), types: !!PT, typos: !!(etTypo && S.typos.some(t => t.on && t.surfMax > t.surfMin && etTypo.by_typo?.[t.id])), annuel: !!et?.by_year, valo: hasValo, loyers: hasValo,
+    rayon: S.niveau === 'rayon' && !!SALES.lon, persp: true, demo: true, methode: true};
+}
+function pdfSelection(item){ const dispo = pdfDispo(item); const out = {}; PDF_SECS.forEach(x => { out[x.k] = x.fixe || (dispo[x.k] && !S.pdfOff.includes(x.k)); }); return out; }
+function renderPdfDlg(item){
+  const dispo = pdfDispo(item);
+  $('pdfSecs').innerHTML = PDF_SECS.map(x => { const on = x.fixe || (dispo[x.k] && !S.pdfOff.includes(x.k)); const off = !dispo[x.k] && !x.fixe;
+    return `<label class="${x.fixe ? 'fixe' : ''} ${off ? 'off' : ''}"><input type="checkbox" data-pdfsec="${x.k}" ${on ? 'checked' : ''} ${x.fixe || off ? 'disabled' : ''}><span><b>${x.l}${off ? ' <small style="display:inline;color:var(--text4)">· pas dans cette étude</small>' : ''}</b><small>${x.d}</small></span></label>`; }).join('');
+}
+function openPdfDlg(){
+  const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
+  if (!S.pdfOff) S.pdfOff = []; renderPdfDlg(item); $('pdfDlg').hidden = false; $('pdfDlg').querySelector('input:not([disabled])')?.focus();
+}
+function closePdfDlg(){ $('pdfDlg').hidden = true; $('btnPdf')?.focus(); }
+$('pdfSecs').addEventListener('change', e => { const c = e.target.closest('input[data-pdfsec]'); if (!c) return; const k = c.dataset.pdfsec; S.pdfOff = S.pdfOff.filter(x => x !== k); if (!c.checked) S.pdfOff.push(k); writeHash(); });
+$('pdfDlg').addEventListener('click', e => {
+  const pr = e.target.closest('[data-pdfpreset]'); if (pr) { const item = S.id ? findItem(S.niveau, S.id) : null; S.pdfOff = pr.dataset.pdfpreset === 'tout' ? [] : PDF_SECS.filter(x => !x.fixe && !PDF_ESSENTIEL.includes(x.k)).map(x => x.k); writeHash(); renderPdfDlg(item); return; }
+  if (e.target.closest('#pdfCancel, #pdfClose') || e.target === $('pdfDlg')) { closePdfDlg(); return; }
+  if (e.target.closest('#pdfGo')) { closePdfDlg(); exportPdf(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pdfDlg').hidden) closePdfDlg(); });
+
+// ── Export Excel des références (13/11) : les ventes de la sélection courante (zone ou rayon, type), sur la période choisie ──
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+function loadScriptOnce(url){ return new Promise((ok, ko) => { if (window.XLSX) return ok(); const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => ko(new Error('bibliothèque Excel non chargée (réseau ?)')); document.head.appendChild(sc); }); }
+let xlsxBusy = false;
+async function exportXlsx(){
+  const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.idx || xlsxBusy) return;
+  xlsxBusy = true; const btn = $('btnXlsx'); if (btn) { btn.disabled = true; } setStatus('busy', 'Préparation du fichier Excel…');
+  try {
+    await loadScriptOnce(XLSX_URL);
+    const ly = META.meta.last_year, y0 = S.per === 'all' ? 0 : ly - (+S.per) + 1;
+    const typos = S.typos.filter(t => t.surfMax > t.surfMin), qi = META.quartier_index, qr = META.quartiers_ref || {};
+    const arrOf = q => q?.commune === PARIS && q.arr ? `Paris ${q.arr === 1 ? '1er' : q.arr + 'e'}` : '';
+    const rows = []; let ecartes = 0;
+    for (const i of lastEtude.idx) {
+      if (SALES.year[i] < y0) { ecartes++; continue; }
+      const qid = qi[SALES.q[i]], q = qr[qid]; const lab = E.ymLabel(SALES.ym[i]);
+      rows.push({'Année': lab.year, 'Mois': lab.month, 'Commune': q ? communeNom(q.commune) : '', 'Arrondissement': arrOf(q), 'Quartier': q?.nom || qid || '', 'Secteur': q?.secteur ? (REF.sr[q.secteur]?.nom || q.secteur) : '',
+        'Type': SALES.t[i] === 1 ? 'Maison' : 'Appartement', 'Surface (m²)': Math.round(SALES.surf[i] * 100) / 100, 'Prix (€)': SALES.val[i], 'Prix (€/m²)': Math.round(SALES.ppm2[i]),
+        'Typologie': E.bandeSurface(typos, SALES.surf[i]).id || '', 'Longitude': SALES.lon ? Math.round(SALES.lon[i] * 1e6) / 1e6 : '', 'Latitude': SALES.lat ? Math.round(SALES.lat[i] * 1e6) / 1e6 : ''});
+    }
+    rows.sort((a, b) => (b['Année'] - a['Année']) || (b['Mois'] - a['Mois']) || (b['Prix (€/m²)'] - a['Prix (€/m²)']));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [6, 5, 22, 13, 26, 24, 12, 11, 12, 11, 9, 11, 11].map(w => ({wch: w})); ws['!autofilter'] = rows.length ? {ref: `A1:M${rows.length + 1}`} : undefined;
+    XLSX.utils.book_append_sheet(wb, ws, 'Références');
+    const per = S.per === 'all' ? `${META.meta.annees[0]} → ${ly} (historique complet)` : `${y0} → ${ly} (${PERIODES[S.per]})`;
+    const params = [['Étude', item.nom], ['Niveau', NIVEAUX[S.niveau]], ['Repères', crumbsOf(item).join(' · ')], ['Type de bien', TYPE_LBL(S.type)], ['Période', per], ['Ventes exportées', rows.length], ['Ventes de la sélection hors période', ecartes],
+      ['Typologies (bornes de surface)', typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(' · ')], ['Source', `DVF (DGFiP / Etalab), millésimes ${META.meta.periode} · traitement Jadero v${META.meta.parser_version || ''}`],
+      ['Règles', 'Ventes d’un logement seul (appartement ou maison), prix au m² dans les bornes de plausibilité, surface Carrez connue ; une mutation = une vente.'],
+      ['Coordonnées', 'Point de la parcelle (géocodage DVF), arrondi à 6 décimales ; pas d’adresse dans le fichier source.'], ['Généré le', new Date().toLocaleString('fr-FR')], ['Lien de l’étude', location.href]];
+    const wp = XLSX.utils.aoa_to_sheet(params); wp['!cols'] = [{wch: 32}, {wch: 110}]; XLSX.utils.book_append_sheet(wb, wp, 'Paramètres');
+    const slug = item.nom.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
+    XLSX.writeFile(wb, `Jadero_References_${slug}_${S.per === 'all' ? META.meta.annees[0] : y0}-${ly}.xlsx`);
+    setStatus('ok', `${fmt0(rows.length)} références exportées`); setTimeout(() => setStatus('ok', statusLine()), 4000);
+  } catch(ex) { console.error(ex); setStatus('err', `Excel impossible : ${ex.message}`); }
+  finally { xlsxBusy = false; const b = $('btnXlsx'); if (b) b.disabled = false; }
+}
+
 async function exportPdf(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
   pdfBusy = true; const btn = $('btnPdf'); if (btn) { btn.disabled = true; btn.textContent = 'Génération…'; } setStatus('busy', 'Génération du PDF…');
@@ -1732,7 +1834,7 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: await rayonPourPdf(item), rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
+      sections: pdfSelection(item), address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: pdfSelection(item).rayon ? await rayonPourPdf(item, true) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
       helpers: {fmt0: v => fmt0(v).replace(/\u00A0/g, '\u202F'), fmtSurf: v => fmtSurf(v).replace(/\u00A0/g, '\u202F'), fmtPct, fmtPctS, fmtPct2, fmtEur: v => fmtEur(v).replace(/\u00A0/g, '\u202F'), fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });

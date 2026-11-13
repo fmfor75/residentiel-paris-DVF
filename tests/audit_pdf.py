@@ -69,7 +69,9 @@ async def run(b, name, h, out):
     await pg.wait_for_selector("#hdr h2", timeout=90000); await pg.wait_for_timeout(2500)
     await pg.add_script_tag(url=JSPDF); await pg.evaluate(PATCH)
     svg = await pg.evaluate(SVG_BOXES)
-    async with pg.expect_download(timeout=240000) as dl: await pg.click("#btnPdf")
+    # lot 18 : le bouton ouvre la boîte de composition (tout coché par défaut) ; « Générer le PDF » lance le téléchargement
+    await pg.click("#btnPdf"); await pg.wait_for_selector("#pdfGo", timeout=10000)
+    async with pg.expect_download(timeout=240000) as dl: await pg.click("#pdfGo")
     d = await dl.value; pdf = os.path.join(out, name + ".pdf"); await d.save_as(pdf)
     rec = await pg.evaluate("() => window.__rec")
     json.dump({"name": name, "hash": h, "file": d.suggested_filename, "rec": rec, "svg": svg, "errors": errs}, open(os.path.join(out, name + ".json"), "w"), ensure_ascii=False)

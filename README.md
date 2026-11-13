@@ -162,6 +162,21 @@ pondérée Σ prix ÷ Σ surfaces de l'échantillon (`valoriser({mode})`, 4e cha
 rotation des ventes face au parc) et par l'impact chiffré du coefficient suggéré (% et €/m² à 5 et 10 ans sur la médiane 12 mois
 de la zone, scénario central avec et sans) ; le détail INSEE est replié dessous. Même lecture dans le PDF (`demoLecture`).
 
+**Composition du rapport, références Excel, lecture des tuiles, visuel du rayon (lot 18, 13/11/2026).** Le bouton
+« Exporter en PDF » ouvre d'abord « Composer le rapport » : les parties à cocher (page de garde toujours présente ; marché global,
+appartements et maisons séparés, typologies, tableau annuel, valorisation, loyers, visuel du rayon, perspectives, démographie et
+parc, méthode), avec les parties absentes de l'étude grisées, « Tout » / « L'essentiel », le choix gardé dans le lien (`pdf=` =
+parties exclues). Côté `pdf.js`, chaque bloc est conditionnel (`sec(k)`) et commence sur une page fraîche (`st.freshPage`) au
+lieu de finir par un saut : aucune page blanche quelle que soit la sélection (vérifié : tout = 15 pages, essentiel = 7, méthode
+seule = 4, aucune page vide). La case « intégrer le visuel au PDF » du panneau rayon est remplacée par la composition (une seule
+source). **Références Excel** : bouton à côté du PDF, `.xlsx` (SheetJS depuis cdnjs, chargé à la demande) des ventes de la
+sélection courante sur la période choisie — année, mois, commune, arrondissement, quartier, secteur, type, surface, prix, €/m²,
+typologie, longitude, latitude (point de la parcelle, DVF ne donnant pas l'adresse) — plus une feuille Paramètres (zone, période,
+type, bornes de typologies, ventes exportées et hors période, règles, lien de l'étude) ; le nombre de lignes égale le nombre de
+ventes affiché. Tuiles (écran et PDF) : l'unité dans le chiffre, « Top 10 % » (seuil des 10 % les plus chers, P90) et « Point bas »
+(P10), plus de tuile Moyenne, période en clair (années et durée) sur la médiane et les ventes. Visuel du rayon rajeuni dans la charte
+du deck : barres arrondies en dégradé, intervalle P10–P90 en capsule translucide, grille légère, filet vert sous le titre.
+
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de
 colonnes décalés de leurs chiffres et sortis de la page, des textes hors de leur tuile, des pourcentages imprimés sur les dates
 (page 1), « 2024 » sur « 2025 » dans les graphiques de volume, des surfaces à point décimal, un « ← » disparu (absent de la
