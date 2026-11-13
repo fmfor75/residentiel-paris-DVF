@@ -171,10 +171,14 @@ lieu de finir par un saut : aucune page blanche quelle que soit la sélection (v
 seule = 4, aucune page vide). La case « intégrer le visuel au PDF » du panneau rayon est remplacée par la composition (une seule
 source). **Références Excel** : bouton à côté du PDF, `.xlsx` (SheetJS depuis cdnjs, chargé à la demande) des ventes de la
 sélection courante sur la période choisie — année, mois, commune, arrondissement, quartier, secteur, type, surface, prix, €/m²,
-typologie, longitude, latitude (point de la parcelle, DVF ne donnant pas l'adresse) — plus une feuille Paramètres (zone, période,
+typologie, longitude, latitude (point de la parcelle, DVF ne donnant pas l'adresse), mis en forme avec ExcelJS (la version libre de
+SheetJS ignore les styles) : en-têtes bleu marine à texte blanc, m² à une décimale, prix en €, lignes alternées, volet figé, filtre —
+plus une feuille Paramètres (zone, période,
 type, bornes de typologies, ventes exportées et hors période, règles, lien de l'étude) ; le nombre de lignes égale le nombre de
-ventes affiché. Tuiles (écran et PDF) : l'unité dans le chiffre, « Top 10 % » (seuil des 10 % les plus chers, P90) et « Point bas »
-(P10), plus de tuile Moyenne, période en clair (années et durée) sur la médiane et les ventes. Visuel du rayon rajeuni dans la charte
+ventes affiché. Tuiles (écran et PDF) : l'unité dans le chiffre, plus de tuile Moyenne, période en clair (années et durée) sur la médiane et les
+ventes ; lues colonne par colonne — médiane / moyenne pondérée · Top 10 / Bottom 10 · prix max / ventes. **« Top 10 » et
+« Bottom 10 »** remplacent P90 et P10 partout (tuiles, tableaux, aides, légendes, valorisation, visuel du rayon, PDF, en-têtes du
+CSV `top_10` / `bottom_10`). Visuel du rayon rajeuni dans la charte
 du deck : barres arrondies en dégradé, intervalle P10–P90 en capsule translucide, grille légère, filet vert sous le titre.
 
 **Mise en page du PDF (lot 14).** Le rapport du 15/10/2026 (12 avenue Albine, Maisons-Laffitte) montrait des en-têtes de

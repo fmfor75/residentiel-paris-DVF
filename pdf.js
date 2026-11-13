@@ -173,16 +173,16 @@ function pageDemographie(st, doc, h, item, D, params){
 }
 
 // ── Blocs ──────────────────────────────────────────────────────────────────────────────────────────────────
-// Lot 16 : deux rangées — médiane, moyenne pondérée (Σ prix ÷ Σ surfaces), P90, prix max (avec la surface de la vente) ;
-// puis P10, moyenne simple, ventes. Sept tuiles sur une rangée de 174 mm ne laissaient que 22 mm par chiffre.
+// Lot 16 : deux rangées — médiane, moyenne pondérée (Σ prix ÷ Σ surfaces), Top 10, prix max (avec la surface de la vente) ;
+// puis Bottom 10, moyenne simple, ventes. Sept tuiles sur une rangée de 174 mm ne laissaient que 22 mm par chiffre.
 function kpiRow(st, w, h, per, x, y, width, tall = true){
-  // 13/11 (retour de Franck sur le rapport) : l'unité dans le chiffre, « Top 10 % » et « Point bas » au lieu de P90 / P10, plus de
+  // 13/11 (retour de Franck sur le rapport) : l'unité dans le chiffre, « Top 10 % » et « Point bas » au lieu de Top 10 / Bottom 10, plus de
   // tuile Moyenne, et la période écrite en clair (années et durée) sur la médiane et les ventes — deux rangées de trois tuiles
   const H = tall ? 24 : 17, gap = 3, perTxt = String(per).replace(/^Historique complet$/, 'historique complet');
   const periode = w ? `${w.from} → ${w.to} · ${perTxt}` : perTxt, m2 = v => v == null ? '—' : `${h.fmt0(v)} €/m²`;
-  const rows = [
-    [['Médiane', m2(w?.median), periode, true], ['Moyenne pondérée', m2(w?.wmean), `Σ prix ÷ Σ surfaces · ${perTxt}`], ['Top 10 %', m2(w?.p90), `seuil des 10 % les plus chers (P90) · ${perTxt}`]],
-    [['Point bas', m2(w?.p10), `seuil des 10 % les moins chers (P10) · ${perTxt}`], ['Prix max', m2(w?.max), w?.max_surf != null ? `une vente · ${h.fmtSurf(w.max_surf)} m² · ${h.fmtMois(w.max_ym)}` : ''], ['Ventes', money(h, w?.count), w ? `${periode} · surface méd. ${h.fmtSurf(w.surf_median)} m²` : '']]];
+  const rows = [   // lu colonne par colonne : médiane / moy. pondérée · Top 10 / Bottom 10 · prix max / ventes (demande du 13/11)
+    [['Médiane', m2(w?.median), periode, true], ['Top 10', m2(w?.p90), `seuil des 10 % les plus chers · ${perTxt}`], ['Prix max', m2(w?.max), w?.max_surf != null ? `une vente · ${h.fmtSurf(w.max_surf)} m² · ${h.fmtMois(w.max_ym)}` : '']],
+    [['Moyenne pondérée', m2(w?.wmean), `Σ prix ÷ Σ surfaces · ${perTxt}`], ['Bottom 10', m2(w?.p10), `seuil des 10 % les moins chers · ${perTxt}`], ['Ventes', money(h, w?.count), w ? `${periode} · surface méd. ${h.fmtSurf(w.surf_median)} m²` : '']]];
   rows.forEach((cells, r) => { const n = cells.length, tw = (width - gap * (n - 1)) / n, yy = y + r * (H + gap);
     cells.forEach(([l, v, u, acc], i) => { const cx = x + i * (tw + gap);
       st.rect(cx, yy, tw, H, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
@@ -226,8 +226,9 @@ function bandChart(st, h, pts, x, y, w, hh, title){
   st.text(h.fmt0(last.median), X(pts.length - 1) - 1.5, Y(last.median) - 2, { s: 6, w: 'bold', c: C.navy, align: 'right' });
   const stp = Math.ceil(pts.length / 8); axisLabels(st, pts.map((p, i) => ({ i, t: h.axisLabel(p.k), x: X(i), align: i === pts.length - 1 ? 'right' : i === 0 ? 'left' : 'center' })).filter(o => o.i % stp === 0 || o.i === pts.length - 1), y + hh - 1);
   // légende
-  st.line(x + w - 36, y + 1.5, x + w - 32, y + 1.5, C.accent2, 0.6); st.text('Médiane', x + w - 31, y + 2.5, { s: 5.2, c: C.grey });
-  doc.setFillColor(214, 228, 247); doc.rect(x + w - 17, y - 0.2, 4, 2.4, 'F'); st.text('P10–P90', x + w - 12, y + 2.5, { s: 5.2, c: C.grey });
+  const lg2 = 'Bottom 10 – Top 10', w2 = st.width(lg2, 5.2), x2 = x + w - w2;   // légende calée à droite, largeur mesurée (libellé allongé le 13/11)
+  doc.setFillColor(214, 228, 247); doc.rect(x2 - 5.2, y - 0.2, 4, 2.4, 'F'); st.text(lg2, x2, y + 2.5, { s: 5.2, c: C.grey });
+  const w1 = st.width('Médiane', 5.2), x1 = x2 - 5.2 - 4 - w1; st.line(x1 - 5.5, y + 1.5, x1 - 1.5, y + 1.5, C.accent2, 0.6); st.text('Médiane', x1, y + 2.5, { s: 5.2, c: C.grey });
   return hh;
 }
 function barChart(st, h, pts, x, y, w, hh, title){
@@ -310,7 +311,7 @@ export async function exportPdf(ctx){
     st.caps('Valorisation', M, st.y + 2, { s: 6, c: C.green }); const refLbl = V.mode === 'mean' ? 'moyenne' : V.mode === 'wmean' ? 'moyenne pondérée' : `P${V.pos}`;   // 26/10 : référence choisie
     st.text(`Référence ${refLbl} · 12 derniers mois`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
     st.text(`Valorisation de l'immeuble · ${address.label}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
-    const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · ${refLbl}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au P10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au P90 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
+    const tiles = [['Valeur estimée', h.fmtEur(V.valeur), `${V.lots} lot${V.lots > 1 ? 's' : ''} · ${h.fmt0(V.surfTot)} m² · ${refLbl}`, true], ['Fourchette basse', h.fmtEur(V.valeurBas), 'au Bottom 10 de chaque ligne'], ['Fourchette haute', h.fmtEur(V.valeurHaut), 'au Top 10 de chaque ligne'], ['€/m² moyen retenu', h.fmt0(V.ppm2Moyen), 'pondéré par les surfaces']];
     const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
       st.caps(l, cx + 3.2, st.y + 5, { s: 5.6, fit: tw - 6.4 }); st.text(v, cx + 3.2, st.y + 14.5, { s: v.length > 12 ? 11 : 13, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6.4 }); st.text(u, cx + 3.2, st.y + 20, { s: 5.6, c: C.grey, fit: tw - 6.4 }); });
     st.y += 30;
@@ -318,7 +319,7 @@ export async function exportPdf(ctx){
     st.caps(`Lots de l'immeuble · appartements · référence ${from ? `${h.fmtMois(from.ymFrom)} → ${h.fmtMois(from.ymTo)}` : ''}`, M, st.y + 2, { s: 6.2 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.y += 7;
     // libellé court d'échantillon : le nom complet du secteur débordait sur la colonne voisine (vu sur le rendu)
     const ech = r => !r.ref ? 'surface manquante' : `${r.ref.n} v. · ${r.ref.niveau === 'quartier' ? 'quartier' : r.ref.niveau === 'arrondissement' ? `arr. ${r.ref.id === '1' ? '1er' : r.ref.id + 'e'}` : r.ref.niveau === 'secteur' ? `secteur ${/^\d+$/.test(r.ref.id) ? 'S' + r.ref.id : r.ref.id}` : 'commune'}${r.ref.suffisant ? '' : ' · insuff.'}`;
-    table(st, [{ l: 'Typologie', w: 1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Surface', w: .8, align: 'right' }, { l: 'Ajust.', w: .7, align: 'right' }, { l: 'P10', w: .85, align: 'right' }, { l: 'Retenu', w: .95, align: 'right' }, { l: 'P90', w: .85, align: 'right' }, { l: 'Échantillon', w: 1.9 }, { l: 'Valeur / lot', w: 1.25, align: 'right' }, { l: 'Valeur', w: 1.35, align: 'right' }],
+    table(st, [{ l: 'Typologie', w: 1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Surface', w: .8, align: 'right' }, { l: 'Ajust.', w: .7, align: 'right' }, { l: 'Bottom 10', w: .85, align: 'right' }, { l: 'Retenu', w: .95, align: 'right' }, { l: 'Top 10', w: .85, align: 'right' }, { l: 'Échantillon', w: 1.9 }, { l: 'Valeur / lot', w: 1.25, align: 'right' }, { l: 'Valeur', w: 1.35, align: 'right' }],
       [...V.rows.filter(r => r.lots > 0).map(r => ({ cells: [{ t: r.id, w: 'bold' }, String(r.lots), `${r.surf} m²`, `${r.adj > 0 ? '+' : ''}${r.adj} %`, h.fmt0(r.ppm2Bas), { t: h.fmt0(r.ppm2), w: 'bold' }, h.fmt0(r.ppm2Haut), { t: ech(r), c: r.ref && !r.ref.suffisant ? C.gold : C.text2 }, h.fmtEur(r.valeurLot), { t: h.fmtEur(r.valeur), w: 'bold' }] })),
        { fill: [246, 248, 251], cells: [{ t: 'Total', w: 'bold' }, { t: String(V.lots), w: 'bold' }, { t: `${h.fmt0(V.surfTot)} m²`, w: 'bold' }, '', h.fmt0(V.valeurBas && V.surfTot ? V.valeurBas / V.surfTot : null), { t: h.fmt0(V.ppm2Moyen), w: 'bold' }, h.fmt0(V.valeurHaut && V.surfTot ? V.valeurHaut / V.surfTot : null), 'moy. pondérées', '', { t: h.fmtEur(V.valeur), w: 'bold' }] }], M, CW, { s: 6.8, rh: 6 });
     st.y += 6;
@@ -327,7 +328,7 @@ export async function exportPdf(ctx){
     if (RT && RT.loyerAnnuel > 0 && sec('loyers')) {
       const srcTxt = RT.paris ? `encadrement ${RT.src.annee} (applicable ${RT.src.application}) · loyer de référence majoré, hors charges · ${RT.meuble ? 'meublé' : 'vide'} · immeuble ${RT.epoque.toLowerCase().replace('apres', 'après')}` : `carte des loyers ${RT.src.edition} · loyers d'annonce charges comprises · ${RT.meuble ? 'meublé' : 'vide'}`;
       st.need(64); st.caps('Loyers et rentabilité brute', M, st.y + 2, { s: 5.8 }); st.line(M, st.y + 4, PW - M, st.y + 4, C.line); st.text(srcTxt, M, st.y + 7.5, { s: 6.2, c: C.grey, maxWidth: CW }); st.y += 11;
-      const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (${refLbl})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (P90)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (P10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
+      const tl = [['Rentabilité brute', h.fmtPct2(RT.rendement), `${h.fmtEur(RT.loyerAnnuel)} / an sur ${h.fmtEur(RT.valeur)} (${refLbl})`, true], ['Loyers mensuels', h.fmtEur(RT.loyerMensuel), 'ensemble des lots'], ['Sur valeur haute (Top 10)', h.fmtPct2(RT.rendementBas), 'rendement le plus bas'], ['Sur valeur basse (Bottom 10)', h.fmtPct2(RT.rendementHaut), 'rendement le plus haut']];
       const tw = (CW - 9) / 4; tl.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4); st.caps(l, cx + 3, st.y + 5, { s: 5.4, fit: tw - 6 }); st.text(v, cx + 3, st.y + 13.5, { s: 12, w: 'bold', c: acc ? C.accent : C.navy, fit: tw - 6 }); st.text(u, cx + 3, st.y + 19, { s: 5.4, c: C.grey, maxWidth: tw - 5 }); });
       st.y += 27;
       table(st, [{ l: 'Typologie', w: 1.1 }, { l: 'Lots', w: .55, align: 'right' }, { l: 'Pièces', w: .75, align: 'right' }, { l: RT.paris ? 'Majoré €/m²' : 'Loyer €/m²', w: 1.25, align: 'right' }, { l: RT.paris ? 'Réf. · minoré' : 'Bas → haut', w: 1.35, align: 'right' }, { l: 'Loyer / lot', w: 1.25, align: 'right' }, { l: 'Loyer annuel', w: 1.35, align: 'right' }, { l: 'Rentab.', w: 1, align: 'right' }],
@@ -350,7 +351,7 @@ export async function exportPdf(ctx){
     tl.forEach((l, i) => st.text(l, M, st.y + 8.5 + i * 5.5, { s: 12, w: 'bold', c: C.navy })); st.line(M, st.y + 12 + (tl.length - 1) * 5.5, PW - M, st.y + 12 + (tl.length - 1) * 5.5, C.line); st.y += 16 + (tl.length - 1) * 5.5;
     const s0 = series[0].st;
     const tiles = [['Ventes dans le rayon', h.fmt0(nTotal), `${opts.type === 'Tous' ? 'logements' : ctx.typeLbl.toLowerCase()} · ${years[0]} → ${years[years.length - 1]}${multi ? ` · ${series.length} séries` : ''}`, true],
-      [`Médiane ${last || '—'}${multi ? ` · ${series[0].typo ? series[0].typo.id : 'toutes'}` : ''}`, last && s0.annees[last] ? h.fmt0(s0.annees[last].median) + ' €/m²' : '—', last && s0.annees[last] ? `P10 ${h.fmt0(s0.annees[last].p10)} · P90 ${h.fmt0(s0.annees[last].p90)}` : 'moins de 5 ventes'],
+      [`Médiane ${last || '—'}${multi ? ` · ${series[0].typo ? series[0].typo.id : 'toutes'}` : ''}`, last && s0.annees[last] ? h.fmt0(s0.annees[last].median) + ' €/m²' : '—', last && s0.annees[last] ? `Bottom 10 ${h.fmt0(s0.annees[last].p10)} · Top 10 ${h.fmt0(s0.annees[last].p90)}` : 'moins de 5 ventes'],
       ['Couverture', `${Math.round(couv.couverte * 100)} %`, couv.couverte >= 0.999 ? 'rayon dans les communes couvertes' : 'rayon partiellement hors périmètre'],
       ['Prix de comparaison', opts.libre > 0 ? h.fmt0(opts.libre) + ' €/m²' : '—', opts.libre > 0 ? `sortie libre HD${opts.acq > 0 ? ` · acquisition ${h.fmt0(opts.acq)}` : ''}` : 'aucun prix saisi']];
     const tw = (CW - 9) / 4; tiles.forEach(([l, v, u, acc], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 24, acc ? [234, 241, 252] : C.tile, acc ? [180, 205, 240] : C.line, 1.4);
@@ -359,7 +360,7 @@ export async function exportPdf(ctx){
     const ih = CW * 5.11 / 8.38;
     if (RY.png) { doc.addImage(RY.png, 'PNG', M, st.y, CW, ih); st.y += ih + 4; }
     else { st.text(`Visuel non rasterisé (${RY.pngErreur || 'erreur'}) — les chiffres figurent dans le tableau ci-dessous.`, M, st.y + 5, { s: 7, c: C.bad }); st.y += 10; }
-    const cols = [{ l: 'Année', w: 18 }, ...(multi ? [{ l: 'Surfaces', w: 34 }] : []), { l: 'Ventes', w: 20, align: 'right' }, { l: '1er décile', w: 28, align: 'right' }, { l: 'Médiane', w: 28, align: 'right' }, { l: '9e décile', w: 28, align: 'right' }];
+    const cols = [{ l: 'Année', w: 18 }, ...(multi ? [{ l: 'Surfaces', w: 34 }] : []), { l: 'Ventes', w: 20, align: 'right' }, { l: 'Bottom 10', w: 28, align: 'right' }, { l: 'Médiane', w: 28, align: 'right' }, { l: 'Top 10', w: 28, align: 'right' }];
     const rows = series.flatMap(se => years.map(y => { const s = se.st.annees[y]; return { cells: [String(y), ...(multi ? [se.typo ? `${se.typo.id} · ${se.typo.surfMin}–${se.typo.surfMax} m²` : 'toutes surfaces'] : []), s ? h.fmt0(s.n) : { t: 'moins de 5 ventes', c: C.grey2 }, s ? h.fmt0(s.p10) : '—', s ? { t: h.fmt0(s.median), w: 'bold', c: C.navy } : '—', s ? h.fmt0(s.p90) : '—'] }; }));
     table(st, cols, rows, M, CW, { rh: rows.length > 10 ? 4.8 : 6.2 });
     st.y += 4; st.para(`${h.HELP.rayon_med[1]} ${h.HELP.rayon_dec[1]}`, M, CW, { s: 7 });
@@ -422,14 +423,14 @@ export async function exportPdf(ctx){
     st.text(partTxt, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     const evo = (by, n) => { const ly = META.meta.last_year, a = by?.[String(ly)]?.median, b = by?.[String(ly - n)]?.median; return (a && b) ? (a / b - 1) * 100 : null; };
     const pc = v => ({ t: h.fmtPct(v), c: v == null ? C.grey2 : v > 0 ? C.good : v < 0 ? C.bad : C.text });
-    table(st, [{ l: 'Typologie', w: 2.2 }, { l: 'Part', w: 1, align: 'right' }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'P10', w: 1.05, align: 'right' }, { l: 'Médiane', w: 1.15, align: 'right' }, { l: 'Moy. pond.', w: 1.2, align: 'right' }, { l: 'P90', w: 1.05, align: 'right' }, { l: 'Max', w: 1.05, align: 'right' }, { l: '1 an', w: .95, align: 'right' }, { l: '5 ans', w: .95, align: 'right' }],
+    table(st, [{ l: 'Typologie', w: 2.2 }, { l: 'Part', w: 1, align: 'right' }, { l: 'Ventes', w: 1, align: 'right' }, { l: 'Bottom 10', w: 1.05, align: 'right' }, { l: 'Médiane', w: 1.15, align: 'right' }, { l: 'Moy. pond.', w: 1.2, align: 'right' }, { l: 'Top 10', w: 1.05, align: 'right' }, { l: 'Max', w: 1.05, align: 'right' }, { l: '1 an', w: .95, align: 'right' }, { l: '5 ans', w: .95, align: 'right' }],
       tIds.map(id => { const t = bt[id], ww = t.windows?.[S.per], td = typos.find(x => x.id === id), top = id === bt._top_typo;
         return { fill: top ? [246, 248, 251] : null, cells: [{ t: `${id}  ${td.surfMin}–${td.surfMax} m²${top ? '  · dominante' : ''}`, w: 'bold' }, `${t.share.toFixed(1).replace('.', ',')} %`, money(h, ww?.count), money(h, ww?.p10), { t: money(h, ww?.median), w: 'bold' }, money(h, ww?.wmean), money(h, ww?.p90), money(h, ww?.max), pc(evo(t.by_year, 1)), pc(evo(t.by_year, 5))] }; }), M, CW, { s: 6.8 });
     st.y += 6;
   }
   const by = et.by_year || {}, years = Object.keys(by).sort();
   if (sec('annuel')) { if (firstSection) { st.freshPage(); firstSection = false; } st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
-  table(st, [{ l: 'Année', w: .8 }, { l: 'Ventes', w: .9, align: 'right' }, { l: 'P10', w: .95, align: 'right' }, { l: 'Q1', w: .95, align: 'right' }, { l: 'Médiane', w: 1.05, align: 'right' }, { l: 'Moy. pond.', w: 1.15, align: 'right' }, { l: 'Q3', w: .95, align: 'right' }, { l: 'P90', w: .95, align: 'right' }, { l: 'Max', w: .95, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.15, align: 'right' }],
+  table(st, [{ l: 'Année', w: .8 }, { l: 'Ventes', w: .9, align: 'right' }, { l: 'Bottom 10', w: .95, align: 'right' }, { l: 'Q1', w: .95, align: 'right' }, { l: 'Médiane', w: 1.05, align: 'right' }, { l: 'Moy. pond.', w: 1.15, align: 'right' }, { l: 'Q3', w: .95, align: 'right' }, { l: 'Top 10', w: .95, align: 'right' }, { l: 'Max', w: .95, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.15, align: 'right' }],
     years.map((yy, i) => { const v = by[yy], prev = by[years[i - 1]], e = prev ? (v.median / prev.median - 1) * 100 : null;
       return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.wmean), h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.max), h.fmt0(v.mean), `${h.fmtSurf(v.surf_mean)} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 6.6 });
   }

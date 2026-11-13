@@ -475,8 +475,8 @@ footer a{color:var(--text3)}
 .sec-title .badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--line);color:var(--text3)}
 .sec-title h3{font-size:20px;font-weight:700;letter-spacing:-.015em}
 .sec-title .sub{font-size:12.5px;color:var(--text4);margin-left:auto}
-.vk{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
-@media (max-width:1400px){.vk{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* 13/11 : trois colonnes lues de haut en bas — médiane / moy. pondérée · Top 10 / Bottom 10 · prix max / ventes (ordre du DOM = colonnes) */
+.vk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto;grid-auto-flow:column;gap:14px}
 .vkpi{padding:18px 20px;display:grid;gap:10px;position:relative;min-width:0;border-radius:24px;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
 .vkpi:hover{transform:translateY(-4px)}
 .vkpi.hi{background:linear-gradient(150deg,#23468a,#2d6fb0 55%,#38a468 125%);border-color:transparent;color:#fff;box-shadow:0 18px 40px -16px rgba(35,70,138,.5)}
@@ -575,7 +575,7 @@ footer a{color:var(--text3)}
 
 footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:1320px}
 /* tablette : rail replié, s'ouvre au toucher du logo ou du bouton Filtres */
-@media (max-width:1100px){.vk{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:minmax(0,1fr)}.main{padding-right:16px}.hdr h2{font-size:28px}}
+@media (max-width:1100px){.g2{grid-template-columns:minmax(0,1fr)}.main{padding-right:16px}.hdr h2{font-size:28px}}
 /* téléphone : le rail devient le panneau qui glisse depuis le bas (barre fixe « Filtres ») */
 @media (max-width:700px){
   .rail{left:0;right:0;bottom:0;top:auto;width:auto!important;max-height:88vh;max-height:88dvh;border-radius:24px 24px 0 0;transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
@@ -587,7 +587,7 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
   .main{margin-left:0;padding:12px 12px calc(88px + env(safe-area-inset-bottom))}footer{margin-left:0;padding:0 14px calc(96px + env(safe-area-inset-bottom))}
   .topnav .pill{display:none}.searchpill{height:44px;max-width:none}.searchpill kbd{display:none}.toplist{max-height:min(52vh,420px);width:100%}
   .hdr h2{font-size:26px}.viewtabs{display:inline-grid;width:100%}
-  .vk{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vkpi{padding:14px 14px}.vkpi .val b{font-size:24px}.vkpi .lab{font-size:12px}
+  .vk{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto;grid-auto-flow:row;gap:10px}.vkpi{padding:14px 14px}.vkpi .val b{font-size:24px}.vkpi .lab{font-size:12px}
   .g2{grid-template-columns:minmax(0,1fr)}.sec-title .sub{margin-left:0;flex-basis:100%}
   .pillset button{padding:7px 10px;font-size:12.5px}
 }
@@ -749,34 +749,34 @@ const communesCouvertes = () => Object.values(META?.communes_ref || {}).map(c =>
 const EFFECTIF_FAIBLE = 30;
 // Méthode de calcul de chaque chiffre affiché. Source unique : infobulles « i » à l'écran et page « Méthode » du PDF.
 const HELP = {
-  p90:     ['Top 10 % (P90)', "Seuil des 10 % des ventes les plus chères : 90 % des ventes de la période sont en dessous de ce prix au m². Percentile calculé par interpolation linéaire sur les prix au m² triés, sur les seules ventes de la zone et de la période.", 'percentile 0,90'],
+  p90:     ['Top 10', "Seuil des 10 % des ventes les plus chères (9e décile) : 90 % des ventes de la période sont en dessous de ce prix au m². Percentile calculé par interpolation linéaire sur les prix au m² triés, sur les seules ventes de la zone et de la période.", 'percentile 0,90'],
   median:  ['Médiane', "La moitié des ventes est au-dessus, l'autre moitié en dessous. Robuste aux valeurs extrêmes : c'est la référence utilisée pour toutes les évolutions.", 'percentile 0,50'],
   wmean:   ['Moyenne pondérée', "Somme des prix de vente divisée par la somme des surfaces vendues : le prix moyen du mètre carré réellement échangé. Un 400 m² pèse 400 m², un studio 30 : c'est la moyenne « marché », là où la moyenne simple compte chaque vente pour un.", 'Σ prix ÷ Σ surfaces'],
   max:     ['Prix max', "Le prix au m² le plus élevé parmi les ventes de la période : une seule vente, dont la surface et le mois sont indiqués. À lire comme un plafond observé, pas comme une référence : une vente atypique suffit à le déplacer (le pipeline garde tout entre 1 000 et 40 000 €/m²).", 'max prix/m²'],
   mean:    ['Moyenne', "Somme des prix au m² divisée par le nombre de ventes. Sensible aux ventes atypiques : à lire avec la médiane.", 'Σ prix/m² ÷ n'],
-  p10:     ['Point bas (P10)', "Seuil des 10 % des ventes les moins chères : 10 % des ventes de la période sont en dessous de ce prix au m². Même méthode que le P90.", 'percentile 0,10'],
+  p10:     ['Bottom 10', "Seuil des 10 % des ventes les moins chères (1er décile) : 10 % des ventes de la période sont en dessous de ce prix au m². Même méthode que le Top 10.", 'percentile 0,10'],
   count:   ['Ventes', "Nombre de transactions retenues sur la zone et la période : vente (hors VEFA) d'un logement unique, prix entre 1 000 et 40 000 €/m², surface entre 9 et 400 m². En dessous, la surface médiane des logements vendus.", 'n'],
   evo_n:   ['Évolution sur n ans', "Médiane de la dernière année rapportée à la médiane de l'année n années plus tôt (années civiles complètes). N/D si l'une des deux années compte moins de 3 ventes.", 'méd(A) ÷ méd(A−n) − 1'],
   evo_per: ['Évolution sur la période', "Médiane de la dernière année rapportée à celle de la première année de la période sélectionnée.", 'méd(A) ÷ méd(A₀) − 1'],
   cagr:    ['Taux annualisé', "Taux de croissance annuel composé sur la période : la hausse ou la baisse moyenne par an qui, répétée chaque année, donne l'évolution de la période.", '(1 + évol.)^(1/années) − 1'],
   share:   ['Part du marché', "Part des ventes de cette typologie parmi toutes les typologies définies, calculée sur tout l'historique (pas seulement la période) pour rester stable.", 'n typo ÷ Σ n typos'],
   typo:    ['Prix par typologie', "Percentiles calculés sur les seules ventes dont la surface est dans la fourchette de la typologie (minimum inclus, maximum exclu), sur la période sélectionnée. Les fourchettes se modifient dans les filtres.", 'min ≤ surface < max'],
-  band:    ['Courbe et bande', "Chaque point est calculé sur les ventes de la période affichée (mois, trimestre ou année) : la courbe est la médiane, la bande va du P10 au P90. Les périodes de moins de 3 ventes ne sont pas tracées.", 'par période'],
+  band:    ['Courbe et bande', "Chaque point est calculé sur les ventes de la période affichée (mois, trimestre ou année) : la courbe est la médiane, la bande va du Bottom 10 au Top 10. Les périodes de moins de 3 ventes ne sont pas tracées.", 'par période'],
   vol:     ['Volume', "Nombre de ventes retenues par période. Une année incomplète (données non encore publiées) est signalée dans l'en-tête.", 'n par période'],
   q:       ['Quartiles Q1 · Q3', "25 % des ventes sont en dessous du Q1, 75 % en dessous du Q3 : la moitié centrale du marché se situe entre les deux.", 'percentiles 0,25 · 0,75'],
   surf:    ['Surface', "Surface Carrez de l'acte quand elle est cohérente avec la surface bâtie (écart ≤ 30 %), sinon surface bâtie. Moyenne des surfaces des logements vendus dans l'année.", 'Carrez ou bâtie'],
   yoy:     ['Médiane vs n−1', "Médiane de l'année rapportée à la médiane de l'année précédente.", 'méd(A) ÷ méd(A−1) − 1'],
-  valo_ref:['Prix au m² retenu', "Selon la référence choisie : le percentile du curseur (P10 → P90) parmi les prix au m² des ventes d'appartements de référence, leur moyenne simple, ou leur moyenne pondérée par la surface (Σ prix ÷ Σ surfaces, le m² réellement échangé) ; multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
+  valo_ref:['Prix au m² retenu', "Selon la référence choisie : le percentile du curseur (Bottom 10 → Top 10) parmi les prix au m² des ventes d'appartements de référence, leur moyenne simple, ou leur moyenne pondérée par la surface (Σ prix ÷ Σ surfaces, le m² réellement échangé) ; multiplié par l'ajustement de la ligne. Les ventes de référence sont celles des 12 derniers mois disponibles dont la surface est dans la fourchette de la typologie de la ligne.", 'percentile(position) × (1 + ajust.)'],
   valo_ech:['Échantillon', "Le quartier de l'adresse si au moins 30 ventes comparables y sont enregistrées sur 12 mois ; sinon le secteur, puis l'arrondissement (ou la commune hors Paris). Le niveau réellement utilisé et le nombre de ventes sont affichés ligne par ligne.", 'quartier → secteur → arrondissement'],
-  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. Le curseur ne joue que si la référence est « Percentile » ; avec la moyenne ou la moyenne pondérée, l'ajustement par ligne reste votre levier. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'P10 à P90 · défaut 50'],
-  valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au P10 et au P90 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
+  valo_pos:['Positionnement', "Rang de l'immeuble dans la distribution des prix de référence : 50 = médiane, 10 = bas de marché, 90 = haut de marché. Le curseur ne joue que si la référence est « Percentile » ; avec la moyenne ou la moyenne pondérée, l'ajustement par ligne reste votre levier. DVF ne connaît ni l'étage, ni l'état, ni l'ascenseur : ce curseur est votre jugement, et l'ajustement par ligne permet de le nuancer (dernier étage, rez-de-chaussée…).", 'Bottom 10 à Top 10 · défaut 50'],
+  valo_tot:['Valeur estimée', "Somme, sur les lignes ayant au moins un lot, de prix retenu × surface moyenne × nombre de lots. La fourchette basse et haute reprend le même calcul au Bottom 10 et au Top 10 de chaque ligne (ajustement inclus).", 'Σ ppm² × surface × lots'],
   loy_paris:['Loyer majoré (encadrement Paris)', "Loyer de référence majoré fixé par arrêté préfectoral pour le quartier de l'adresse, le nombre de pièces, l'époque de construction de l'immeuble et le caractère meublé ou vide : c'est le plafond légal du loyer hors charges à la relocation (hors complément de loyer). L'arrêté d'une année s'applique du 1er juillet au 30 juin suivant. Le loyer de référence et le loyer minoré sont indiqués dessous.", '€/m²/mois hors charges'],
   rayon_med:['Médiane dans le rayon', "Prix au m² médian des ventes situées à moins de la distance choisie (à vol d'oiseau, depuis le point géocodé de l'adresse ; DVF donne le centre de la parcelle vendue). Ventes de la plateforme : un logement par mutation, surface Carrez si cohérente sinon bâtie, 1 000–40 000 €/m², 9–400 m². Une année de moins de 5 ventes n'est pas tracée.", '€/m²'],
-  rayon_dec:['1er et 9e déciles', "10 % des ventes de l'année sont en dessous du 1er décile, 10 % au-dessus du 9e (percentiles interpolés, même méthode que le reste de la plateforme). Les moustaches donnent l'étendue du marché local hors extrêmes.", '€/m²'],
+  rayon_dec:['Bottom 10 et Top 10', "10 % des ventes de l'année sont en dessous du Bottom 10 (1er décile), 10 % au-dessus du Top 10 (9e décile) (percentiles interpolés, même méthode que le reste de la plateforme). Les moustaches donnent l'étendue du marché local hors extrêmes.", '€/m²'],
   rayon_prix:['Prix de comparaison', "Lignes facultatives : prix d'acquisition hors droits au m², prix de sortie libre (logements rénovés) et prix de sortie occupé — saisi, ou déduit de la sortie libre par la décote. Ils ne modifient aucun calcul : ils situent l'opération dans la distribution des ventes.", '€/m² HD'],
   rayon_couv:['Couverture du rayon', "Part du disque qui tombe dans les communes couvertes par la plateforme (points échantillonnés sur le disque). En dessous de 100 %, une partie du voisinage réel n'est pas comptée : les ventes des communes voisines non couvertes manquent.", '%'],
   loy_carte:['Loyer d’annonce (carte des loyers)', "Hors Paris, loyer moyen des annonces de la commune (indicateurs DHUP / ANIL, charges comprises), pour les appartements de 1–2 pièces ou de 3 pièces et plus. Ce n'est pas un plafond : un loyer observé sur le marché. À Saint-Ouen, soumise à l'encadrement de Plaine Commune, les plafonds réglementaires ne sont pas intégrés (lot 9b).", '€/m²/mois charges comprises'],
-  rendement:['Rentabilité brute', "Loyer annuel (loyer au m² × surface × 12 × nombre de lots) divisé par la valeur retenue. Brute : avant charges non récupérables, taxe foncière, vacance, travaux et fiscalité. La fourchette reprend le même loyer sur la valeur au P90 (rendement bas) et au P10 (rendement haut).", 'loyer annuel ÷ valeur'],
+  rendement:['Rentabilité brute', "Loyer annuel (loyer au m² × surface × 12 × nombre de lots) divisé par la valeur retenue. Brute : avant charges non récupérables, taxe foncière, vacance, travaux et fiscalité. La fourchette reprend le même loyer sur la valeur au Top 10 (rendement bas) et au Bottom 10 (rendement haut).", 'loyer annuel ÷ valeur'],
   persp_modele:['Modèle de projection', "Le prix cible est proportionnel à la capacité d'emprunt d'un ménage à mensualité constante sur 20 ans (fonction du taux de crédit, avec deux trimestres de retard) multipliée par le niveau général des prix, augmenté de la croissance réelle des revenus. Les prix rejoignent la cible progressivement (vitesse d'ajustement). Coefficients imposés, pas ajustés : une seule constante est calée sur 2014–2025. Une régression libre ajustée sur 2014–2019 dérivait de +100 % en 2025.", 'cible = a + log K20(taux) + log IPCH'],
   persp_scen:['Scénarios', "Central : vos hypothèses. Bas : taux de crédit +1 point et inflation −0,5 point. Haut : taux −1 point et inflation +0,5 point. Le taux rejoint sa cible linéairement sur l'horizon choisi.", 'central · bas · haut'],
   persp_sens:['Sensibilité', "Effet à 5 ans, sur la valeur projetée, d'une variation de chaque hypothèse prise isolément, les autres restant à leur valeur centrale.", 'à 5 ans, toutes choses égales'],
@@ -1086,7 +1086,7 @@ const axisLabel = k => S.gran==='year' ? k : S.gran==='quarter' ? k.replace('-Q'
 // Graphiques SVG
 // ═══════════════════════════════════════════════════════════════════════════════
 const AX = 'font-size="10.5" fill="var(--text4)" font-family="inherit"';   // lot 15 : encres pour le fond bleu nuit
-// Lot 15b : courbe lissée (Catmull-Rom, tension 0,18) en dégradé violet → bleu, fourchette P10–P90 en voile dégradé, pas de
+// Lot 15b : courbe lissée (Catmull-Rom, tension 0,18) en dégradé violet → bleu, fourchette Bottom 10–Top 10 en voile dégradé, pas de
 // quadrillage ; lecture par bulle (survol, ou pilules des années quand il y a 12 points ou moins). Les nœuds de la courbe sont
 // les valeurs exactes ; le lissage ne sert qu'au tracé entre deux périodes.
 const lisse = P => { if (P.length < 3) return P.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
@@ -1117,7 +1117,7 @@ function chartBand(el, pts){
     mk.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt-6}" y2="${pt+ih}" stroke="var(--line3)"/><circle cx="${cx}" cy="${cy}" r="6.5" fill="var(--brand)" stroke="#fff" stroke-width="3"/>
       <rect x="${tx-bw/2}" y="${ty}" width="${bw}" height="40" rx="10" fill="rgba(31,36,48,.96)" stroke="rgba(255,255,255,.18)"/>
       <text x="${tx}" y="${ty+17}" text-anchor="middle" fill="#f1f4f9" font-size="12.5" font-weight="700">${esc(labelOf(p.k))} · ${fmt0(p.median)} €/m²</text>
-      <text x="${tx}" y="${ty+32}" text-anchor="middle" fill="#c9d3e0" font-size="11">P10 ${fmt0(p.p10)} · P90 ${fmt0(p.p90)} · ${nb(p.count)} ventes</text>`;
+      <text x="${tx}" y="${ty+32}" text-anchor="middle" fill="#c9d3e0" font-size="11">Bottom 10 ${fmt0(p.p10)} · Top 10 ${fmt0(p.p90)} · ${nb(p.count)} ventes</text>`;
     if (yrs) [...yrs.children].forEach((b, k) => b.setAttribute('aria-pressed', k === i)); };
   mark(pts.length-1);
   svg.addEventListener('mousemove', ev => { const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; mark(Math.max(0, Math.min(pts.length-1, Math.round((mx-pl)/(iw/(pts.length-1)))))); });
@@ -1172,16 +1172,16 @@ function sectionCard(title, badge, st, chartId, donutSrc = null){
       <article class="vkpi glass hi"><div class="lab">${icoK('<path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/>')}Prix médian</div>${ibC('median')}
         <div class="val"><b>${fmt0(w.median)}</b><em>€/m²</em>${chipEvo(e1)}</div><div class="sub">${w.from} → ${w.to} · ${per}${faible?' · <span style="color:var(--warn)">effectif faible</span>':''}</div></article>
       <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 20h16M6 16l4-5 4 3 4-6"/>')}Moy. pondérée</div>${ibC('wmean')}<div class="val"><b>${fmt0(w.wmean)}</b><em>€/m²</em></div><div class="sub">Σ prix ÷ Σ surfaces · ${per}</div></article>
-      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 19V5M5 12l7-7 7 7"/>')}Top 10 %</div>${ibC('p90')}<div class="val"><b>${fmt0(w.p90)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les plus chers (P90)</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 19V5M5 12l7-7 7 7"/>')}Top 10</div>${ibC('p90')}<div class="val"><b>${fmt0(w.p90)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les plus chers</div></article>
+      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 5v14M5 12l7 7 7-7"/>')}Bottom 10</div>${ibC('p10')}<div class="val"><b>${fmt0(w.p10)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les moins chers</div></article>
       <article class="vkpi glass"><div class="lab">${icoK('<path d="M5 19V9l7-5 7 5v10"/><path d="M12 4v8"/>')}Prix max</div>${ibC('max')}<div class="val"><b>${fmt0(w.max)}</b><em>€/m²</em></div><div class="sub">${w.max_surf != null ? `${fmtSurf(w.max_surf)} m² · ${fmtMois(w.max_ym)}` : per}</div></article>
-      <article class="vkpi glass"><div class="lab">${icoK('<path d="M12 5v14M5 12l7 7 7-7"/>')}Point bas</div>${ibC('p10')}<div class="val"><b>${fmt0(w.p10)}</b><em>€/m²</em></div><div class="sub">seuil des 10 % les moins chers (P10)</div></article>
       <article class="vkpi glass"><div class="lab">${icoK('<path d="M4 7h16M4 12h16M4 17h10"/>')}Ventes</div>${ibC('count')}<div class="val"><b>${fmt0(w.count)}</b></div><div class="sub">${w.from} → ${w.to} · ${per} · surface méd. ${fmtSurf(w.surf_median)} m²</div></article>
     </section>` : `<div class="vcard glass"><div class="vempty">Moins de 3 ventes sur cette période.</div></div>`;
   const evo = `<article class="vcard glass"><h4>Évolution de la médiane</h4>${ibC('evo_n')}<div class="evl">${evoData(st.by_year).map(c => `<div class="${c.on?'on':''}">${c.l}<small>${c.s}</small>${chipEvo(c.v, c.pa)}</div>`).join('')}</div></article>`;
   const donut = donutSrc ? donutHtml(donutSrc) : '';
   return `<div class="sec-title"><span class="badge">${esc(badge)}</span><h3>${esc(title)}</h3><span class="sub">${w?nb(w.count)+' ventes · ':''}${esc(PERIODES[S.per])}${w?` · ${w.from} → ${w.to}`:''}</span></div>
     ${kpis}
-    <section class="g2"><article class="vcard glass vchart"><h4>Prix au m² · ${esc(GRANS[S.gran]).toLowerCase()}</h4>${ibC('band')}<div class="legend"><span><i></i>Médiane</span><span><i class="band"></i>P10 – P90</span></div><div id="${chartId}-band"></div></article>${evo}</section>
+    <section class="g2"><article class="vcard glass vchart"><h4>Prix au m² · ${esc(GRANS[S.gran]).toLowerCase()}</h4>${ibC('band')}<div class="legend"><span><i></i>Médiane</span><span><i class="band"></i>Bottom 10 – Top 10</span></div><div id="${chartId}-band"></div></article>${evo}</section>
     <section class="${donut ? 'g2' : 'g1'}"><article class="vcard glass vchart"><h4>Volume de ventes · ${esc(GRANS[S.gran]).toLowerCase()}</h4>${ibC('vol')}<div id="${chartId}-vol"></div></article>${donut}</section>`;
 }
 function typoTable(et){
@@ -1189,18 +1189,18 @@ function typoTable(et){
   const top = bt._top_typo; const maxShare = Math.max(...ids.map(id=>bt[id].share||0));
   const rows = ids.map(id => { const t = bt[id]; const w = t.windows?.[S.per]; const tdef = S.typos.find(x=>x.id===id); const e1 = evoN(t.by_year,1), e5 = evoN(t.by_year,5); const faible = w && w.count < EFFECTIF_FAIBLE;
     return `<tr class="${id===top?'top':''} ${!w?'dim':''}"><td>${id}<small>${tdef.surfMin}–${tdef.surfMax} m²</small></td><td><span class="share"><span class="bar"><i style="width:${(t.share/maxShare*100).toFixed(0)}%"></i></span>${t.share.toFixed(1).replace('.',',')} %</span></td>
-      <td data-l="Ventes">${w?fmt0(w.count):'—'}${faible?' <span title="effectif faible" style="color:var(--warn)">•</span>':''}</td><td data-l="P10">${fmt0(w?.p10)}</td><td data-l="Médiane"><b>${fmt0(w?.median)}</b></td><td data-l="Moy. pond.">${fmt0(w?.wmean)}</td><td data-l="P90">${fmt0(w?.p90)}</td><td data-l="Max">${fmt0(w?.max)}</td><td data-l="1 an" class="${e1>0?'up':e1<0?'down':''}">${fmtPct(e1)}</td><td data-l="5 ans" class="${e5>0?'up':e5<0?'down':''}">${fmtPct(e5)}</td></tr>`; }).join('');
+      <td data-l="Ventes">${w?fmt0(w.count):'—'}${faible?' <span title="effectif faible" style="color:var(--warn)">•</span>':''}</td><td data-l="Bottom 10">${fmt0(w?.p10)}</td><td data-l="Médiane"><b>${fmt0(w?.median)}</b></td><td data-l="Moy. pond.">${fmt0(w?.wmean)}</td><td data-l="Top 10">${fmt0(w?.p90)}</td><td data-l="Max">${fmt0(w?.max)}</td><td data-l="1 an" class="${e1>0?'up':e1<0?'down':''}">${fmtPct(e1)}</td><td data-l="5 ans" class="${e5>0?'up':e5<0?'down':''}">${fmtPct(e5)}</td></tr>`; }).join('');
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Typologies</span>Répartition et prix par surface · ${S.type === 'Tous' ? 'appartements' : esc(TYPE_LBL(S.type).toLowerCase())}</div><span class="card-sub">part sur ${esc(META.meta.periode)} · prix sur ${esc(PERIODES[S.per]).toLowerCase()}</span></div>
-    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché${ib('share')}</th><th>Ventes${ib('typo')}</th><th>P10${ib('p10')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>P90${ib('p90')}</th><th>Max${ib('max')}</th><th>1 an${ib('evo_n')}</th><th>5 ans${ib('evo_n')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché${ib('share')}</th><th>Ventes${ib('typo')}</th><th>Bottom 10${ib('p10')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>Top 10${ib('p90')}</th><th>Max${ib('max')}</th><th>1 an${ib('evo_n')}</th><th>5 ans${ib('evo_n')}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="hint">Fourchettes modifiables dans les filtres (Typologies). Parts calculées sur tout l'historique ; prix et ventes sur la période sélectionnée. • effectif inférieur à ${EFFECTIF_FAIBLE} ventes.</div></div></div>`;
 }
 function yearTable(st, nom){
   const by = st.by_year || {}; const years = Object.keys(by).sort();
   const rows = years.map((y,i)=>{ const v = by[y], prev = by[years[i-1]]; const e = prev ? (v.median/prev.median-1)*100 : null;
     return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.wmean)}</td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.max)}<small class="mx"> ${fmtSurf(v.max_surf)} m²</small></td><td>${fmt0(v.mean)}</td><td>${fmtSurf(v.surf_mean)} m²</td><td class="${e>0?'up':e<0?'down':''}">${fmtPct(e)}</td></tr>`; }).join('');
-  const csv = ['annee;ventes;p10;q1;mediane;moyenne_ponderee;q3;p90;max;surface_max;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.wmean,v.q3,v.p90,v.max,v.max_surf,v.mean,v.surf_mean].join(';');})].join('\n');
+  const csv = ['annee;ventes;bottom_10;q1;mediane;moyenne_ponderee;q3;top_10;max;surface_max;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.wmean,v.q3,v.p90,v.max,v.max_surf,v.mean,v.surf_mean].join(';');})].join('\n');
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}</div><button class="btn btn-ghost btn-sm" type="button" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
-    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th><th>P10${ib('p10')}</th><th>Q1${ib('q')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>Q3${ib('q')}</th><th>P90${ib('p90')}</th><th>Max${ib('max')}</th><th>Moyenne${ib('mean')}</th><th>Surf. moy.${ib('surf')}</th><th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th><th>Bottom 10${ib('p10')}</th><th>Q1${ib('q')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>Q3${ib('q')}</th><th>Top 10${ib('p90')}</th><th>Max${ib('max')}</th><th>Moyenne${ib('mean')}</th><th>Surf. moy.${ib('surf')}</th><th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-csv]'); if (!b) return; const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(b.dataset.csv); a.download = `dvf_${b.dataset.name.replace(/[^\w]+/g,'_')}_${S.type}.csv`; a.click(); });
 
@@ -1273,14 +1273,14 @@ function update(soft=false){
     typosValides.filter(t=>t.on).forEach(t => { const st = etTypo.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²${pt ? ' · appartements' : ''}`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); }); }
   html += yearTable(et, item.nom);
   if (S.niveau === 'rayon') html += rayonCard(item, idx);
-  html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (P10, Q1, médiane, Q3, P90) et moyenne calculés dans votre navigateur sur les ventes de la période (${nb(lastEtude.n)} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.
+  html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (Bottom 10, Q1, médiane, Q3, Top 10) et moyenne calculés dans votre navigateur sur les ventes de la période (${nb(lastEtude.n)} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.
     <div class="row"><span class="tag">${nb(META.meta.total_mutations)} ventes retenues</span><span class="tag">dernière vente ${fmtDate(META.meta.last_date)}</span><span class="tag">parseur v${META.meta.parser_version}</span></div></div></div>`;
   box.innerHTML = html;
   charts.forEach(([id, st]) => { const pts = seriesFor(st); chartBand($(`${id}-band`), pts); chartBars($(`${id}-vol`), pts); });
   setStatus('ok', statusLine());
 }
 // ═══════════════════════════════════════════════════════════════════════════════
-// Valorisation d'immeuble (moteur : E.valoriser) — tableau éditable, curseur P10→P90, totaux ; état dans le hash
+// Valorisation d'immeuble (moteur : E.valoriser) — tableau éditable, curseur Bottom 10→Top 10, totaux ; état dans le hash
 // ═══════════════════════════════════════════════════════════════════════════════
 const fmtEur = v => v==null ? '—' : nb(Math.round(v)) + ' €';
 const fmtMois = ym => { const l = E.ymLabel(ym); return `${MOIS[l.month-1]} ${l.year}`; };
@@ -1312,7 +1312,7 @@ function rentCard(v){
       <div class="tbl-wrap"><table class="valo-tbl loy-tbl"><thead><tr><th>Typologie</th><th>Pièces</th><th>${paris ? 'Loyer majoré €/m²' : 'Loyer €/m²'}${ib(paris ? 'loy_paris' : 'loy_carte')}</th><th>Loyer / lot / mois</th><th>Loyer annuel</th><th>Rentabilité brute${ib('rendement')}</th></tr></thead><tbody>${rows}</tbody>
         <tfoot><tr><td data-l="Total">Total</td><td class="delc"></td><td class="delc"></td><td data-l="Loyer / mois">${fmtEur(rt.loyerMensuel)}</td><td data-l="Loyer annuel">${fmtEur(rt.loyerAnnuel)}</td><td data-l="Rentabilité brute"><b>${fmtPct2(rt.rendement)}</b></td></tr></tfoot></table></div>
       <div class="valo-kpis"><div class="kpi med big"><div class="l">Rentabilité brute${ib('rendement')}</div><div class="v">${fmtPct2(rt.rendement)}</div><div class="u">${fmtEur(rt.loyerAnnuel)} de loyers par an sur ${fmtEur(rt.valeur)} (P${S.valo.pos})${rt.sansLoyer ? ` · ${rt.sansLoyer} ligne(s) sans loyer exclue(s)` : ''}</div></div>
-        <div class="kpi"><div class="l">Sur valeur haute (P90)</div><div class="v small">${fmtPct2(rt.rendementBas)}</div><div class="u">rendement le plus bas</div></div><div class="kpi"><div class="l">Sur valeur basse (P10)</div><div class="v small">${fmtPct2(rt.rendementHaut)}</div><div class="u">rendement le plus haut</div></div></div>
+        <div class="kpi"><div class="l">Sur valeur haute (Top 10)</div><div class="v small">${fmtPct2(rt.rendementBas)}</div><div class="u">rendement le plus bas</div></div><div class="kpi"><div class="l">Sur valeur basse (Bottom 10)</div><div class="v small">${fmtPct2(rt.rendementHaut)}</div><div class="u">rendement le plus haut</div></div></div>
       <div class="method"><b>Méthode.</b> ${esc(HELP[paris ? 'loy_paris' : 'loy_carte'][1])} ${esc(HELP.rendement[1])}</div></div></div>`;
 }
 async function renderValo(){
@@ -1328,7 +1328,7 @@ async function renderValo(){
       <td data-l="Lots"><input class="vi" type="number" min="0" step="1" value="${r.lots}" data-i="${i}" data-k="lots" aria-label="Nombre de lots"></td>
       <td data-l="Surf. m²"><input class="vi" type="number" min="1" step="1" value="${r.surf||''}" data-i="${i}" data-k="surf" aria-label="Surface moyenne"></td>
       <td data-l="Ajust. %"><input class="vi" type="number" step="1" value="${r.adj}" data-i="${i}" data-k="adj" aria-label="Ajustement en pourcent"></td>
-      <td data-l="Retenu €/m²"><b>${fmt0(r.ppm2)}</b>${ref?.p10!=null?`<div class="hint" style="font-size:10px">P10 ${fmt0(r.ppm2Bas)} · P90 ${fmt0(r.ppm2Haut)}</div>`:''}</td>
+      <td data-l="Retenu €/m²"><b>${fmt0(r.ppm2)}</b>${ref?.p10!=null?`<div class="hint" style="font-size:10px">Bottom 10 ${fmt0(r.ppm2Bas)} · Top 10 ${fmt0(r.ppm2Haut)}</div>`:''}</td>
       <td data-l="Échantillon" class="ech ${ref && !ref.suffisant ? 'warn':''}">${ech}</td><td data-l="Valeur / lot">${fmtEur(r.valeurLot)}</td><td data-l="Valeur"><b>${fmtEur(r.valeur)}</b></td><td class="delc"><button class="del" type="button" data-del="${i}" aria-label="Supprimer la ligne">×</button></td></tr>`; }).join('');
   box.innerHTML = `
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Immeuble</span>Lots présents dans l'immeuble</div><span class="card-sub">appartements · référence sur ${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '12 derniers mois'}</span></div>
@@ -1338,9 +1338,9 @@ async function renderValo(){
       <div class="hint" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>Surface : moyenne par lot, en m² Carrez. Ajustement : ± % appliqué au prix retenu de la ligne (étage, état, vue…).${v.incomplet ? ` <span style="color:var(--warn)">${v.incomplet} ligne(s) avec des lots mais sans surface.</span>` : ''}</span><button class="link" type="button" id="valoAdd">+ ajouter une ligne</button></div></div></div>
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Positionnement</span>Où placer l'immeuble dans le marché${ib('valo_pos')}</div><span class="card-sub">${esc(refLbl)} · ${esc(posLabel)}</span></div>
       <div class="card-b"><div class="loy-ctl" style="margin-bottom:12px"><span><span class="lbl">Référence</span></span><div class="seg seg-3" id="segRef"><button type="button" data-v="pct" class="${mode==='pct'?'on':''}">Percentile</button><button type="button" data-v="mean" class="${mode==='mean'?'on':''}">Moyenne</button><button type="button" data-v="wmean" class="${mode==='wmean'?'on':''}">Moy. pondérée</button></div>${from ? `<span class="hint">${from.bande.id ? from.bande.id + ' · ' : ''}médiane ${fmt0(from.median)} · moyenne ${fmt0(from.mean)} · moy. pondérée ${fmt0(from.wmean)} €/m²</span>` : ''}</div>
-      <div class="slider" ${mode==='pct' ? '' : 'style="opacity:.45" title="Le curseur ne joue qu\'avec la référence Percentile"'}><input type="range" id="valoPos" min="10" max="90" step="1" value="${pos}" aria-label="Positionnement" ${mode==='pct' ? '' : 'disabled'}><div class="marks"><span>P10 · bas</span><span>Q1</span><b>Médiane</b><span>Q3</span><span>P90 · haut</span></div></div>
+      <div class="slider" ${mode==='pct' ? '' : 'style="opacity:.45" title="Le curseur ne joue qu\'avec la référence Percentile"'}><input type="range" id="valoPos" min="10" max="90" step="1" value="${pos}" aria-label="Positionnement" ${mode==='pct' ? '' : 'disabled'}><div class="marks"><span>Bottom 10</span><span>Q1</span><b>Médiane</b><span>Q3</span><span>Top 10</span></div></div>
       <div class="valo-kpis"><div class="kpi med big"><div class="l">Valeur estimée${ib('valo_tot')}</div><div class="v">${fmtEur(v.valeur)}</div><div class="u">${v.lots} lot${v.lots>1?'s':''} · ${nb(v.surfTot)} m² · ${esc(refLbl)}</div></div>
-        <div class="kpi"><div class="l">Fourchette basse</div><div class="v small">${fmtEur(v.valeurBas)}</div><div class="u">au P10 de chaque ligne</div></div><div class="kpi"><div class="l">Fourchette haute</div><div class="v small">${fmtEur(v.valeurHaut)}</div><div class="u">au P90 de chaque ligne</div></div></div>
+        <div class="kpi"><div class="l">Fourchette basse</div><div class="v small">${fmtEur(v.valeurBas)}</div><div class="u">au Bottom 10 de chaque ligne</div></div><div class="kpi"><div class="l">Fourchette haute</div><div class="v small">${fmtEur(v.valeurHaut)}</div><div class="u">au Top 10 de chaque ligne</div></div></div>
       <div class="valo-sub"><div class="kpi"><div class="l">€/m² moyen retenu</div><div class="v small">${fmt0(v.ppm2Moyen)}</div><div class="u">pondéré par les surfaces</div></div><div class="kpi"><div class="l">Quartier</div><div class="v small" style="font-family:var(--sans)">${esc(LAST_ADDR.props.nom)}</div><div class="u">${LAST_ADDR.props.commune===PARIS ? `Paris ${LAST_ADDR.props.arr===1?'1er':LAST_ADDR.props.arr+'e'} · ${esc(REF.sr[LAST_ADDR.props.secteur]?.nom||'')}` : esc(communeNom(LAST_ADDR.props.commune))}</div></div><div class="kpi"><div class="l">Référence</div><div class="v small" style="font-family:var(--sans)">${from ? `${fmtMois(from.ymFrom)} → ${fmtMois(from.ymTo)}` : '—'}</div><div class="u">12 derniers mois de ventes disponibles</div></div></div>
       <div class="method"><b>Méthode.</b> ${esc(HELP.valo_ref[1])} ${esc(HELP.valo_ech[1])} ${esc(HELP.valo_pos[1])}</div></div></div>
     <div id="rentCard">${rentCard(v)}</div>`;
@@ -1582,10 +1582,10 @@ let lastRayon = null;
 // champs de saisie — le re-rendu de toute la carte faisait perdre le curseur au premier chiffre tapé (retour de Franck du 13/10)
 function rayonLive(d){
   const multi = d.series.length > 1;
-  const rows = d.series.flatMap(se => d.years.map(y => { const s = se.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td>${multi ? `<td data-l="Surfaces">${esc(RY.serieLabel(se))}</td>` : ''}<td data-l="Ventes">${s ? s.n : `<span class="warn">moins de 5 ventes</span>`}</td><td data-l="1er décile">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="9e décile">${s ? fmt0(s.p90) : '—'}</td></tr>`; })).join('');
+  const rows = d.series.flatMap(se => d.years.map(y => { const s = se.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td>${multi ? `<td data-l="Surfaces">${esc(RY.serieLabel(se))}</td>` : ''}<td data-l="Ventes">${s ? s.n : `<span class="warn">moins de 5 ventes</span>`}</td><td data-l="Bottom 10">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="Top 10">${s ? fmt0(s.p90) : '—'}</td></tr>`; })).join('');
   return `<div class="rayon-svg" id="rayonSvg" style="margin-top:14px">${d.svg}</div>
       <div class="hint" style="margin-top:8px">Visuel au format du deck Jadero (8,38 × 5,11 pouces, 200 dpi, fond transparent) : le PNG se glisse directement dans une présentation. ${multi ? `Séries : ${d.series.map(RY.serieLabel).map(esc).join(' · ')} — bornes modifiables dans le panneau Typologies. ` : d.series[0].typo ? `Surfaces ${RY.serieLabel(d.series[0])}. ` : ''}${d.couv.couverte < .999 ? `<span class="warn">${Math.round(d.couv.couverte*100)} % du disque dans les communes couvertes.</span>` : ''}</div>
-      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th>${multi ? '<th>Surfaces</th>' : ''}<th>Ventes</th><th>1er décile${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>9e décile${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th>${multi ? '<th>Surfaces</th>' : ''}<th>Ventes</th><th>Bottom 10${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>Top 10${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function rayonCard(item, idx){
   if (!SALES.lon) return `<div class="card glass"><div class="empty"><h3>Coordonnées absentes</h3><p>Les ventes servies n'ont pas encore de coordonnées (format DVS1) : l'analyse par rayon sera disponible après le prochain run de mise à jour.</p></div></div>`;
@@ -1788,9 +1788,11 @@ $('pdfDlg').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pdfDlg').hidden) closePdfDlg(); });
 
-// ── Export Excel des références (13/11) : les ventes de la sélection courante (zone ou rayon, type), sur la période choisie ──
-const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-function loadScriptOnce(url){ return new Promise((ok, ko) => { if (window.XLSX) return ok(); const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => ko(new Error('bibliothèque Excel non chargée (réseau ?)')); document.head.appendChild(sc); }); }
+// ── Export Excel des références (13/11) : les ventes de la sélection courante (zone ou rayon, type), sur la période choisie.
+// ExcelJS (cdnjs) plutôt que SheetJS : la version libre de SheetJS ignore les styles, or Franck veut des en-têtes bleu marine à
+// texte blanc, les m² à une décimale et les prix en € (13/11). Chargé à la demande, comme jsPDF.
+const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+function loadScriptOnce(url){ return new Promise((ok, ko) => { if (window.ExcelJS) return ok(); const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => ko(new Error('bibliothèque Excel non chargée (réseau ?)')); document.head.appendChild(sc); }); }
 let xlsxBusy = false;
 async function exportXlsx(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.idx || xlsxBusy) return;
@@ -1804,22 +1806,29 @@ async function exportXlsx(){
     for (const i of lastEtude.idx) {
       if (SALES.year[i] < y0) { ecartes++; continue; }
       const qid = qi[SALES.q[i]], q = qr[qid]; const lab = E.ymLabel(SALES.ym[i]);
-      rows.push({'Année': lab.year, 'Mois': lab.month, 'Commune': q ? communeNom(q.commune) : '', 'Arrondissement': arrOf(q), 'Quartier': q?.nom || qid || '', 'Secteur': q?.secteur ? (REF.sr[q.secteur]?.nom || q.secteur) : '',
-        'Type': SALES.t[i] === 1 ? 'Maison' : 'Appartement', 'Surface (m²)': Math.round(SALES.surf[i] * 100) / 100, 'Prix (€)': SALES.val[i], 'Prix (€/m²)': Math.round(SALES.ppm2[i]),
-        'Typologie': E.bandeSurface(typos, SALES.surf[i]).id || '', 'Longitude': SALES.lon ? Math.round(SALES.lon[i] * 1e6) / 1e6 : '', 'Latitude': SALES.lat ? Math.round(SALES.lat[i] * 1e6) / 1e6 : ''});
+      rows.push([lab.year, lab.month, q ? communeNom(q.commune) : '', arrOf(q), q?.nom || qid || '', q?.secteur ? (REF.sr[q.secteur]?.nom || q.secteur) : '', SALES.t[i] === 1 ? 'Maison' : 'Appartement',
+        Math.round(SALES.surf[i] * 100) / 100, SALES.val[i], Math.round(SALES.ppm2[i]), E.bandeSurface(typos, SALES.surf[i]).id || '', SALES.lon ? Math.round(SALES.lon[i] * 1e6) / 1e6 : null, SALES.lat ? Math.round(SALES.lat[i] * 1e6) / 1e6 : null]);
     }
-    rows.sort((a, b) => (b['Année'] - a['Année']) || (b['Mois'] - a['Mois']) || (b['Prix (€/m²)'] - a['Prix (€/m²)']));
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [6, 5, 22, 13, 26, 24, 12, 11, 12, 11, 9, 11, 11].map(w => ({wch: w})); ws['!autofilter'] = rows.length ? {ref: `A1:M${rows.length + 1}`} : undefined;
-    XLSX.utils.book_append_sheet(wb, ws, 'Références');
+    rows.sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]) || (b[9] - a[9]));
+    const NAVY = 'FF0B1220', wb = new ExcelJS.Workbook(); wb.creator = 'Jadero · Data Marché Résidentiel'; wb.created = new Date();
+    const head = (ws, titres) => { const r = ws.addRow(titres); r.height = 22; r.eachCell(c => { c.font = {bold: true, color: {argb: 'FFFFFFFF'}, name: 'Calibri', size: 11}; c.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: NAVY}}; c.alignment = {vertical: 'middle', horizontal: 'center', wrapText: true}; c.border = {bottom: {style: 'thin', color: {argb: 'FF2E7D4F'}}}; }); };
+    const ws = wb.addWorksheet('Références', {views: [{state: 'frozen', ySplit: 1}]});
+    const cols = [['Année', 7], ['Mois', 6], ['Commune', 22], ['Arrondissement', 14], ['Quartier', 26], ['Secteur', 26], ['Type', 12], ['Surface (m²)', 12], ['Prix (€)', 14], ['Prix (€/m²)', 13], ['Typologie', 10], ['Longitude', 11], ['Latitude', 11]];
+    ws.columns = cols.map(([h, w]) => ({width: w})); head(ws, cols.map(c => c[0]));
+    rows.forEach(r => ws.addRow(r));
+    const fmt = {8: '0.0', 9: '#,##0 "€"', 10: '#,##0 "€/m²"', 12: '0.000000', 13: '0.000000', 1: '0', 2: '0'};
+    ws.eachRow((row, n) => { if (n === 1) return; for (const [c, f] of Object.entries(fmt)) row.getCell(+c).numFmt = f; [1, 2, 7, 11].forEach(c => row.getCell(c).alignment = {horizontal: 'center'}); if (n % 2 === 0) row.eachCell({includeEmpty: true}, cell => { cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: 'FFF6F8FB'}}; }); });
+    if (rows.length) ws.autoFilter = {from: 'A1', to: `M${rows.length + 1}`};
     const per = S.per === 'all' ? `${META.meta.annees[0]} → ${ly} (historique complet)` : `${y0} → ${ly} (${PERIODES[S.per]})`;
     const params = [['Étude', item.nom], ['Niveau', NIVEAUX[S.niveau]], ['Repères', crumbsOf(item).join(' · ')], ['Type de bien', TYPE_LBL(S.type)], ['Période', per], ['Ventes exportées', rows.length], ['Ventes de la sélection hors période', ecartes],
       ['Typologies (bornes de surface)', typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(' · ')], ['Source', `DVF (DGFiP / Etalab), millésimes ${META.meta.periode} · traitement Jadero v${META.meta.parser_version || ''}`],
       ['Règles', 'Ventes d’un logement seul (appartement ou maison), prix au m² dans les bornes de plausibilité, surface Carrez connue ; une mutation = une vente.'],
       ['Coordonnées', 'Point de la parcelle (géocodage DVF), arrondi à 6 décimales ; pas d’adresse dans le fichier source.'], ['Généré le', new Date().toLocaleString('fr-FR')], ['Lien de l’étude', location.href]];
-    const wp = XLSX.utils.aoa_to_sheet(params); wp['!cols'] = [{wch: 32}, {wch: 110}]; XLSX.utils.book_append_sheet(wb, wp, 'Paramètres');
+    const wp = wb.addWorksheet('Paramètres'); wp.columns = [{width: 32}, {width: 110}]; head(wp, ['Paramètre', 'Valeur']);
+    params.forEach(r => { const row = wp.addRow(r); row.getCell(1).font = {bold: true, name: 'Calibri', size: 11}; row.getCell(2).alignment = {wrapText: true, vertical: 'top'}; });
     const slug = item.nom.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
-    XLSX.writeFile(wb, `Jadero_References_${slug}_${S.per === 'all' ? META.meta.annees[0] : y0}-${ly}.xlsx`);
+    const buf = await wb.xlsx.writeBuffer(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    a.download = `Jadero_References_${slug}_${S.per === 'all' ? META.meta.annees[0] : y0}-${ly}.xlsx`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     setStatus('ok', `${fmt0(rows.length)} références exportées`); setTimeout(() => setStatus('ok', statusLine()), 4000);
   } catch(ex) { console.error(ex); setStatus('err', `Excel impossible : ${ex.message}`); }
   finally { xlsxBusy = false; const b = $('btnXlsx'); if (b) b.disabled = false; }

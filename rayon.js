@@ -41,7 +41,7 @@ export function rayonSvg(series, years, opts){
   // ligne, 89 px vides sur 511 entre le titre et la légende (rapport du 15/10, mesuré par tests/audit_pdf.py).
   const dash = `stroke-dasharray="8.3 5.6"`;   // (6, 4) en points matplotlib × 1,39
   const items = multi ? series.map((se, k) => ['patch', SERIES_COLORS[k % SERIES_COLORS.length], `Médiane ${serieLabel(se)}`]) : [['patch', GREY2, 'Médiane']];
-  items.push(['line', GREY, '1er et 9e déciles', '']);
+  items.push(['line', GREY, 'Bottom 10 – Top 10 (déciles)', '']);
   if (opts.acq > 0) items.push(['line', GREY, `Acquisition : logements à ${fmtN(opts.acq)} € / m² HD`, dash]);
   if (opts.libre > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.libre)} € / m² HD libre (logements rénovés)`, dash, 2.8]);
   if (opts.occupe > 0) items.push(['line', GREEN, `Sortie : ${fmtN(opts.occupe)} € / m² HD occupé${opts.decote > 0 ? ` (décote ${Math.round(opts.decote)}%)` : ''}`, 'stroke-dasharray="2.1 4.2"', 2.2]);
@@ -122,7 +122,7 @@ export function rayonSvg(series, years, opts){
   items.forEach((it, k) => {
     const col = Math.floor(k / nrow), row = k % nrow; const x = left + col * colW + 20, y = legTop + row * rowH + 10;
     if (it[0] === 'patch') out.push(`<rect x="${x}" y="${y - 6}" width="40" height="12" rx="4" fill="url(#${gradId(it[1])})"/>`);
-    else if (it[2].startsWith('1er')) out.push(`<line x1="${x + 2}" x2="${x + 38}" y1="${y}" y2="${y}" stroke="${WHISK}" stroke-width="7" stroke-linecap="round"/><circle cx="${x + 2}" cy="${y}" r="2.4" fill="${GREY}"/><circle cx="${x + 38}" cy="${y}" r="2.4" fill="${GREY}"/>`);
+    else if (it[2].startsWith('Bottom')) out.push(`<line x1="${x + 2}" x2="${x + 38}" y1="${y}" y2="${y}" stroke="${WHISK}" stroke-width="7" stroke-linecap="round"/><circle cx="${x + 2}" cy="${y}" r="2.4" fill="${GREY}"/><circle cx="${x + 38}" cy="${y}" r="2.4" fill="${GREY}"/>`);
     else out.push(`<line x1="${x}" x2="${x + 40}" y1="${y}" y2="${y}" stroke="${it[1]}" stroke-width="${it[4] || 1.8}" stroke-linecap="round" ${it[3] || ''}/>`);
     out.push(`<text x="${x + 50}" y="${y + 4.5}" font-size="${fLeg}" fill="${GREY}">${esc(it[2])}</text>`);
   });
@@ -133,7 +133,7 @@ export function rayonSvg(series, years, opts){
   const surfTxt = (opts.type === 'Tous' && !series.some(s => s.typo)) ? '' : multi ? ` (${series.map(serieLabel).join(', ')})` : (series[0].typo ? ` de ${series[0].typo.surfMin} à ${series[0].typo.surfMax} m²` : '');
   const src = `Source : DVF (data.gouv.fr), ventes ${venteDe(opts.type)}${surfTxt}, rayon de ${fmtN(opts.rayon)} m ; ${fmtN(nTotal)} ventes${last ? ` dont ${fmtN(nLast)} en ${last}` : ''}.`;
   out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 16}" font-size="${src.length > 150 ? 9.6 : 11.1}" fill="${MUTED}">${esc(src)}</text>`);
-  out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 2}" font-size="11.1" fill="${MUTED}">${esc('Lecture : la barre est le prix au m² médian des ventes de l’année ; la moustache va du 1er décile (10 % des ventes en dessous) au 9e décile (10 % au-dessus).')}</text>`);
+  out.push(`<text x="${0.01 * W}" y="${H - 0.015 * H - 2}" font-size="11.1" fill="${MUTED}">${esc('Lecture : la barre est le prix au m² médian des ventes de l’année ; la capsule va du Bottom 10 (10 % des ventes en dessous) au Top 10 (10 % au-dessus).')}</text>`);
   out.push('</svg>');
   return out.join('');
 }
