@@ -242,6 +242,12 @@ Géographie : 80 quartiers administratifs de Paris (Ville de Paris) et 118 quart
 affectation par point-dans-polygone. Niveaux : arrondissements (celui du polygone, pas celui déclaré dans DVF) et
 communes entières, secteurs (listes de quartiers, Paris), zones officielles d'encadrement des loyers (Paris), quartiers.
 
+Bilan du périmètre (compteurs du pipeline, affiché dans la méthode à l'écran et dans le PDF, à jour à chaque run) : sur
+2014–2025, 712 521 mutations DVF dans les 16 communes couvertes, 493 650 retenues (69 %) ; écartées : 127 226 sans logement
+(18 %), 41 439 hors ventes classiques — VEFA, échanges, adjudications (6 %), 28 565 à plusieurs logements — blocs, lots groupés
+(4 %, volontaire : un prix de bloc n'est pas un prix au m² de logement), 10 558 hors bornes de prix (1,5 %), 7 073 avec local
+professionnel (1 %), 3 279 hors bornes de surface, 724 à valeur nulle. Paris seul : 499 985 → 351 249, autour de 30 000 par an.
+
 ## Sources
 
 DGFiP « Demandes de valeurs foncières » via Etalab (geo-dvf, opendatarchives) · Ville de Paris (quartiers,

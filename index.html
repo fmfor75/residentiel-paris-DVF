@@ -1273,7 +1273,7 @@ function update(soft=false){
     typosValides.filter(t=>t.on).forEach(t => { const st = etTypo.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²${pt ? ' · appartements' : ''}`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); }); }
   html += yearTable(et, item.nom);
   if (S.niveau === 'rayon') html += rayonCard(item, idx);
-  html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (Bottom 10, Q1, médiane, Q3, Top 10) et moyenne calculés dans votre navigateur sur les ventes de la période (${nb(lastEtude.n)} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.
+  html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (Bottom 10, Q1, médiane, Q3, Top 10) et moyenne calculés dans votre navigateur sur les ventes de la période (${nb(lastEtude.n)} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.${(() => { const b = bilanExclusions(); return b ? `<br><b>Périmètre.</b> ${esc(b.texte)}` : ''; })()}
     <div class="row"><span class="tag">${nb(META.meta.total_mutations)} ventes retenues</span><span class="tag">dernière vente ${fmtDate(META.meta.last_date)}</span><span class="tag">parseur v${META.meta.parser_version}</span></div></div></div>`;
   box.innerHTML = html;
   charts.forEach(([id, st]) => { const pts = seriesFor(st); chartBand($(`${id}-band`), pts); chartBars($(`${id}-vol`), pts); });
@@ -1867,6 +1867,19 @@ async function exportXlsx(){
   finally { xlsxBusy = false; const b = $('btnXlsx'); if (b) b.disabled = false; }
 }
 
+// Bilan du périmètre (13/11, question de Franck : « il n'y a eu que 500 000 ventes en 10 ans ? ») : mutations DVF dans les communes
+// couvertes, retenues, et motifs d'exclusion avec leur volume — calculé à partir des compteurs du pipeline (META.meta.exclusions),
+// donc à jour après chaque run. Affiché dans la méthode à l'écran et dans le PDF.
+const MOTIFS = {excl_sans_logement: 'sans logement (parkings, caves, locaux seuls)', excl_nature_non_vente: 'hors ventes classiques (VEFA, échanges, adjudications)', excl_plusieurs_logements: 'plusieurs logements dans la même vente (blocs, lots groupés)',
+  excl_ppm2_hors_bornes: 'prix au m² hors des bornes 1 000 – 40 000 €', excl_local_pro_dans_la_vente: 'local professionnel dans la vente', excl_surface_hors_bornes: 'surface hors des bornes 9 – 400 m²', excl_valeur_nulle: 'valeur foncière nulle', excl_surface_nulle: 'surface nulle'};
+function bilanExclusions(){
+  const ex = META.meta.exclusions; if (!ex) return null; const tot = {};
+  for (const annees of Object.values(ex)) for (const c of Object.values(annees)) for (const [k, v] of Object.entries(c)) if (!k.startsWith('nature:')) tot[k] = (tot[k] || 0) + v;
+  const per = tot.mutations_perimetre, ret = tot.mutations_retenues; if (!per) return null;
+  const motifs = Object.keys(MOTIFS).map(k => [k, tot[k] || 0]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const pc = v => (v / per * 100).toFixed(1).replace('.', ',') + '\u00a0%';
+  return {per, ret, pcRet: pc(ret), motifs, texte: `Sur ${META.meta.periode}, DVF compte ${nb(per)} mutations dans les communes couvertes ; ${nb(ret)} sont retenues (${pc(ret)}). Écartées : ${motifs.map(([k, v]) => `${nb(v)} ${MOTIFS[k]} (${pc(v)})`).join(' ; ')}. L'exclusion des ventes à plusieurs logements est volontaire : un prix de bloc divisé par la surface totale n'est pas un prix au m² de logement.`};
+}
 async function exportPdf(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
   pdfBusy = true; const btn = $('btnPdf'); if (btn) { btn.disabled = true; btn.textContent = 'Génération…'; } setStatus('busy', 'Génération du PDF…');
@@ -1878,7 +1891,7 @@ async function exportPdf(){
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item).filter(c => c !== 'disque entièrement couvert'), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
       sections: pdfSelection(item), address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: pdfSelection(item).rayon ? await rayonPourPdf(item, true) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
-      helpers: {fmt0: v => fmt0(v).replace(/\u00A0/g, '\u202F'), fmtSurf: v => fmtSurf(v).replace(/\u00A0/g, '\u202F'), fmtPct, fmtPctS, fmtPct2, fmtEur: v => fmtEur(v).replace(/\u00A0/g, '\u202F'), fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
+      helpers: {bilanExclusions, fmt0: v => fmt0(v).replace(/\u00A0/g, '\u202F'), fmtSurf: v => fmtSurf(v).replace(/\u00A0/g, '\u202F'), fmtPct, fmtPctS, fmtPct2, fmtEur: v => fmtEur(v).replace(/\u00A0/g, '\u202F'), fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });
     setStatus('ok', statusLine());
   } catch(ex) { console.error(ex); setStatus('err', `PDF impossible : ${ex.message}`); }
