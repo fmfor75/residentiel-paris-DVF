@@ -1851,7 +1851,7 @@ async function exportPdf(){
     const P = await import('./pdf.js');
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
-      META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
+      META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item).filter(c => c !== 'disque entièrement couvert'), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
       sections: pdfSelection(item), address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: pdfSelection(item).rayon ? await rayonPourPdf(item, true) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
       helpers: {fmt0: v => fmt0(v).replace(/\u00A0/g, '\u202F'), fmtSurf: v => fmtSurf(v).replace(/\u00A0/g, '\u202F'), fmtPct, fmtPctS, fmtPct2, fmtEur: v => fmtEur(v).replace(/\u00A0/g, '\u202F'), fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
