@@ -698,7 +698,7 @@ footer{margin-left:calc(var(--rail) + 32px);padding:6px 28px 30px 0;max-width:13
 <div class="pdfdlg" id="pdfDlg" hidden>
   <div class="pdfbox" role="dialog" aria-modal="true" aria-labelledby="pdfTitle">
     <div class="pdfhead"><h3 id="pdfTitle">Composer le rapport</h3><button type="button" class="round" id="pdfClose" aria-label="Fermer"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <p class="hint">Cochez les parties à inclure. La page de garde (carte, repères, évolution) est toujours présente. Votre choix est gardé dans le lien de l'étude.</p>
+    <p class="hint">Cochez les parties à inclure ; chacune est indépendante. Votre choix est gardé dans le lien de l'étude.</p>
     <div class="pdfsecs" id="pdfSecs"></div>
     <div class="pdfbtns"><button type="button" class="pbtn" data-pdfpreset="tout">Tout</button><button type="button" class="pbtn" data-pdfpreset="essentiel">L’essentiel</button><span class="grow"></span><button type="button" class="pbtn" id="pdfCancel">Annuler</button><button type="button" class="btn-grad" id="pdfGo"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0 4-4m-4 4-4-4M5 20h14"/></svg>Générer le PDF</button></div>
   </div>
@@ -1562,8 +1562,8 @@ const RPRIX_DEFAUT = () => ({acq: 0, libre: 0, occupe: 0, decote: 20, hist: 5, t
 // Visuel « marché autour de l'immeuble » : années = historique choisi (2 / 5 / 10 ans) jusqu'à la dernière année disponible,
 // surfaces = toutes, ou une ou plusieurs typologies du panneau (bornes du moment, une série par typologie — lot 10c), ventes du
 // rayon de l'étude (même sélection que les chiffres clés)
-function computeRayon(item, idx){
-  if (!item || S.niveau !== 'rayon' || !LAST_ADDR?.props) return null; if (!S.rprix) S.rprix = RPRIX_DEFAUT();
+function computeRayon(item, idx, force = false){
+  if (!item || (S.niveau !== 'rayon' && !force) || !LAST_ADDR?.props) return null; if (!S.rprix) S.rprix = RPRIX_DEFAUT();
   const R = S.rprix; const years = []; for (let y = META.meta.last_year - R.hist + 1; y <= META.meta.last_year; y++) years.push(y);
   const t0 = performance.now();
   const ids = (R.typo || '').split(',').filter(Boolean); const typos = ids.map(id => S.typos.find(t => t.id === id && t.surfMax > t.surfMin)).filter(Boolean);
@@ -1731,12 +1731,15 @@ $('addrForm').addEventListener('submit', async e => {
 // ═══════════════════════════════════════════════════════════════════════════════
 let pdfBusy = false;
 async function valoPourPdf(){
-  if (!LAST_ADDR?.props || !S.valo) return null; await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
+  if (!LAST_ADDR?.props) return null; if (!S.valo) S.valo = VALO_DEFAUT();   /* sans lot saisi : références par typologie (composition, 13/11) */
+  await ensureLoyers(); const v = computeValo(); const rt = computeRent(v);
   return {...v, pos: S.valo.pos, rent: rt ? {...rt, meuble: !!S.valo.meuble, epoque: EPOQUES[S.valo.epoque||0], paris: LAST_ADDR.props.commune === PARIS, src: LAST_ADDR.props.commune === PARIS ? LOYERS.paris : LOYERS.carte} : null};
 }
 async function rayonPourPdf(item, force = false){   // visuel du deck pour la page du PDF : la même image PNG que le téléchargement (un seul dessin)
-  if (S.niveau !== 'rayon' || !SALES.lon || !(force || (S.rprix?.pdf ?? true))) return null;
-  const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)})); if (!d) return null;
+  if (!LAST_ADDR?.props || !SALES.lon || !(force || (S.niveau === 'rayon' && (S.rprix?.pdf ?? true)))) return null;
+  if (S.niveau !== 'rayon') item = rayonItem(300);   // étude hors rayon mais adresse localisée : visuel à 300 m (composition, 13/11)
+  if (!item) return null;
+  const d = computeRayon(item, E.selectRayon(SALES, LAST_ADDR.lon, LAST_ADDR.lat, item.r, {type: TYPE_CODE(S.type)}), true); if (!d) return null;
   try { d.png = await RY.svgToPngDataUrl(d.svg); } catch(ex) { d.png = null; d.pngErreur = ex.message; }
   return d;
 }
@@ -1751,29 +1754,35 @@ async function perspPourPdf(item){   // scénarios avec les hypothèses courante
 // ── Lot 18 : composition du rapport ───────────────────────────────────────────────────────────────────────────
 // Clés des parties (celles du PDF : pdf.js `sec(k)`), description et disponibilité selon l'étude courante
 const PDF_SECS = [
-  {k:'garde', l:'Page de garde', d:'Carte de la zone, repères (adresse, quartier, secteur, zone) et évolution de la médiane.', fixe:true},
+  {k:'garde', l:'Page de garde', d:'Carte de la zone, repères (adresse, quartier, secteur, zone d’encadrement) et évolution de la médiane.'},
   {k:'global', l:'Marché global', d:'Chiffres clés toutes surfaces, évolution sur 1, 3, 5 et 10 ans, courbe des prix et volumes.'},
   {k:'types', l:'Appartements et maisons séparés', d:'En type « Tous » : une section pour les appartements, une pour les maisons.'},
-  {k:'typos', l:'Typologies', d:'Une section par typologie cochée (T1 → T5) et le tableau de répartition et de prix par surface.'},
+  {k:'typos', l:'Sections par typologie', d:'Une section (chiffres clés, évolution, courbe, volumes) par typologie cochée dans les filtres.'},
+  {k:'typoTable', l:'Tableau des typologies', d:'Répartition et prix par surface : part, ventes, Bottom 10, médiane, moyenne pondérée, Top 10, max, évolutions.'},
   {k:'annuel', l:'Tableau annuel', d:'Ventes, déciles, quartiles, médiane, moyennes et prix max par année.'},
-  {k:'valo', l:'Valorisation de l’immeuble', d:'Lots saisis, prix retenus par ligne, valeur et fourchette.'},
-  {k:'loyers', l:'Loyers et rentabilité brute', d:'Loyers de référence (encadrement ou carte des loyers) et rendement de l’immeuble.'},
-  {k:'rayon', l:'Visuel « marché autour de l’immeuble »', d:'Le graphique du deck (médiane et déciles par année dans le rayon) et son tableau.'},
+  {k:'valo', l:'Valorisation de l’immeuble', d:'Prix de référence par typologie autour de l’adresse ; avec des lots saisis, valeur de l’immeuble et fourchette.', adr:true},
+  {k:'loyers', l:'Loyers et rentabilité brute', d:'Loyers de référence (encadrement ou carte des loyers) par typologie ; avec des lots saisis, loyers et rendement de l’immeuble.', adr:true},
+  {k:'rayon', l:'Visuel « marché autour de l’immeuble »', d:'Le graphique du deck (médiane, Bottom 10 et Top 10 par année dans le rayon) et son tableau — rayon de l’étude, sinon 300 m.', adr:true},
   {k:'persp', l:'Perspectives', d:'Hypothèses, scénarios à 3, 5 et 10 ans, sensibilité, rétrospectif du modèle.'},
   {k:'demo', l:'Démographie et parc', d:'Ce qu’il faut retenir, impact du coefficient démographique, détail INSEE.'},
   {k:'methode', l:'Méthode et sources', d:'Périmètre, règles de traitement DVF, définition des indicateurs, sources.'},
 ];
-const PDF_ESSENTIEL = ['garde', 'global', 'typos', 'valo', 'persp'];
-function pdfDispo(item){   // disponibilité de chaque partie pour l'étude courante (même logique que les blocs de pdf.js)
-  const et = lastEtude?.et, PT = lastEtude?.parType, etTypo = PT ? PT.app : et, hasValo = !!(LAST_ADDR?.props && S.valo && S.valo.lignes.some(l => l.lots > 0));
-  return {garde: true, global: !!(S.global || PT), types: !!PT, typos: !!(etTypo && S.typos.some(t => t.on && t.surfMax > t.surfMin && etTypo.by_typo?.[t.id])), annuel: !!et?.by_year, valo: hasValo, loyers: hasValo,
-    rayon: S.niveau === 'rayon' && !!SALES.lon, persp: true, demo: true, methode: true};
+const PDF_ESSENTIEL = ['garde', 'global', 'typos', 'typoTable', 'valo', 'persp'];
+// Disponibilité : toute partie se coche dès qu'elle peut être produite (13/11 : « chacune des parties doit être sélectionnable »).
+// Les parties liées à l'adresse (valorisation, loyers, rayon) le sont dès qu'une adresse est localisée — même sans lot saisi, elles
+// donnent alors les références par typologie ; sans adresse, elles sont affichées grisées avec la raison. « Appartements et maisons
+// séparés » n'apparaît qu'en type « Tous ».
+function pdfDispo(item){
+  const et = lastEtude?.et, PT = lastEtude?.parType, etTypo = PT ? PT.app : et, adr = !!LAST_ADDR?.props;
+  const typoOn = !!(etTypo && S.typos.some(t => t.on && t.surfMax > t.surfMin && etTypo.by_typo?.[t.id])), typoAny = !!(etTypo && S.typos.some(t => t.surfMax > t.surfMin && etTypo.by_typo?.[t.id]));
+  return {garde: true, global: !!(S.global || PT), types: !!PT, typos: typoOn, typoTable: typoAny, annuel: !!et?.by_year, valo: adr, loyers: adr, rayon: adr && !!SALES.lon, persp: true, demo: true, methode: true};
 }
-function pdfSelection(item){ const dispo = pdfDispo(item); const out = {}; PDF_SECS.forEach(x => { out[x.k] = x.fixe || (dispo[x.k] && !S.pdfOff.includes(x.k)); }); return out; }
+function pdfSelection(item){ const dispo = pdfDispo(item); const out = {}; PDF_SECS.forEach(x => { out[x.k] = dispo[x.k] && !S.pdfOff.includes(x.k); }); return out; }
 function renderPdfDlg(item){
-  const dispo = pdfDispo(item);
-  $('pdfSecs').innerHTML = PDF_SECS.map(x => { const on = x.fixe || (dispo[x.k] && !S.pdfOff.includes(x.k)); const off = !dispo[x.k] && !x.fixe;
-    return `<label class="${x.fixe ? 'fixe' : ''} ${off ? 'off' : ''}"><input type="checkbox" data-pdfsec="${x.k}" ${on ? 'checked' : ''} ${x.fixe || off ? 'disabled' : ''}><span><b>${x.l}${off ? ' <small style="display:inline;color:var(--text4)">· pas dans cette étude</small>' : ''}</b><small>${x.d}</small></span></label>`; }).join('');
+  const dispo = pdfDispo(item), PT = lastEtude?.parType;
+  $('pdfSecs').innerHTML = PDF_SECS.filter(x => x.k !== 'types' || PT).map(x => { const on = dispo[x.k] && !S.pdfOff.includes(x.k); const off = !dispo[x.k];
+    const why = off ? (x.adr ? 'nécessite une adresse localisée (onglet Carte)' : x.k === 'typos' ? 'aucune typologie cochée dans les filtres' : 'pas dans cette étude') : '';
+    return `<label class="${off ? 'off' : ''}"><input type="checkbox" data-pdfsec="${x.k}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}><span><b>${x.l}${off ? ` <small style="display:inline;color:var(--text4)">· ${why}</small>` : ''}</b><small>${x.d}</small></span></label>`; }).join('');
 }
 function openPdfDlg(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.et || pdfBusy) return;
@@ -1782,7 +1791,7 @@ function openPdfDlg(){
 function closePdfDlg(){ $('pdfDlg').hidden = true; $('btnPdf')?.focus(); }
 $('pdfSecs').addEventListener('change', e => { const c = e.target.closest('input[data-pdfsec]'); if (!c) return; const k = c.dataset.pdfsec; S.pdfOff = S.pdfOff.filter(x => x !== k); if (!c.checked) S.pdfOff.push(k); writeHash(); });
 $('pdfDlg').addEventListener('click', e => {
-  const pr = e.target.closest('[data-pdfpreset]'); if (pr) { const item = S.id ? findItem(S.niveau, S.id) : null; S.pdfOff = pr.dataset.pdfpreset === 'tout' ? [] : PDF_SECS.filter(x => !x.fixe && !PDF_ESSENTIEL.includes(x.k)).map(x => x.k); writeHash(); renderPdfDlg(item); return; }
+  const pr = e.target.closest('[data-pdfpreset]'); if (pr) { const item = S.id ? findItem(S.niveau, S.id) : null; S.pdfOff = pr.dataset.pdfpreset === 'tout' ? [] : PDF_SECS.filter(x => !PDF_ESSENTIEL.includes(x.k)).map(x => x.k); writeHash(); renderPdfDlg(item); return; }
   if (e.target.closest('#pdfCancel, #pdfClose') || e.target === $('pdfDlg')) { closePdfDlg(); return; }
   if (e.target.closest('#pdfGo')) { closePdfDlg(); exportPdf(); }
 });

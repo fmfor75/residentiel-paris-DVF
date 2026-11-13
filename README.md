@@ -166,7 +166,11 @@ de la zone, scénario central avec et sans) ; le détail INSEE est replié desso
 « Exporter en PDF » ouvre d'abord « Composer le rapport » : les parties à cocher (page de garde toujours présente ; marché global,
 appartements et maisons séparés, typologies, tableau annuel, valorisation, loyers, visuel du rayon, perspectives, démographie et
 parc, méthode), avec les parties absentes de l'étude grisées, « Tout » / « L'essentiel », le choix gardé dans le lien (`pdf=` =
-parties exclues). Côté `pdf.js`, chaque bloc est conditionnel (`sec(k)`) et commence sur une page fraîche (`st.freshPage`) au
+parties exclues) ; chaque partie est indépendante, page de garde comprise, et les parties liées à l'adresse (valorisation, loyers,
+visuel du rayon) se cochent dès qu'une adresse est localisée — sans lot saisi elles donnent les références par typologie, hors
+niveau rayon le visuel est tracé à 300 m ; sans adresse elles sont grisées avec la raison. Sur la page de garde, la zone
+d'encadrement des loyers n'apparaît que si la valorisation ou les loyers sont dans le rapport (sinon les repères restants se
+répartissent sur la largeur). Côté `pdf.js`, chaque bloc est conditionnel (`sec(k)`) et commence sur une page fraîche (`st.freshPage`) au
 lieu de finir par un saut : aucune page blanche quelle que soit la sélection (vérifié : tout = 15 pages, essentiel = 7, méthode
 seule = 4, aucune page vide). La case « intégrer le visuel au PDF » du panneau rayon est remplacée par la composition (une seule
 source). **Références Excel** : bouton à côté du PDF, `.xlsx` (SheetJS depuis cdnjs, chargé à la demande) des ventes de la
