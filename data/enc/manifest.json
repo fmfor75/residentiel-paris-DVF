@@ -5,20 +5,26 @@
   "hash": "SHA-256",
   "iterations": 200000
  },
- "generated_at": "2026-11-01T12:33:46.093695Z",
+ "generated_at": "2026-11-13T17:36:19.760318Z",
  "periode": "2014–2025",
  "files": {
   "meta": {
    "file": "meta.bin",
-   "bytes": 25505,
-   "plain_bytes": 138143,
-   "sha256": "462837a841a103bc"
+   "bytes": 25504,
+   "plain_bytes": 138144,
+   "sha256": "212d98ea957d6a50"
   },
   "sales": {
    "file": "sales.bin",
    "bytes": 4071090,
    "plain_bytes": 6891246,
    "sha256": "66d0ec5cbe59aa4b"
+  },
+  "adresses": {
+   "file": "adresses.bin",
+   "bytes": 1835219,
+   "plain_bytes": 3591668,
+   "sha256": "e230b13dd7ba2b94"
   }
  }
 }
