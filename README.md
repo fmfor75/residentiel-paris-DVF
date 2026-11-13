@@ -16,6 +16,7 @@ rayon.js                      ← visuel « marché autour de l'immeuble » (SVG
 assets/logo-jadero.png        ← logo (page de connexion, PDF)
 data/enc/meta.bin             ← méta, référentiels (secteurs, zones, quartiers, typologies par défaut) — chiffré
 data/enc/sales.bin            ← toutes les ventes retenues, 14 octets par vente avec coordonnées (format DVS2) — chiffré
+data/enc/adresses.bin         ← adresse, jour et pièces de chaque vente, alignés sur sales.bin (format DVA1) — chiffré, export Excel
 data/enc/manifest.json        ← liste des fichiers chiffrés et paramètres de dérivation de clé (clair)
 data/geo/                     ← référentiel géographique versionné (quartiers.geojson, referentiel.json) — clair
 data/dvf_cache.json.gz        ← cache des mutations consolidées par (département, année), avec empreinte de source
@@ -170,7 +171,16 @@ parties exclues) ; chaque partie est indépendante, page de garde comprise, et l
 visuel du rayon) se cochent dès qu'une adresse est localisée — sans lot saisi elles donnent les références par typologie, hors
 niveau rayon le visuel est tracé à 300 m ; sans adresse elles sont grisées avec la raison. Sur la page de garde, la zone
 d'encadrement des loyers n'apparaît que si la valorisation ou les loyers sont dans le rapport (sinon les repères restants se
-répartissent sur la largeur). Côté `pdf.js`, chaque bloc est conditionnel (`sec(k)`) et commence sur une page fraîche (`st.freshPage`) au
+répartissent sur la largeur). **Adresses dans l'export Excel (13/11).** Le pipeline garde désormais l'adresse de la parcelle (numéro, suffixe, voie, code
+postal — colonnes `adresse_*` et `code_postal`, présentes dans geo-dvf comme dans opendatarchives), le jour exact et le nombre de
+pièces, et écrit `data/dvf_adresses.bin` (format DVA1 : table des voies + 7 octets par vente, dans l'ordre exact de
+`dvf_sales.bin`) que `build_site.py` chiffre en `data/enc/adresses.bin`. Le dashboard ne le charge qu'au premier export Excel,
+vérifie qu'il compte autant d'enregistrements que les ventes (sinon il l'ignore : jamais une adresse sur la mauvaise vente) et
+ajoute les colonnes Date complète, Adresse, Code postal, Pièces ; sans le fichier (404 tant que le run complet n'a pas tourné),
+l'export se fait sans ces colonnes et le dit (statut, feuille Paramètres). Le cache porte un `cache_format` (2) distinct de la
+version des règles : un cache d'un autre format est reconstruit, donc **le premier run après ce lot retélécharge les 60 fichiers
+DVF** (règles inchangées : vérifié sur 2025, 28 595 ventes et mêmes médianes avant / après, 0 incohérence code postal /
+commune, 0 vente sans voie). Côté `pdf.js`, chaque bloc est conditionnel (`sec(k)`) et commence sur une page fraîche (`st.freshPage`) au
 lieu de finir par un saut : aucune page blanche quelle que soit la sélection (vérifié : tout = 15 pages, essentiel = 7, méthode
 seule = 4, aucune page vide). La case « intégrer le visuel au PDF » du panneau rayon est remplacée par la composition (une seule
 source). **Références Excel** : bouton à côté du PDF, `.xlsx` (SheetJS depuis cdnjs, chargé à la demande) des ventes de la

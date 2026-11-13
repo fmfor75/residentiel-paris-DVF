@@ -26,6 +26,7 @@ def row(mid, date, nature, val, code, parcelle, type_local, surf, nbpp, lon, lat
     r = {h: "" for h in HEADER}
     r.update({"id_mutation": mid, "date_mutation": date, "numero_disposition": "1", "nature_mutation": nature,
               "valeur_fonciere": f"{val:.2f}", "adresse_nom_voie": "RUE DE, LA VIRGULE",   # virgule volontaire : teste le csv quoté
+              "adresse_numero": str(1 + (hash(parcelle) % 200)), "adresse_suffixe": "B" if (hash(parcelle) % 7) == 0 else "",   # 13/11 : adresse par parcelle
               "code_postal": "75008" if code.startswith("75") else "92100",
               "code_commune": code, "nom_commune": "Paris" if code.startswith("75") else COMMUNES.get(code, ("Ailleurs",))[0],
               "code_departement": code[:2], "id_parcelle": parcelle,

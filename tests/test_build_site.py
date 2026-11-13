@@ -22,7 +22,7 @@ class BuildSite(unittest.TestCase):
     def tearDown(self): shutil.rmtree(self.tmp, ignore_errors=True)
 
     def run_build(self, code):
-        return subprocess.run([sys.executable, os.path.join(ROOT, "scripts/build_site.py"), "--src", self.src, "--sales", os.path.join(self.tmp, "dvf_sales.bin"), "--out", self.out, "--code", code],
+        return subprocess.run([sys.executable, os.path.join(ROOT, "scripts/build_site.py"), "--src", self.src, "--sales", os.path.join(self.tmp, "dvf_sales.bin"), "--adresses", os.path.join(self.tmp, "dvf_adresses.bin"), "--out", self.out, "--code", code],
                               capture_output=True, text=True)
 
     def test_aller_retour_et_decoupage(self):
@@ -33,8 +33,17 @@ class BuildSite(unittest.TestCase):
         sales = B.decrypt(key, open(os.path.join(self.out, "sales.bin"), "rb").read())
         self.assertEqual(sales[:4], b"DVS2"); self.assertEqual(len(sales), 40 + 2 * 14)
         man = json.load(open(os.path.join(self.out, "manifest.json")))
-        self.assertEqual(set(man["files"]), {"meta", "sales"}); self.assertEqual(man["kdf"]["iterations"], B.ITER)
-        self.assertFalse(os.path.exists(os.path.join(self.out, "secteurs.bin")))
+        self.assertEqual(set(man["files"]), {"meta", "sales"}); self.assertEqual(man["kdf"]["iterations"], B.ITER)   # sans fichier d'adresses : pas d'entrée
+        self.assertFalse(os.path.exists(os.path.join(self.out, "secteurs.bin"))); self.assertFalse(os.path.exists(os.path.join(self.out, "adresses.bin")))
+        # 13/11 : avec le fichier d'adresses (DVA1), une troisième entrée chiffrée ; s'il disparaît, adresses.bin est retiré
+        import struct
+        with open(os.path.join(self.tmp, "dvf_adresses.bin"), "wb") as f:
+            v = "RUE DE TEST".encode(); f.write(b"DVA1" + struct.pack("<II", 2, 1) + struct.pack("<IH", 75008, len(v)) + v + struct.pack("<HBBBH", 13, 0, 9, 2, 0) + struct.pack("<HBBBH", 2, ord("B"), 21, 4, 0))
+        r = self.run_build("un code de test"); self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        man = json.load(open(os.path.join(self.out, "manifest.json"))); self.assertEqual(set(man["files"]), {"meta", "sales", "adresses"})
+        adr = B.decrypt(key, open(os.path.join(self.out, "adresses.bin"), "rb").read()); self.assertEqual(adr[:4], b"DVA1"); self.assertEqual(len(adr), 12 + 6 + len(v) + 2 * 7)
+        os.remove(os.path.join(self.tmp, "dvf_adresses.bin")); r = self.run_build("un code de test"); self.assertEqual(r.returncode, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "adresses.bin"))); self.assertEqual(set(json.load(open(os.path.join(self.out, "manifest.json")))["files"]), {"meta", "sales"})
 
     def test_mauvais_code_refuse(self):
         self.run_build("un code de test")

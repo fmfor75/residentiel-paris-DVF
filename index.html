@@ -1801,13 +1801,34 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pdfDlg
 // ExcelJS (cdnjs) plutôt que SheetJS : la version libre de SheetJS ignore les styles, or Franck veut des en-têtes bleu marine à
 // texte blanc, les m² à une décimale et les prix en € (13/11). Chargé à la demande, comme jsPDF.
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+// Adresses (13/11) : data/enc/adresses.bin, format DVA1 (voir process_dvf.py), aligné sur sales.bin — chargé et déchiffré au premier
+// export seulement ; absent (404) tant que le run complet n'a pas tourné : l'export se fait alors sans adresse, en le disant.
+let ADR = null, ADR_ERR = null;
+function decodeAdresses(buf){
+  const dv = new DataView(buf); if (String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3)) !== 'DVA1') throw new Error('format d’adresses inconnu');
+  const n = dv.getUint32(4, true), nv = dv.getUint32(8, true); let o = 12; const voies = new Array(nv), td = new TextDecoder();
+  for (let i = 0; i < nv; i++) { const cp = dv.getUint32(o, true), ln = dv.getUint16(o + 4, true); voies[i] = {cp: cp || null, voie: td.decode(new Uint8Array(buf, o + 6, ln))}; o += 6 + ln; }
+  const num = new Uint16Array(n), suf = new Uint8Array(n), jour = new Uint8Array(n), nbpp = new Uint8Array(n), vi = new Uint16Array(n);
+  for (let i = 0; i < n; i++, o += 7) { num[i] = dv.getUint16(o, true); suf[i] = dv.getUint8(o + 2); jour[i] = dv.getUint8(o + 3); nbpp[i] = dv.getUint8(o + 4); vi[i] = dv.getUint16(o + 5, true); }
+  return {n, voies, num, suf, jour, nbpp, vi};
+}
+async function ensureAdresses(){
+  if (ADR || ADR_ERR) return;
+  try { const r = await fetch(`${ENC_DIR}adresses.bin?v=${Date.now()}`, {cache: 'no-store'}); if (!r.ok) throw new Error(r.status === 404 ? 'adresses non encore publiées (prochain run complet)' : `HTTP ${r.status}`);
+    ADR = decodeAdresses(await (await decryptBlob(new Uint8Array(await r.arrayBuffer()), KEY)).arrayBuffer());
+    if (ADR.n !== SALES.n) { ADR_ERR = `adresses (${ADR.n}) et ventes (${SALES.n}) désalignées`; ADR = null; }   // jamais d'adresse attribuée à la mauvaise vente
+  } catch(ex) { ADR_ERR = ex.message; ADR = null; }
+}
+// « RUE DE PENTHIEVRE » → « Rue de Penthièvre » n'est pas possible sans les accents ; on garde les majuscules DVF, en capitales initiales
+const VOIE_ABR = {AV: 'Avenue', BD: 'Boulevard', PL: 'Place', RTE: 'Route', IMP: 'Impasse', ALL: 'Allée', SQ: 'Square', CHE: 'Chemin', PAS: 'Passage', QU: 'Quai', VLA: 'Villa', CRS: 'Cours', SEN: 'Sentier', CHS: 'Chaussée', PROM: 'Promenade', ESP: 'Esplanade', RPT: 'Rond-point', GAL: 'Galerie', HAM: 'Hameau', LOT: 'Lotissement', RES: 'Résidence', CAR: 'Carrefour', PONT: 'Pont', CITE: 'Cité'};   // abréviations de type de voie DVF (relevé : « AV DES CHAMPS ELYSEES », « BD RICHARD LENOIR »)
+const voieLisible = v => { const parts = v.split(' '); if (VOIE_ABR[parts[0]]) parts[0] = VOIE_ABR[parts[0]].toUpperCase(); return parts.join(' ').toLowerCase().replace(/(^|[\s'’-])(\S)/g, (m, a, b) => a + b.toUpperCase()).replace(/\b(De|Du|Des|La|Le|Les|Et|D|L|Au|Aux)\b/g, m => m.toLowerCase()); };
 function loadScriptOnce(url){ return new Promise((ok, ko) => { if (window.ExcelJS) return ok(); const sc = document.createElement('script'); sc.src = url; sc.onload = ok; sc.onerror = () => ko(new Error('bibliothèque Excel non chargée (réseau ?)')); document.head.appendChild(sc); }); }
 let xlsxBusy = false;
 async function exportXlsx(){
   const item = S.id ? findItem(S.niveau, S.id) : null; if (!item || !lastEtude?.idx || xlsxBusy) return;
   xlsxBusy = true; const btn = $('btnXlsx'); if (btn) { btn.disabled = true; } setStatus('busy', 'Préparation du fichier Excel…');
   try {
-    await loadScriptOnce(XLSX_URL);
+    await loadScriptOnce(XLSX_URL); await ensureAdresses(); const A = ADR;
     const ly = META.meta.last_year, y0 = S.per === 'all' ? 0 : ly - (+S.per) + 1;
     const typos = S.typos.filter(t => t.surfMax > t.surfMin), qi = META.quartier_index, qr = META.quartiers_ref || {};
     const arrOf = q => q?.commune === PARIS && q.arr ? `Paris ${q.arr === 1 ? '1er' : q.arr + 'e'}` : '';
@@ -1815,30 +1836,33 @@ async function exportXlsx(){
     for (const i of lastEtude.idx) {
       if (SALES.year[i] < y0) { ecartes++; continue; }
       const qid = qi[SALES.q[i]], q = qr[qid]; const lab = E.ymLabel(SALES.ym[i]);
-      rows.push([lab.year, lab.month, q ? communeNom(q.commune) : '', arrOf(q), q?.nom || qid || '', q?.secteur ? (REF.sr[q.secteur]?.nom || q.secteur) : '', SALES.t[i] === 1 ? 'Maison' : 'Appartement',
+      const v = A ? A.voies[A.vi[i]] : null, adresse = A && v?.voie ? `${A.num[i] ? A.num[i] + (A.suf[i] ? String.fromCharCode(A.suf[i]) : '') + ' ' : ''}${voieLisible(v.voie)}` : '';
+      const date = A && A.jour[i] ? new Date(Date.UTC(lab.year, lab.month - 1, A.jour[i])) : new Date(Date.UTC(lab.year, lab.month - 1, 1));
+      rows.push([date, lab.year, adresse, A ? (v?.cp || '') : '', q ? communeNom(q.commune) : '', arrOf(q), q?.nom || qid || '', q?.secteur ? (REF.sr[q.secteur]?.nom || q.secteur) : '', SALES.t[i] === 1 ? 'Maison' : 'Appartement', A && A.nbpp[i] ? A.nbpp[i] : null,
         Math.round(SALES.surf[i] * 100) / 100, SALES.val[i], Math.round(SALES.ppm2[i]), E.bandeSurface(typos, SALES.surf[i]).id || '', SALES.lon ? Math.round(SALES.lon[i] * 1e6) / 1e6 : null, SALES.lat ? Math.round(SALES.lat[i] * 1e6) / 1e6 : null]);
     }
-    rows.sort((a, b) => (b[0] - a[0]) || (b[1] - a[1]) || (b[9] - a[9]));
+    rows.sort((a, b) => (b[0] - a[0]) || (b[12] - a[12]));
     const NAVY = 'FF0B1220', wb = new ExcelJS.Workbook(); wb.creator = 'Jadero · Data Marché Résidentiel'; wb.created = new Date();
     const head = (ws, titres) => { const r = ws.addRow(titres); r.height = 22; r.eachCell(c => { c.font = {bold: true, color: {argb: 'FFFFFFFF'}, name: 'Calibri', size: 11}; c.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: NAVY}}; c.alignment = {vertical: 'middle', horizontal: 'center', wrapText: true}; c.border = {bottom: {style: 'thin', color: {argb: 'FF2E7D4F'}}}; }); };
     const ws = wb.addWorksheet('Références', {views: [{state: 'frozen', ySplit: 1}]});
-    const cols = [['Année', 7], ['Mois', 6], ['Commune', 22], ['Arrondissement', 14], ['Quartier', 26], ['Secteur', 26], ['Type', 12], ['Surface (m²)', 12], ['Prix (€)', 14], ['Prix (€/m²)', 13], ['Typologie', 10], ['Longitude', 11], ['Latitude', 11]];
+    const cols = [['Date', 11], ['Année', 7], ['Adresse', 30], ['Code postal', 9], ['Commune', 20], ['Arrondissement', 13], ['Quartier', 24], ['Secteur', 24], ['Type', 12], ['Pièces', 7], ['Surface (m²)', 11], ['Prix (€)', 13], ['Prix (€/m²)', 12], ['Typologie', 9], ['Longitude', 11], ['Latitude', 11]];
     ws.columns = cols.map(([h, w]) => ({width: w})); head(ws, cols.map(c => c[0]));
     rows.forEach(r => ws.addRow(r));
-    const fmt = {8: '0.0', 9: '#,##0 "€"', 10: '#,##0 "€/m²"', 12: '0.000000', 13: '0.000000', 1: '0', 2: '0'};
-    ws.eachRow((row, n) => { if (n === 1) return; for (const [c, f] of Object.entries(fmt)) row.getCell(+c).numFmt = f; [1, 2, 7, 11].forEach(c => row.getCell(c).alignment = {horizontal: 'center'}); if (n % 2 === 0) row.eachCell({includeEmpty: true}, cell => { cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: 'FFF6F8FB'}}; }); });
-    if (rows.length) ws.autoFilter = {from: 'A1', to: `M${rows.length + 1}`};
+    const fmt = {1: A ? 'dd/mm/yyyy' : 'mm/yyyy', 2: '0', 10: '0', 11: '0.0', 12: '#,##0 "€"', 13: '#,##0 "€/m²"', 15: '0.000000', 16: '0.000000'};
+    ws.eachRow((row, n) => { if (n === 1) return; for (const [c, f] of Object.entries(fmt)) row.getCell(+c).numFmt = f; [1, 2, 4, 9, 10, 14].forEach(c => row.getCell(c).alignment = {horizontal: 'center'}); if (n % 2 === 0) row.eachCell({includeEmpty: true}, cell => { cell.fill = {type: 'pattern', pattern: 'solid', fgColor: {argb: 'FFF6F8FB'}}; }); });
+    if (rows.length) ws.autoFilter = {from: 'A1', to: `P${rows.length + 1}`};
     const per = S.per === 'all' ? `${META.meta.annees[0]} → ${ly} (historique complet)` : `${y0} → ${ly} (${PERIODES[S.per]})`;
     const params = [['Étude', item.nom], ['Niveau', NIVEAUX[S.niveau]], ['Repères', crumbsOf(item).join(' · ')], ['Type de bien', TYPE_LBL(S.type)], ['Période', per], ['Ventes exportées', rows.length], ['Ventes de la sélection hors période', ecartes],
       ['Typologies (bornes de surface)', typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(' · ')], ['Source', `DVF (DGFiP / Etalab), millésimes ${META.meta.periode} · traitement Jadero v${META.meta.parser_version || ''}`],
       ['Règles', 'Ventes d’un logement seul (appartement ou maison), prix au m² dans les bornes de plausibilité, surface Carrez connue ; une mutation = une vente.'],
-      ['Coordonnées', 'Point de la parcelle (géocodage DVF), arrondi à 6 décimales ; pas d’adresse dans le fichier source.'], ['Généré le', new Date().toLocaleString('fr-FR')], ['Lien de l’étude', location.href]];
+      ['Adresses', A ? 'Adresse de la parcelle vendue telle que publiée dans DVF (numéro, suffixe, voie, code postal), sans étage ni lot ; date complète et pièces de la même source.' : `Non disponibles dans cet export : ${ADR_ERR || 'fichier absent'} — les adresses arrivent avec le prochain run complet des données.`],
+      ['Coordonnées', 'Point de la parcelle (géocodage DVF), arrondi à 6 décimales.'], ['Généré le', new Date().toLocaleString('fr-FR')], ['Lien de l’étude', location.href]];
     const wp = wb.addWorksheet('Paramètres'); wp.columns = [{width: 32}, {width: 110}]; head(wp, ['Paramètre', 'Valeur']);
     params.forEach(r => { const row = wp.addRow(r); row.getCell(1).font = {bold: true, name: 'Calibri', size: 11}; row.getCell(2).alignment = {wrapText: true, vertical: 'top'}; });
     const slug = item.nom.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
     const buf = await wb.xlsx.writeBuffer(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
     a.download = `Jadero_References_${slug}_${S.per === 'all' ? META.meta.annees[0] : y0}-${ly}.xlsx`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    setStatus('ok', `${fmt0(rows.length)} références exportées`); setTimeout(() => setStatus('ok', statusLine()), 4000);
+    setStatus('ok', `${fmt0(rows.length)} références exportées${A ? '' : ' · sans adresses (' + (ADR_ERR || 'fichier absent') + ')'}`); setTimeout(() => setStatus('ok', statusLine()), 6000);
   } catch(ex) { console.error(ex); setStatus('err', `Excel impossible : ${ex.message}`); }
   finally { xlsxBusy = false; const b = $('btnXlsx'); if (b) b.disabled = false; }
 }

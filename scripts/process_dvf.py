@@ -55,6 +55,10 @@ def millesimes_candidats():
 CACHE_FILE = "data/dvf_cache.json.gz"   # v13.1 : toutes les années, gzip (36 Mo → ~8 Mo), empreinte de source par entrée
 OUTPUT     = "data/dvf_paris.json"
 SALES      = "data/dvf_sales.bin"   # lot 4 : ventes compactes pour le calcul dans le navigateur (non commité, chiffré par build_site)
+ADRESSES   = "data/dvf_adresses.bin"   # 13/11 : adresse, jour et pièces de chaque vente, alignés sur dvf_sales.bin (export Excel ; non commité, chiffré)
+# Format du cache (≠ version des règles) : 2 = mutations avec adresse (num, suf, voie, cp) et pièces — un cache d'un autre format est
+# reconstruit, donc toutes les sources sont retéléchargées (demande du 13/11 : adresses dans l'export Excel).
+CACHE_FORMAT = 2
 
 # ══════════════════════════════════════════════════════════════════
 # CONFIG MÉTIER — une seule source de vérité, recopiée dans le JSON
@@ -295,6 +299,10 @@ def parse_csv_multi(fh, annee, par_dep, journal=None):
             "surf": to_f(row["surface_reelle_bati"]), "carrez": carrez,
             "nbpp": int(to_f(row["nombre_pieces_principales"])),
             "lat": to_f(row["latitude"]), "lon": to_f(row["longitude"]),
+            # adresse de la parcelle (geo-dvf et opendatarchives : adresse_numero, adresse_suffixe, adresse_nom_voie, code_postal —
+            # relevé du 13/11 sur 75/2025 et 75/2014) ; colonnes facultatives : absentes → vides
+            "num": int(to_f(row.get("adresse_numero") or 0)), "suf": (row.get("adresse_suffixe") or "").strip()[:1].upper(),
+            "voie": " ".join((row.get("adresse_nom_voie") or "").split()).upper(), "cp": (row.get("code_postal") or "").strip(),
         })
 
     out = {}
@@ -349,7 +357,7 @@ def consolider(m, annee, dep):
     arr = CODE_TO_ARR.get(m["code"]) if dep == "75" else None
     return {"arr": arr, "val": m["val"], "surf": surf, "type": lg["type"],
             "nbpp": lg["nbpp"], "date": m["date"], "annee": annee, "lat": lat, "lon": lon,
-            "dep": dep, "code": m["code"]}
+            "dep": dep, "code": m["code"], "num": lg.get("num", 0), "suf": lg.get("suf", ""), "voie": lg.get("voie", ""), "cp": lg.get("cp", "")}
 
 # ══════════════════════════════════════════════════════════════════
 # CACHE — mutations consolidées par (dep, année), avec la source et la version du parseur
@@ -363,6 +371,8 @@ def load_cache():
         print(f"  ⚠ cache illisible ({e}) — ignoré"); return {}
     if d.get("parser_version") != PARSER_VERSION:
         print(f"  ↻ cache parser v{d.get('parser_version')} ≠ v{PARSER_VERSION} — reconstruit"); return {}
+    if d.get("cache_format", 1) != CACHE_FORMAT:
+        print(f"  ↻ cache format {d.get('cache_format', 1)} ≠ {CACHE_FORMAT} (adresses) — reconstruit, toutes les sources seront retéléchargées"); return {}
     entries = d.get("entries", {})
     print(f"  ✓ cache v{PARSER_VERSION} : {len(entries)} entrées (dep_année)")
     return entries
@@ -370,7 +380,7 @@ def load_cache():
 def save_cache(entries):
     os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
     with gzip.open(CACHE_FILE, "wt", encoding="utf-8", compresslevel=6) as f:
-        json.dump({"parser_version": PARSER_VERSION, "generated_at": datetime.utcnow().isoformat()+"Z",
+        json.dump({"parser_version": PARSER_VERSION, "cache_format": CACHE_FORMAT, "generated_at": datetime.utcnow().isoformat()+"Z",
                    "entries": entries}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"  ✓ cache écrit : {os.path.getsize(CACHE_FILE)/1e6:.1f} Mo, {len(entries)} entrées")
 
@@ -527,15 +537,39 @@ def ecrire_ventes_compactes(all_muts, geo):
     rows = []
     for m in muts:
         y, mo = int(m["date"][:4]), int(m["date"][5:7])
-        rows.append((qidx[m["q"]], 1 if m["type"] == "Maison" else 0, (y - 2000) * 12 + mo - 1,
-                     min(65535, round(m["surf"] * 100)), min(4_294_967_295, round(m["val"])),
-                     round((m["lon"] - lon0) / dlon * 65535), round((m["lat"] - lat0) / dlat * 65535)))
-    rows.sort()   # tri par quartier puis date : meilleure compression, aucune information perdue
+        rows.append(((qidx[m["q"]], 1 if m["type"] == "Maison" else 0, (y - 2000) * 12 + mo - 1,
+                      min(65535, round(m["surf"] * 100)), min(4_294_967_295, round(m["val"])),
+                      round((m["lon"] - lon0) / dlon * 65535), round((m["lat"] - lat0) / dlat * 65535)),
+                     (m.get("num") or 0, m.get("suf") or "", m.get("voie") or "", m.get("cp") or "", int(m["date"][8:10] or 0), m.get("nbpp") or 0)))
+    rows.sort(key=lambda r: r[0])   # tri par quartier puis date : meilleure compression, aucune information perdue ; l'adresse suit sa vente
     with open(SALES, "wb") as f:
         f.write(SALES_MAGIC + struct.pack("<I", len(rows)) + struct.pack("<dddd", lon0, lat0, dlon, dlat))
-        for r in rows: f.write(struct.pack("<BBHHIHH", *r))
+        for r, _ in rows: f.write(struct.pack("<BBHHIHH", *r))
     print(f"  ✓ {SALES} : {len(rows):,} ventes, {os.path.getsize(SALES)/1e6:.1f} Mo (quartier_index : {len(qids)}, emprise {lon0:.4f}→{lon1:.4f} / {lat0:.4f}→{lat1:.4f})")
+    ecrire_adresses([a for _, a in rows])
     return qids
+
+# Adresses (13/11) — format « DVA1 », même ordre que dvf_sales.bin (le i-ème enregistrement décrit la i-ème vente) :
+#   en-tête : b"DVA1" · uint32 n · uint32 nombre de voies
+#   table des voies : par voie, uint32 code postal (0 si inconnu) · uint16 longueur · libellé UTF-8 (« RUE DE PENTHIEVRE »)
+#   puis n enregistrements de 7 octets : uint16 numéro (0 inconnu) · uint8 suffixe ASCII (0, « B », « T »…) · uint8 jour · uint8 pièces · uint16 index de voie
+# Chargé par le navigateur au moment de l'export Excel seulement. Les ventes sans adresse sont comptées.
+ADRESSES_MAGIC = b"DVA1"
+def ecrire_adresses(adrs):
+    voies = {}; recs = []; sans = 0
+    for num, suf, voie, cp, jour, nbpp in adrs:
+        if not voie: sans += 1
+        try: cpn = int(cp) if cp else 0
+        except ValueError: cpn = 0
+        k = (cpn, voie); vi = voies.setdefault(k, len(voies))
+        recs.append((min(65535, num), ord(suf[0]) if suf and ord(suf[0]) < 256 else 0, min(255, max(0, jour)), min(255, max(0, nbpp)), vi))
+    if len(voies) > 65535: raise RuntimeError(f"{len(voies)} voies distinctes : l'index de voie tient sur 16 bits")
+    with open(ADRESSES, "wb") as f:
+        f.write(ADRESSES_MAGIC + struct.pack("<II", len(recs), len(voies)))
+        for (cpn, voie), _ in sorted(voies.items(), key=lambda kv: kv[1]):
+            b = voie.encode("utf-8")[:65535]; f.write(struct.pack("<IH", cpn, len(b)) + b)
+        for r in recs: f.write(struct.pack("<HBBBH", *r))
+    print(f"  ✓ {ADRESSES} : {len(recs):,} adresses, {len(voies):,} voies, {os.path.getsize(ADRESSES)/1e6:.1f} Mo ; sans voie : {sans:,} ({sans / max(1, len(recs)) * 100:.1f} %)")
 
 # ══════════════════════════════════════════════════════════════════
 # MAIN

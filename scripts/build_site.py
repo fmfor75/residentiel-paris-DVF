@@ -3,8 +3,10 @@
 """
 build_site.py — prépare les données servies au dashboard : découpage par niveau, gzip, chiffrement.
 
-Entrée  : data/dvf_paris.json + data/dvf_sales.bin (produits par process_dvf.py, NON commités)
-Sortie  : data/enc/manifest.json (clair) + data/enc/meta.bin + data/enc/sales.bin (chiffrés)
+Entrée  : data/dvf_paris.json + data/dvf_sales.bin + data/dvf_adresses.bin (produits par process_dvf.py, NON commités)
+Sortie  : data/enc/manifest.json (clair) + data/enc/meta.bin + data/enc/sales.bin + data/enc/adresses.bin (chiffrés)
+13/11   : adresses.bin (adresse, jour, pièces par vente, pour l'export Excel) est facultatif — absent tant que le cache n'a pas été
+          reconstruit ; le dashboard s'en passe alors.
 Lot 4   : le navigateur calcule tout lui-même à partir des ventes (sales.bin) ; les fichiers par niveau
           (arrondissements, secteurs, zones, quartiers) ne sont plus produits.
 
@@ -28,6 +30,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 SRC     = "data/dvf_paris.json"
 SALES   = "data/dvf_sales.bin"
+ADRESSES = "data/dvf_adresses.bin"
 OUT_DIR = "data/enc"
 MAGIC   = b"DVF1"
 SALT    = bytes.fromhex("6a61646572302d6476662d70617269732d3236")[:16]   # "jadero-dvf-paris-26"
@@ -61,7 +64,7 @@ def decrypt(key: bytes, blob: bytes) -> bytes:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=SRC); ap.add_argument("--sales", default=SALES); ap.add_argument("--out", default=OUT_DIR)
+    ap.add_argument("--src", default=SRC); ap.add_argument("--sales", default=SALES); ap.add_argument("--adresses", default=ADRESSES); ap.add_argument("--out", default=OUT_DIR)
     ap.add_argument("--code", default=os.environ.get("DVF_CODE", ""))
     args = ap.parse_args()
     if len(args.code) < 8:
@@ -74,6 +77,8 @@ def main():
     sources = {nom: json.dumps(sel(d), ensure_ascii=False, separators=(",", ":")).encode("utf-8") for nom, sel in NIVEAUX.items()}
     if os.path.exists(args.sales): sources["sales"] = open(args.sales, "rb").read()
     else: print(f"✗ {args.sales} absent : lancer process_dvf.py d'abord"); return 2
+    if os.path.exists(args.adresses): sources["adresses"] = open(args.adresses, "rb").read()
+    else: print(f"  ! {args.adresses} absent : export Excel sans adresses jusqu'au prochain run complet")
     for nom, plain in sources.items():
         blob = encrypt(key, plain)
         assert decrypt(key, blob) == plain           # aller-retour vérifié avant d'écrire
@@ -82,6 +87,9 @@ def main():
                                   "sha256": hashlib.sha256(blob).hexdigest()[:16]}
         print(f"  {nom:<8} {len(plain)/1e6:5.2f} Mo → {len(blob)/1e6:5.2f} Mo chiffré {'(inchangé)' if inchange else '(écrit)'}")
     # Fichiers d'anciens niveaux (lot 3) : supprimés pour ne pas laisser des données périmées en ligne
+    if "adresses" not in sources:
+        vp = os.path.join(args.out, "adresses.bin")
+        if os.path.exists(vp): os.remove(vp); print("  − adresses.bin supprimé (source absente)")
     for vieux in ("arrondissements", "secteurs", "zones", "quartiers"):
         vp = os.path.join(args.out, f"{vieux}.bin")
         if os.path.exists(vp): os.remove(vp); print(f"  − {vieux}.bin supprimé (niveau précalculé, remplacé par sales.bin)")

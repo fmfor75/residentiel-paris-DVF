@@ -86,6 +86,18 @@ class Pipeline(unittest.TestCase):
             lon, lat = lon0 + lq / 65535 * dlon, lat0 + laq / 65535 * dlat
             if geo.quartier(d["quartiers_ref"][qids[qi]]["commune"], lon, lat) != qids[qi]: hors += 1
         self.assertEqual(hors, 0, "coordonnées relues hors du quartier (inversion lat/lon ou emprise fausse ?)")
+        # 13/11 : adresses DVA1 alignées sur les ventes — même nombre, la i-ème adresse décrit la i-ème vente (jour cohérent avec
+        # le mois de la vente ; voie des fixtures « RUE DE, LA VIRGULE » ; code postal 75008 pour Paris)
+        ra = open("data/dvf_adresses.bin", "rb").read(); self.assertEqual(ra[:4], b"DVA1")
+        na, nv = struct.unpack("<II", ra[4:12]); self.assertEqual(na, n); o = 12; voies = []
+        for _ in range(nv):
+            cp, ln = struct.unpack("<IH", ra[o:o + 6]); voies.append((cp, ra[o + 6:o + 6 + ln].decode("utf-8"))); o += 6 + ln
+        self.assertEqual(len(ra), o + 7 * n); self.assertTrue(all(v[1] == "RUE DE, LA VIRGULE" for v in voies), voies[:3])
+        self.assertEqual({v[0] for v in voies if v[0] // 1000 == 75}, {75008})
+        for i in range(0, n, max(1, n // 400)):
+            num, suf, jour, nbpp, vi = struct.unpack("<HBBBH", ra[o + 7 * i: o + 7 * i + 7]); qi, t, ym, s100, val, lq, laq = struct.unpack("<BBHHIHH", raw[40 + 14 * i: 54 + 14 * i])
+            self.assertTrue(1 <= jour <= 31 and 1 <= num <= 200 and vi < nv and suf in (0, ord("B")), (num, suf, jour, vi))
+            self.assertEqual(voies[vi][0] // 1000, 75 if d["quartiers_ref"][qids[qi]]["commune"] == "75056" else 92)
         q = next(iter(d["quartiers"].values())); self.assertIn("by_typo", q["by_type"]["Appartement"]); self.assertNotIn("by_month", q["by_type"]["Appartement"])
         self.assertEqual(sum(v["total"] for v in d["zones"].values()), sum(v["total"] for k, v in d["quartiers"].items() if d["quartiers_ref"][k]["commune"] == "75056"))
         # Le sans-géoloc n'a pas de quartier : compté, absent des secteurs, présent dans son arrondissement
