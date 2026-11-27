@@ -23,11 +23,11 @@ import requests
 
 OUT = "data/macro.json"
 SERIES = {
-    "taux_credit": {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/MIR/M.FR.B.A2C.AM.R.A.2250.EUR.N?format=csvdata&startPeriod=2010-01",
+    "taux_credit": {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/MIR/M.FR.B.A2C.AM.R.A.2250.EUR.N?format=csvdata&startPeriod=2006-01",
                     "titre": "Taux des crédits à l'habitat (France, ménages, nouvelles opérations)", "unite": "%", "freq": "M"},
-    "oat_10":      {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=csvdata&startPeriod=2010-01",
+    "oat_10":      {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=csvdata&startPeriod=2006-01",
                     "titre": "Taux long terme France (critère de Maastricht, ≈ OAT 10 ans)", "unite": "%", "freq": "M"},
-    "ipch":        {"src": "BCE/Eurostat", "url": "https://data-api.ecb.europa.eu/service/data/ICP/M.FR.N.000000.4.INX?format=csvdata&startPeriod=2010-01",
+    "ipch":        {"src": "BCE/Eurostat", "url": "https://data-api.ecb.europa.eu/service/data/ICP/M.FR.N.000000.4.INX?format=csvdata&startPeriod=2006-01",
                     "titre": "Indice des prix à la consommation harmonisé, France (2015 = 100)", "unite": "indice", "freq": "M"},
     "insee_paris_appart": {"src": "INSEE / Notaires", "url": "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/010567013",
                     "titre": "Indice Notaires-INSEE des prix des appartements anciens, Paris (CVS, 2015 = 100)", "unite": "indice", "freq": "Q"},
@@ -36,6 +36,7 @@ SERIES = {
     "permis_paris": {"src": "INSEE / Sit@del2", "url": "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001761793",
                     "titre": "Logements autorisés, Ville de Paris, cumul 12 mois", "unite": "logements", "freq": "M"},
 }
+DEBUT = "2006"            # lot 20 : volet « longue période » (crise de 2008) — les séries BCE répondent depuis 2003 (MIR) et 1990 (IRS), l'INSEE depuis 1996
 RETARD_MOIS = 8
 MIN_POINTS = 24            # une série tronquée (page d'erreur, format changé) est refusée, pas prise pour vraie
 
@@ -55,7 +56,7 @@ def fetch(key, spec, timeout=40):
     r.raise_for_status()
     if spec["src"].startswith("BCE"): data, upd = parse_ecb(r.text), None
     else: data, upd = parse_insee(r.text)
-    data = {k: v for k, v in data.items() if k >= "2010"}
+    data = {k: v for k, v in data.items() if k >= DEBUT}
     if len(data) < MIN_POINTS: raise ValueError(f"{len(data)} points seulement (< {MIN_POINTS})")
     ks = sorted(data)
     # retard : dernier point de plus de RETARD_MOIS mois — affiché tel quel (l'IPCH base 2015 s'est arrêté à 2025-12

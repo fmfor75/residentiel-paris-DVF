@@ -25,7 +25,9 @@ const pj = E.projeter(macro, serie, cal, params);
 console.log(`origine : ${pj.origine.q} (DVF ${pj.origine.qDvf}${pj.origine.pont ? `, pont INSEE ×${pj.origine.pont.ratio.toFixed(4)}` : ''}) prix ${pj.origine.prix.toFixed(0)} €/m², taux ${pj.origine.taux} % (${pj.origine.tauxDate})`);
 console.log(`central : 3 ans ${((pj.at(12).ratio-1)*100).toFixed(1)} %, 5 ans ${((pj.at(20).ratio-1)*100).toFixed(1)} %, 10 ans ${((pj.at(40).ratio-1)*100).toFixed(1)} %`);
 ok(pj.path.length === 41 && pj.at(40).ratio > 1 && pj.at(40).ratio < 1.6, 'trajectoire centrale plausible sur 10 ans');
-ok(pj.origine.pont && pj.origine.q === '2026-Q2', 'pont INSEE jusqu\'à 2026-Q2');
+// le pont va jusqu'au dernier trimestre INSEE publié (le littéral « 2026-Q2 » a cassé le test au premier rafraîchissement de macro.json, 27/11/2026)
+const qIns = Object.keys(macro.series.insee_paris_appart.obs).sort().pop();
+ok(pj.origine.pont && pj.origine.q === qIns && qIns > '2025-Q4', `pont INSEE jusqu'au dernier trimestre publié (${qIns})`);
 const sc = E.scenarios(macro, serie, cal, params);
 console.log(`scénarios à 5 ans : bas ${((sc.bas.at(20).ratio-1)*100).toFixed(1)} % · central ${((sc.central.at(20).ratio-1)*100).toFixed(1)} % · haut ${((sc.haut.at(20).ratio-1)*100).toFixed(1)} %`);
 ok(sc.bas.at(20).ratio < sc.central.at(20).ratio && sc.central.at(20).ratio < sc.haut.at(20).ratio, 'bas < central < haut');

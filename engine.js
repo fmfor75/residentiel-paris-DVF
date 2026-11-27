@@ -397,3 +397,60 @@ export function partsParSurface(S, idx, bandes, lastYear, years = 5){
   for (const i of idx) { if (S.year[i] < y0) continue; const s = S.surf[i]; const k = bandes.findIndex(b => s >= b.surfMin && s < b.surfMax); if (k < 0) continue; n[k]++; tot++; }
   return { parts: n.map(v => tot ? v / tot * 100 : null), n: tot, de: y0, a: lastYear };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Longue période (lot 20, demande du 27/11/2026 : « le chiffre moyen durant la crise des subprimes … un graph sur l'évolution des
+// moyennes depuis 2006, avec la courbe du taux d'emprunt moyen et de l'OAT … un prix qu'on envisage de vendre pour voir où on se
+// situe »). DVF n'existe en open data que depuis 2014 (décret du 28/12/2018 : cinq ans glissants, jamais de millésime antérieur) ;
+// avant, la seule donnée publique est agrégée : les séries des notaires du Grand Paris (data/historique_notaires.json) —
+//   · prix au m² standardisé par arrondissement de Paris, trimestriel depuis 1996 : une MESURE, affichée telle quelle ;
+//   · indice Notaires-INSEE par département (75, 92, 93, 94, 78…), base 100 en 2015 : pas de prix en euros. Pour Paris entier,
+//     une commune, un secteur ou une zone, le prix est RECONSTITUÉ : indice × k, k calé sur nos moyennes DVF annuelles des
+//     années communes (2014 →). Toujours étiqueté « estimation par l'indice », jamais présenté comme une mesure.
+// Les taux (BCE) viennent de data/macro.json, reculé à 2006 dans ce lot.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const CRISE = { de: '2008-Q1', a: '2009-Q4', picDe: '2006-Q1', picA: '2008-Q4', creuxA: '2010-Q4' };   // fenêtre de la moyenne « crise » ; pic cherché avant fin 2008, creux après le pic jusqu'à fin 2010
+// Série trimestrielle {q: v} d'une colonne du fichier des notaires (kind 'prix' → arrondissement 751xx ou 'centre' ; 'indices' → département)
+export function histoColonne(H, kind, key){
+  const cols = H?.[kind === 'prix' ? 'prix_cols' : 'indices_cols'], rows = H?.[kind === 'prix' ? 'prix' : 'indices']; if (!cols || !rows) return null;
+  const i = cols.indexOf(String(key)); if (i < 0) return null; const out = {}; let n = 0;
+  for (const q of Object.keys(rows).sort()) { const v = rows[q][i]; if (v != null) { out[q] = v; n++; } }
+  return n ? out : null;
+}
+// Moyenne annuelle d'observations trimestrielles ('YYYY-Qn') ou mensuelles ('YYYY-MM') : {annees, val: {y: moyenne}, pts: {y: nb points}}.
+// Une année incomplète est gardée et signalée (pts[y] < complet) : l'année en cours des taux, le dernier millésime DVF
+export function moyAnnuelle(obs, { complet = null } = {}){
+  const acc = {}; for (const [k, v] of Object.entries(obs || {})) { if (v == null) continue; const y = k.slice(0, 4); (acc[y] ||= []).push(v); }
+  const annees = Object.keys(acc).sort(), val = {}, pts = {}; for (const y of annees) { val[y] = acc[y].reduce((a, b) => a + b, 0) / acc[y].length; pts[y] = acc[y].length; }
+  const comp = complet ?? (Object.keys(obs || {})[0]?.includes('-Q') ? 4 : 12);
+  return { annees, val, pts, complet: comp, incomplets: annees.filter(y => pts[y] < comp) };
+}
+// Prix reconstitué : indice trimestriel × k, k = moyenne sur les années communes de (moyenne DVF annuelle ÷ moyenne annuelle de
+// l'indice). Les années DVF incomplètes (moins de `minVentes` ventes) sont écartées du calage et comptées.
+export function calerSurDvf(indiceQ, dvfAn, { minAnnees = 3, minVentes = 30 } = {}){
+  const ia = moyAnnuelle(indiceQ); const ratios = [], ecartes = [];
+  for (const y of Object.keys(dvfAn || {}).sort()) { const d = dvfAn[y]; if (!d || d.mean == null) continue; if ((d.count || 0) < minVentes) { ecartes.push(y); continue; } if (ia.val[y] == null || ia.pts[y] < 4) continue; ratios.push([y, d.mean / ia.val[y]]); }
+  if (ratios.length < minAnnees) return null;
+  const k = ratios.reduce((a, [, r]) => a + r, 0) / ratios.length; const serieQ = {}; for (const [q, v] of Object.entries(indiceQ)) serieQ[q] = v * k;
+  // dispersion du ratio : si DVF et indice divergent d'une année à l'autre, le calage est fragile — on le dit
+  const ecartMax = Math.max(...ratios.map(([, r]) => Math.abs(r / k - 1)));
+  return { k, annees: ratios.map(([y]) => y), n: ratios.length, ecartes, ecartMax, serieQ };
+}
+// Chiffres de la crise sur une série trimestrielle : moyenne 2008–2009, pic (max avant fin 2008), creux (min après le pic jusqu'à fin
+// 2010), baisse pic → creux, retour au pic (premier trimestre ≥ pic après le creux), nombre de trimestres pic → creux et creux → retour
+export function crise(serieQ, F = CRISE){
+  if (!serieQ) return null; const qs = Object.keys(serieQ).sort(); const fen = qs.filter(q => q >= F.de && q <= F.a); if (fen.length < 8) return null;
+  const moy = fen.reduce((a, q) => a + serieQ[q], 0) / fen.length;
+  let pic = null; for (const q of qs) if (q >= F.picDe && q <= F.picA && (!pic || serieQ[q] > pic.v)) pic = { q, v: serieQ[q] };
+  if (!pic) return null; let creux = null; for (const q of qs) if (q > pic.q && q <= F.creuxA && (!creux || serieQ[q] < creux.v)) creux = { q, v: serieQ[q] };
+  if (!creux) return null; let retour = null; for (const q of qs) if (q > creux.q && serieQ[q] >= pic.v) { retour = { q, v: serieQ[q] }; break; }
+  const nq = (a, b) => (+b.slice(0, 4) - +a.slice(0, 4)) * 4 + (+b.slice(-1) - +a.slice(-1));
+  return { moy, pic, creux, baisse: (creux.v / pic.v - 1) * 100, retour, trimPicCreux: nq(pic.q, creux.q), trimCreuxRetour: retour ? nq(creux.q, retour.q) : null, de: F.de, a: F.a, nFen: fen.length };
+}
+// Où se situe un prix envisagé (€/m²) : écart au dernier point, au pic de 2008, à la moyenne de crise, et première année où la
+// moyenne annuelle de la série a atteint ce niveau (null : jamais atteint)
+export function positionPrix(prix, serieAn, cr){
+  if (!(prix > 0) || !serieAn?.annees?.length) return null; const ys = serieAn.annees, yl = ys[ys.length - 1], dernier = { y: yl, v: serieAn.val[yl] };
+  const premiere = ys.find(y => serieAn.val[y] >= prix) || null, maxY = ys.reduce((a, y) => serieAn.val[y] > serieAn.val[a] ? y : a, ys[0]);
+  return { prix, dernier, vsDernier: (prix / dernier.v - 1) * 100, vsPic: cr ? (prix / cr.pic.v - 1) * 100 : null, vsMoyCrise: cr ? (prix / cr.moy - 1) * 100 : null, vsCreux: cr ? (prix / cr.creux.v - 1) * 100 : null, premiereAnnee: premiere, max: { y: maxY, v: serieAn.val[maxY] }, auDessusDuMax: prix > serieAn.val[maxY] };
+}

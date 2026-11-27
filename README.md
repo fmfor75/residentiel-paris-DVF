@@ -26,6 +26,7 @@ scripts/build_geo.py          ← construction manuelle du référentiel géogra
 scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
 scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run mensuel
 scripts/fetch_demo.py         ← démographie et parc INSEE (recensements 2012/2017/2023, API Melodi) → data/demographie.json (clair)
+scripts/extract_notaires.py   ← séries longues des notaires (deux PDF publics) → data/historique_notaires.json (clair), à la main une fois par an
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
@@ -248,8 +249,26 @@ Bilan du périmètre (compteurs du pipeline, affiché dans la méthode à l'écr
 (4 %, volontaire : un prix de bloc n'est pas un prix au m² de logement), 10 558 hors bornes de prix (1,5 %), 7 073 avec local
 professionnel (1 %), 3 279 hors bornes de surface, 724 à valeur nulle. Paris seul : 499 985 → 351 249, autour de 30 000 par an.
 
+**Longue période 2006–2025 (lot 20, 27/11/2026).** Carte « Depuis 2006, avec la crise de 2008 » dans Perspectives et section PDF
+« Longue période », sélectionnable comme les autres. DVF n'existe en open data que depuis 2014 (décret du 28/12/2018, cinq ans
+glissants ; aucun millésime antérieur publié — vérifié) et DV3F du Cerema (2010 →) est réservé aux acteurs publics : avant 2014,
+seule donnée publique, les séries des notaires du Grand Paris (`scripts/extract_notaires.py` → `data/historique_notaires.json`,
+relecture manuelle annuelle des deux PDF de basebien.com, mise en page contrôlée : 21 et 11 colonnes par ligne, trimestres
+consécutifs, indice Paris = INSEE à 1,5 pt près par trimestre et 0,5 pt en moyenne annuelle, corrélation prix / indice 0,95).
+Arrondissement de Paris : **prix au m² standardisé mesuré** (trimestriel depuis 1996). Paris entier, commune, secteur, zone :
+**prix reconstitué** = indice Notaires-INSEE du département × k, k calé sur nos moyennes DVF annuelles des années communes
+(`engine.calerSurDvf`, années à moins de 30 ventes écartées et comptées), toujours étiqueté « estimation ». Chiffres de crise
+(`engine.crise`) : moyenne des huit trimestres 2008–2009 (chiffre principal, choix de Franck), pic avant fin 2008, creux après le
+pic jusqu'à fin 2010, baisse, retour au pic. Graphique des moyennes annuelles : série notaires, moyenne DVF en pointillés depuis
+2014 (les deux ne se raccordent pas : deux courbes), taux des crédits à l'habitat et OAT 10 ans (BCE, `fetch_macro.py` reculé de
+2010 à 2006) sur un second axe, bande 2008–2009. **Prix envisagé** (`histo=` dans le hash, €/m²) tracé sur le graphique et situé
+(dernier point, pic, moyenne de crise, première année où la zone l'a atteint). Gardes : `tests/test_histo.mjs` (valeurs relues
+à l'œil sur le PDF, moyennes, calage, crise, position), `test_persp` ne dépend plus d'un trimestre INSEE littéral, deux
+configurations dans `tests/audit_pdf.py`.
+
 ## Sources
 
-DGFiP « Demandes de valeurs foncières » via Etalab (geo-dvf, opendatarchives) · Ville de Paris (quartiers,
+DGFiP « Demandes de valeurs foncières » via Etalab (geo-dvf, opendatarchives) · Notaires du Grand Paris – base BIEN (prix
+standardisés par arrondissement, indices Notaires-INSEE par département : fichiers publics de basebien.com) · Ville de Paris (quartiers,
 encadrement des loyers) · IGN géoplateforme (IRIS, fond de carte, géocodage) · INSEE (recensements de la population, API
 Melodi) · Licence Ouverte 2.0.

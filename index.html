@@ -541,6 +541,11 @@ footer a{color:var(--text3)}
 .gbx small{display:block;font-weight:400;color:var(--text4);font-size:11px}
 .lect{display:grid;gap:8px}.lect p{font-size:13px;line-height:1.55;color:var(--text2);padding:10px 14px;border-radius:12px;background:var(--soft2)}.lect p b{color:var(--text)}
 .verd{display:grid;gap:10px}
+.hk{grid-template-columns:repeat(6,1fr)}.hk .kpi .v{font-size:20px}.hk .kpi .v .chip{vertical-align:middle;margin-right:4px}
+.hprix{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:16px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--glass2)}
+.hprix label{font-size:12.5px;font-weight:600;color:var(--text2);display:flex;align-items:center}.hprix .row{display:flex;align-items:center;gap:8px}.hprix input{border:1px solid var(--line3);border-radius:10px;background:var(--soft);font-size:14px;padding:6px 8px;width:110px;font-variant-numeric:tabular-nums}.hprix input:focus{border-color:var(--accent);outline:none;background:var(--soft3)}.hprix .u{font-size:12px;color:var(--text3)}
+.hpos{flex-basis:100%;font-size:13px;line-height:1.55;color:var(--text2);margin:0}.hpos.muted{color:var(--text4);font-size:12px}
+@media (max-width:1100px){.hk{grid-template-columns:repeat(3,1fr)}}@media (max-width:700px){.hk{grid-template-columns:repeat(2,1fr)}.hk .kpi .v{font-size:18px}}
 .vd{border:1px solid var(--line);border-left:4px solid var(--text4);border-radius:14px;padding:12px 16px;background:var(--glass2)}
 .vd.pression{border-left-color:var(--bad-vif)}.vd.soutien{border-left-color:var(--good-vif)}.vd.neutre{border-left-color:var(--text4)}.vd.contexte{border-left-color:var(--accent3)}
 .vd-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}.vd-h b{font-size:14px;font-weight:600}.vd-c{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
@@ -783,6 +788,9 @@ const HELP = {
   persp_retro:['Rétrospectif', "Le modèle calé sur 2014–2019 seulement, puis simulé sur 2020–2025 avec les taux et l'inflation réellement observés, comparé à la médiane réelle. C'est l'erreur à attendre du mécanisme, hypothèses connues ; il ne dit rien de la justesse des hypothèses elles-mêmes.", 'calé ≤ 2019 · simulé 2020–2025'],
   persp_pont:['Point de départ', "La dernière médiane trimestrielle DVF de Paris, prolongée par la variation de l'indice Notaires-INSEE des appartements parisiens jusqu'à son dernier trimestre publié (les actes DVF arrivent avec 6 à 9 mois de retard). Pour la zone étudiée : sa médiane des 12 derniers mois, qui suit ensuite la trajectoire parisienne plus la prime locale.", 'DVF × INSEE'],
   demo_etude:['Démographie et parc', "Recensements INSEE 2012, 2017 et 2023 (exploitation principale) à la maille de la commune ou de l'arrondissement — un quartier, un secteur ou une zone sont lus à travers leur(s) arrondissement(s), un rayon à travers la commune ou l'arrondissement de l'adresse. La référence est l'ensemble des communes couvertes par l'outil. Les ventes par bande de surface (DVF, 5 dernières années) sont mises en face du parc par nombre de pièces : la surface tient lieu de nombre de pièces, c'est un rapprochement, pas une égalité.", 'INSEE · DVF'],
+  histo_etude:['Longue période', "DVF n'existe en open data que depuis 2014 (décret du 28 décembre 2018 : cinq ans glissants, aucun millésime antérieur publié). Avant, la seule donnée publique est agrégée : les séries des notaires du Grand Paris (base BIEN). Pour un arrondissement de Paris, le prix au m² standardisé publié par les notaires est affiché tel quel : une mesure trimestrielle depuis 1996, à qualité constante (méthode des indices Notaires-INSEE), proche d'une moyenne corrigée de la composition des ventes. Pour Paris entier, une commune, un secteur ou une zone, il n'existe que l'indice Notaires-INSEE du département : le prix est alors reconstitué — indice × un coefficient calé sur nos moyennes DVF annuelles des années communes — et présenté comme une estimation, pas comme une mesure. La moyenne DVF annuelle (appartements) est superposée en pointillés à partir de 2014 pour montrer l'écart entre les deux sources, qui ne se raccordent pas exactement. Taux des crédits à l'habitat et OAT 10 ans : BCE, moyennes annuelles.", 'Notaires · DVF · BCE'],
+  histo_crise:['Crise de 2008', "Chiffre principal : la moyenne des huit trimestres 2008–2009. Pic : le trimestre le plus haut avant fin 2008 ; creux : le plus bas après le pic jusqu'à fin 2010 ; retour au pic : le premier trimestre qui retrouve le niveau du pic. Sur une série reconstituée par l'indice, les pourcentages sont ceux du département, les euros une estimation.", 'Lecture'],
+  histo_prix:['Prix envisagé', "Saisissez le prix au m² auquel vous envisagez de vendre : il est tracé sur le graphique et situé par rapport au dernier point, au pic de 2008, à la moyenne de crise et à l'année où la zone l'a atteint pour la première fois. Une aide à la lecture du cycle, pas une valorisation : celle-ci est dans l'onglet Valorisation.", 'Saisie'],
   demo_coef:['Coefficient démographique', "S'ajoute à la prime locale dans la trajectoire des scénarios (points de % par an). La valeur suggérée suit une règle explicite — ±0,10 pt/an par point d'écart à la référence, chaque terme plafonné à ±0,5 — qui n'est pas une élasticité mesurée : appliquez-la si elle correspond à votre lecture du secteur, ou saisissez la vôtre. 0 par défaut : rien ne change tant que vous ne l'avez pas décidé.", 'Hypothèse'],
   persp_prime:['Prime locale', "Écart annuel de la zone par rapport à Paris. Par défaut 0 : sur 87 quartiers, la tendance relative de 2014–2019 est corrélée −0,43 à celle de 2019–2025 (les quartiers qui ont surperformé ont ensuite sous-performé) — extrapoler une tendance locale serait faux. La tendance passée est affichée pour information.", '%/an, défaut 0'],
 };
@@ -865,7 +873,7 @@ $('btnLogout').addEventListener('click', () => { try { sessionStorage.removeItem
 // État & référentiels
 // ═══════════════════════════════════════════════════════════════════════════════
 const TYPO_DEFAUT = () => (META.typologies_ref||[]).map(t=>({id:t.id, surfMin:t.surfMin, surfMax:t.surfMax, on:['T2','T3','T4'].includes(t.id)}));
-const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null, persp:null, pdfOff:[]};   // pdfOff : parties exclues du rapport (lot 18)
+const S = {niveau:'secteur', id:null, per:'5', gran:'year', type:'Appartement', typos:null, global:true, q:'', vue:'etude', valo:null, persp:null, pdfOff:[], histo:{prix:0}};   /* histo.prix : prix envisagé de la carte « Longue période » (lot 20), 0 = aucun */   // pdfOff : parties exclues du rapport (lot 18)
 const VALO_MIN_N = 30, VALO_MOIS = 12;
 let MACRO = null, MACRO_ERR = null, CAL = null, SERIE_PARIS = null;   // lot 7 : séries macro (data/macro.json) et calibration
 const PERSP_DEFAUT = () => ({tauxH: null, hz: 12, inflation: 2, revenus: 0.5, prime: 0, lam: 0.2, demo: 0});   // demo : coefficient démographique (lot 17), 0 tant que l'utilisateur ne l'applique pas
@@ -876,6 +884,9 @@ let LOYERS = null, LOYERS_ERR = null;
 // Lot 17 : démographie et parc (INSEE, data/demographie.json, clair) — chargé à la première vue Perspectives
 let DEMO = null, DEMO_ERR = null;
 async function ensureDemo(){ if (DEMO || DEMO_ERR) return; try { const r = await fetch('data/demographie.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); DEMO = await r.json(); if (!DEMO.geos) throw new Error('fichier sans géographies'); } catch(ex) { DEMO_ERR = ex.message; DEMO = null; } }
+// Lot 20 : séries longues des notaires (data/historique_notaires.json, clair, public) — chargé à la première vue Perspectives
+let HISTO = null, HISTO_ERR = null;
+async function ensureHisto(){ if (HISTO || HISTO_ERR) return; try { const r = await fetch('data/historique_notaires.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); HISTO = await r.json(); if (!HISTO.prix || !HISTO.indices) throw new Error('fichier sans séries'); } catch(ex) { HISTO_ERR = ex.message; HISTO = null; } }
 async function ensureLoyers(){ if (LOYERS || LOYERS_ERR) return; try { const r = await fetch('data/loyers.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); LOYERS = await r.json(); } catch(ex) { LOYERS_ERR = ex.message; } }
 
 function buildRef(meta){
@@ -924,6 +935,8 @@ function readHash(){
   if (v) { const [head, rows] = v.split(';'); const [pos, meuble, epoque, mode] = head.split('|');   // pos|meuble|epoque[|mode];T1:lots:surf:adj:pieces,… (ancien format : pos;T1:lots:surf:adj) ; mode (26/10) : pct, mean, wmean
     const lignes = (rows||'').split(',').map(x => { const m = x.match(/^([^:]{1,8}):(\d+):(\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)(?::(\d))?$/); return m ? {id:m[1], lots:+m[2], surf:+m[3], adj:+m[4], pieces: m[5] ? +m[5] : E.piecesDefaut(m[1])} : null; }).filter(Boolean);
     if (lignes.length) S.valo = {pos: Math.min(90, Math.max(10, +pos||50)), mode: ['mean','wmean'].includes(mode) ? mode : 'pct', meuble: meuble === '1', epoque: Math.min(3, Math.max(0, +epoque||0)), lignes}; }
+  const hp = h.get('histo');   /* lot 20 : prix envisagé en €/m² (entier) */
+  if (hp && /^\d{3,6}$/.test(hp)) S.histo = {prix: +hp};
   const px = h.get('pdf');   // lot 18 : parties EXCLUES du rapport (vide = tout)
   S.pdfOff = px ? px.split(',').filter(k => PDF_SECS.some(x => x.k === k)) : [];
   const a = h.get('addr');   // lon,lat,libellé
@@ -939,6 +952,7 @@ function writeHash(){
   if (S.rprix) p.set('rprix', `${S.rprix.acq||''}:${S.rprix.libre||''}:${S.rprix.occupe||''}:${S.rprix.decote ?? ''}:${S.rprix.hist}:${S.rprix.typo||''}:${S.rprix.pdf?1:0}`);
   if (S.persp && S.persp.tauxH != null) p.set('persp', [S.persp.tauxH, S.persp.hz, S.persp.inflation, S.persp.revenus, S.persp.prime, S.persp.lam, S.persp.demo || 0].join(':'));
   if (S.pdfOff?.length) p.set('pdf', S.pdfOff.join(','));
+  if (S.histo?.prix > 0) p.set('histo', String(Math.round(S.histo.prix)));
   if (LAST_ADDR) p.set('addr', `${LAST_ADDR.lon},${LAST_ADDR.lat},${LAST_ADDR.label}`);
   history.replaceState(null, '', '#'+p.toString());
 }
@@ -1490,9 +1504,98 @@ function demoCard(item, sc){
       </details>
     </div></div>`;
 }
+// ── Longue période 2006–2025 (lot 20) ───────────────────────────────────────────────────────────────────────────
+// Géographie de la série longue : arrondissement de Paris → prix notaires mesuré ; sinon indice du département, reconstitué sur DVF
+function histoGeoOf(item){
+  const arm = a => `751${String(a).padStart(2,'0')}`, arrLbl = a => `Paris ${+a===1?'1er':a+'e'}`;
+  const arr = (a, suffixe) => ({kind:'prix', key: arm(a), dep:'75', label: arrLbl(a) + (suffixe ? ` · ${suffixe}` : ''), masque: E.masqueZone(META, 'arrondissement', a)});
+  const com = (id, suffixe) => ({kind:'indices', key: id === PARIS ? '75' : id.slice(0,2), dep: id === PARIS ? '75' : id.slice(0,2), label: (id === PARIS ? 'Paris · ville entière' : communeNom(id)) + (suffixe ? ` · ${suffixe}` : ''), masque: E.masqueZone(META, 'commune', id)});
+  if (S.niveau === 'rayon') { const p = LAST_ADDR.props; return p.commune === PARIS ? arr(p.arr, "arrondissement de l'adresse") : com(p.commune, "commune de l'adresse"); }
+  if (S.niveau === 'commune') return com(item.id);
+  if (S.niveau === 'arrondissement') return arr(item.id);
+  if (S.niveau === 'quartier') return item.commune === PARIS ? arr(item.arr, 'arrondissement du quartier') : com(item.commune, 'commune du quartier');
+  /* secteur ou zone : plusieurs arrondissements possibles → indice Paris calé sur les ventes DVF du secteur lui-même */
+  const arrs = [...new Set((item.quartiers||[]).map(q => REF.qr[q]?.arr).filter(Boolean))].sort((a,b)=>a-b);
+  if (arrs.length === 1) return {...arr(arrs[0], `arrondissement du ${S.niveau}`), masque: E.masqueZone(META, S.niveau, S.id), kind: 'prix'};
+  const coms = [...new Set((item.quartiers||[]).map(q => REF.qr[q]?.commune).filter(Boolean))]; const dep = coms.length && coms.every(c => c !== PARIS) ? coms[0].slice(0,2) : '75';
+  return {kind:'indices', key: dep, dep, label: `${item.nom} · indice ${dep === '75' ? 'Paris' : 'du département ' + dep}, calé sur les ventes du ${S.niveau}`, masque: E.masqueZone(META, S.niveau, S.id)};
+}
+const DEP_LBL = {'75':'Paris', '92':'Hauts-de-Seine', '93':'Seine-Saint-Denis', '94':'Val-de-Marne', '78':'Yvelines', '77':'Seine-et-Marne', '91':'Essonne', '95':"Val-d'Oise"};
+// Tout ce que l'écran et le PDF affichent : série (mesurée ou reconstituée), moyennes annuelles, DVF annuel, crise, taux, position du prix
+function histoEtude(item){
+  if (!HISTO || !MACRO || !item) return null; const geo = histoGeoOf(item); const ly = META.meta.last_year, y0 = 2006;
+  const dvfBy = E.byPeriod(SALES, E.select(SALES, {quartiers: geo.masque, type: 0}), E.keyYear);   /* appartements : la série des notaires ne couvre qu'eux */
+  const dvfAn = {}; for (const y of Object.keys(dvfBy)) dvfAn[y] = {mean: dvfBy[y].mean, count: dvfBy[y].count};
+  let serieQ = null, cal = null, mesure = geo.kind === 'prix';
+  if (mesure) serieQ = E.histoColonne(HISTO, 'prix', geo.key);
+  else { const iq = E.histoColonne(HISTO, 'indices', geo.key); cal = iq ? E.calerSurDvf(iq, dvfAn) : null; serieQ = cal ? cal.serieQ : null; }
+  if (!serieQ) return {geo, mesure, vide: true, dvfAn, motif: mesure ? 'colonne absente du fichier des notaires' : cal === null && E.histoColonne(HISTO, 'indices', geo.key) ? 'moins de 3 années DVF à 30 ventes ou plus pour caler l\'indice' : `indice du département ${geo.dep} absent du fichier`};
+  const serieAn = E.moyAnnuelle(serieQ); const annees = []; for (let y = y0; y <= ly; y++) annees.push(String(y));
+  const cr = E.crise(serieQ); const M = MACRO.series; const taux = E.moyAnnuelle(M.taux_credit.obs), oat = E.moyAnnuelle(M.oat_10.obs);
+  const prix = S.histo?.prix > 0 ? S.histo.prix : 0; const pos = prix ? E.positionPrix(prix, serieAn, cr) : null;
+  const lastQ = Object.keys(serieQ).sort().pop(), lastAn = serieAn.annees[serieAn.annees.length-1], lastDvf = Object.keys(dvfAn).filter(y => dvfAn[y].count >= 30).sort().pop();
+  return {geo, mesure, cal, serieQ, serieAn, dvfAn, annees, cr, taux, oat, prix, pos, lastQ, lastAn, lastDvf, ly, source: HISTO.source, generated: HISTO.generated_at,
+          depLbl: DEP_LBL[geo.dep] || geo.dep, vsPicDernier: cr && serieAn.val[lastAn] ? (serieAn.val[lastAn] / cr.pic.v - 1) * 100 : null};
+}
+const qLbl = q => q ? `T${q.slice(-1)} ${q.slice(0,4)}` : '—';
+const fmtPctS0 = v => v==null ? '—' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(0)} %`;
+// Graphique : moyennes annuelles (prix à gauche en €/m², taux à droite en %), bande 2008–2009, ligne du prix envisagé
+function chartHisto(el, d){
+  /* téléphone : viewBox plus étroit (sinon le texte à 10,5 px tombe à 5 px une fois le SVG réduit à 360 px — mesuré 99 px de haut) */
+  const narrow = (el.clientWidth || 760) < 520; const W = narrow ? 440 : 760, H = narrow ? 300 : 250, pl = 54, pr = 44, pt = 14, pb = 28, iw = W-pl-pr, ih = H-pt-pb; const ys = d.annees, nx = ys.length; const x = y => pl + (ys.indexOf(String(y)) + .5) * (iw / nx);
+  const pv = ys.map(y => d.serieAn.val[y]).filter(v => v != null), dv = ys.map(y => d.dvfAn[y]?.count >= 30 ? d.dvfAn[y].mean : null).filter(v => v != null), allP = [...pv, ...dv, ...(d.prix ? [d.prix] : [])];
+  const lo = Math.min(...allP) * .92, hi = Math.max(...allP) * 1.05; const ystep = [250,500,1000,2000,2500,5000][[250,500,1000,2000,2500,5000].findIndex(s => (hi-lo)/s <= 6)] || 5000; const p0 = Math.floor(lo/ystep)*ystep, p1 = Math.ceil(hi/ystep)*ystep;
+  const yP = v => pt + ih - (v-p0)/(p1-p0||1)*ih; const rv = ys.flatMap(y => [d.taux.val[y], d.oat.val[y]]).filter(v => v != null); const r1 = Math.max(6, Math.ceil(Math.max(...rv))), r0 = Math.min(0, Math.floor(Math.min(...rv))); const yR = v => pt + ih - (v-r0)/(r1-r0||1)*ih;
+  let g = '', yl = '', yr = ''; for (let v = p0; v <= p1 + 1e-9; v += ystep) { g += `<line x1="${pl}" x2="${W-pr}" y1="${yP(v).toFixed(1)}" y2="${yP(v).toFixed(1)}" stroke="var(--line2)"/>`; yl += `<text x="${pl-8}" y="${(yP(v)+3.5).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; }
+  for (let v = r0; v <= r1; v += (r1 - r0) > 8 ? 2 : 1) yr += `<text x="${W-pr+8}" y="${(yR(v)+3.5).toFixed(1)}" ${AX}>${v} %</text>`;
+  const xl = ys.map((y,i) => (+y % (narrow ? 4 : 2) === 2 % (narrow ? 4 : 2) || nx <= 14) ? `<text x="${x(y).toFixed(1)}" y="${H-8}" text-anchor="middle" ${AX}>${y}</text>` : '').join('');
+  const band = `<rect x="${(x(2008) - iw/nx/2).toFixed(1)}" y="${pt}" width="${(iw/nx*2).toFixed(1)}" height="${ih}" fill="var(--band)" opacity=".55"/><text x="${((x(2008) + x(2009)) / 2).toFixed(1)}" y="${pt+12}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--text3)" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">crise 2008–2009${d.cr ? ` · ${fmtPctS(d.cr.baisse)}` : ''}</text>`;
+  const path = (pts, yfn) => { let out = '', pen = false; for (const [y, v] of pts) { if (v == null) { pen = false; continue; } out += `${pen?'L':'M'}${x(y).toFixed(1)},${yfn(v).toFixed(1)} `; pen = true; } return out; };
+  const L = [[ys.map(y => [y, d.serieAn.val[y] ?? null]), yP, 'var(--s1)', 2.2, false], [ys.map(y => [y, d.dvfAn[y]?.count >= 30 ? d.dvfAn[y].mean : null]), yP, 'var(--gold)', 2, true], [ys.map(y => [y, d.taux.val[y] ?? null]), yR, 'var(--accent3)', 1.6, false], [ys.map(y => [y, d.oat.val[y] ?? null]), yR, 'var(--text4)', 1.4, true]];
+  const paths = L.map(([pts, yfn, col, w, dash]) => `<path d="${path(pts, yfn)}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round" stroke-linecap="round"/>`).join('');
+  const lastLbl = (pts, yfn, col, fmt, side = 'middle') => { const p = pts.filter(q => q[1] != null).pop(); return p ? `<text x="${(x(p[0]) + (side === 'end' ? -5 : side === 'start' ? 5 : 0)).toFixed(1)}" y="${(yfn(p[1]) - (side === 'middle' ? 7 : -3.5)).toFixed(1)}" text-anchor="${side}" font-size="10.5" font-weight="600" fill="${col}" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">${fmt(p[1])}</text>` : ''; };
+  const ligne = d.prix ? `<line x1="${pl}" x2="${W-pr}" y1="${yP(d.prix).toFixed(1)}" y2="${yP(d.prix).toFixed(1)}" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${pl+6}" y="${(yP(d.prix)-5).toFixed(1)}" font-size="10.5" font-weight="700" fill="var(--bad)" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">prix envisagé ${fmt0(d.prix)} €/m²</text>` : '';
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${band}${g}${yl}${yr}${xl}${paths}${lastLbl(L[0][0], yP, 'var(--s1)', fmt0, 'end')}${lastLbl(L[1][0], yP, 'var(--gold)', fmt0, 'start')}${ligne}</svg>`;
+}
+// Phrase de position du prix envisagé (partagée avec le PDF via helpers)
+function histoPositionTxt(d){
+  const p = d.pos; if (!p) return ''; const u = d.mesure ? 'prix notaires' : 'prix reconstitué'; const dv = d.lastDvf && d.dvfAn[d.lastDvf] ? ` et ${fmtPctS(( p.prix / d.dvfAn[d.lastDvf].mean - 1) * 100)} par rapport à la moyenne DVF ${d.lastDvf} (${fmt0(d.dvfAn[d.lastDvf].mean)} €/m²)` : '';
+  const serie = d.mesure ? 'la série des notaires' : 'la série reconstituée'; const quand = p.auDessusDuMax ? `dans ${serie}, un niveau jamais atteint en moyenne annuelle (maximum ${fmt0(p.max.v)} €/m² en ${p.max.y})` : p.premiereAnnee === d.serieAn.annees[0] ? `un niveau déjà dépassé en ${p.premiereAnnee}, premier point de ${serie}` : p.premiereAnnee ? `dans ${serie}, un niveau atteint pour la première fois en ${p.premiereAnnee}` : `un niveau inférieur à toute ${serie}`;
+  return `${fmt0(p.prix)} €/m² : ${fmtPctS(p.vsDernier)} par rapport au ${u} ${p.dernier.y} (${fmt0(p.dernier.v)} €/m²)${dv} ; ${fmtPctS(p.vsPic)} par rapport au pic de ${qLbl(d.cr?.pic.q)} et ${fmtPctS(p.vsMoyCrise)} par rapport à la moyenne 2008–2009 — ${quand}.`;
+}
+function histoCard(item){
+  const titre = `<span class="badge">Longue période</span>Depuis 2006, avec la crise de 2008${ib('histo_etude')}`;
+  if (HISTO_ERR) return `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t">${titre}</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Séries des notaires indisponibles (${esc(HISTO_ERR)}) — data/historique_notaires.json est produit par scripts/extract_notaires.py.</p></div></div></div>`;
+  const d = histoEtude(item); if (!d) return '';
+  if (d.vide) return `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t">${titre}</div><span class="card-sub">${esc(d.geo.label)}</span></div><div class="card-b"><div class="empty" style="padding:12px"><p>Série longue non calculable pour cette zone : ${esc(d.motif)}.</p></div></div></div>`;
+  const cr = d.cr, kpi = (l, v, u, cls = '') => `<div class="kpi ${cls}"><div class="l">${l}</div><div class="v">${v}</div><div class="u">${u}</div></div>`; const est = d.mesure ? '' : 'estimation · ';
+  const kpis = cr ? `<div class="kpis dk hk">
+    ${kpi('Moyenne 2008–2009', `${fmt0(cr.moy)} €/m²`, `${est}${cr.nFen} trimestres · ${d.mesure ? 'prix notaires mesuré' : `indice ${d.depLbl} reconstitué`}`)}
+    ${kpi('Pic avant la crise', `${fmt0(cr.pic.v)} €/m²`, `${est}${qLbl(cr.pic.q)}`)}
+    ${kpi('Creux', `${fmt0(cr.creux.v)} €/m²`, `${est}${qLbl(cr.creux.q)} · ${cr.trimPicCreux} trimestre${cr.trimPicCreux > 1 ? 's' : ''} après le pic`)}
+    ${kpi('Baisse pic → creux', fmtPctS(cr.baisse), d.mesure ? 'mesurée' : `celle de l'indice ${d.depLbl}`)}
+    ${kpi('Retour au pic', cr.retour ? qLbl(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimCreuxRetour} trimestres après le creux` : `${qLbl(d.lastQ)} : toujours sous le pic`)}
+    ${kpi(`${d.lastAn} vs pic 2008`, fmtPctS(d.vsPicDernier), `moyenne ${d.lastAn} : ${fmt0(d.serieAn.val[d.lastAn])} €/m²`)}</div>` : `<div class="hint">Chiffres de crise non calculables (série trop courte avant 2010).</div>`;
+  const sub = `${d.mesure ? `prix au m² standardisé des notaires (base BIEN), ${esc(d.geo.label)}` : `indice Notaires-INSEE ${esc(d.depLbl)} reconstitué en €/m² · ${esc(d.geo.label)}`} · appartements anciens · DVF depuis 2014 · taux BCE`;
+  const calTxt = d.cal ? ` Coefficient de reconstitution : ${d.cal.k.toFixed(1).replace('.',',')} €/m² par point d'indice, calé sur ${d.cal.n} années DVF (${d.cal.annees[0]}–${d.cal.annees[d.cal.n-1]}, écart annuel maximal ${(d.cal.ecartMax*100).toFixed(1).replace('.',',')} %${d.cal.ecartes.length ? `, ${d.cal.ecartes.length} année(s) à moins de 30 ventes écartée(s)` : ''}).` : '';
+  return `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t">${titre}</div><span class="card-sub">${sub}</span></div>
+    <div class="card-b">
+      <h4 class="sh">La crise de 2008 dans la zone${ib('histo_crise')}</h4>${kpis}
+      <div class="hprix"><label for="histoPrix">Prix envisagé${ib('histo_prix')}</label><div class="row"><input type="number" id="histoPrix" data-hk="prix" min="0" step="100" inputmode="numeric" value="${d.prix || ''}" placeholder="ex. ${fmt0(Math.round((d.serieAn.val[d.lastAn] || 10000) / 100) * 100).replace(/ /g,' ')}" aria-label="Prix envisagé en euros par m²"><span class="u">€/m²</span>${d.prix ? `<button type="button" class="lnkb" data-hk-clear="1">retirer</button>` : ''}</div>${d.pos ? `<p class="hpos">${esc(histoPositionTxt(d))}</p>` : `<p class="hpos muted">Saisissez un prix au m² pour le situer dans le cycle (dernier point, pic de 2008, moyenne de crise, première année où la zone l'a atteint).</p>`}</div>
+      <div class="chart"><div class="chart-t"><span>Moyennes annuelles · ${esc(d.geo.label.split(' · ')[0])}</span><span class="legend"><span><i></i>${d.mesure ? 'Prix notaires' : 'Prix reconstitué (indice)'}</span><span><i style="border-color:var(--gold);border-top-style:dashed"></i>Moyenne DVF</span><span><i style="border-color:var(--accent3)"></i>Taux crédit habitat</span><span><i style="border-color:var(--text4);border-top-style:dashed"></i>OAT 10 ans</span><span><i class="band"></i>2008–2009</span></span></div><div id="histo-chart"></div></div>
+      <div class="hint" style="margin-top:8px">${d.mesure ? `Prix notaires : mesure trimestrielle à qualité constante, moyennée par année (dernier trimestre publié ${qLbl(d.lastQ)}).` : `Prix reconstitué : indice Notaires-INSEE ${esc(d.depLbl)} × coefficient, une estimation de niveau, pas une mesure ; les variations en % sont celles de l'indice.${calTxt}`} Moyenne DVF : prix moyen au m² des appartements vendus chaque année dans la zone (années à 30 ventes ou plus). Les deux sources ne se raccordent pas exactement : méthodes différentes, d'où deux courbes. Taux : moyennes annuelles BCE. Sources : ${esc(d.source?.editeur || 'Notaires du Grand Paris')} (fichiers publics, relevés ${fmtDate(d.generated)}), DVF, BCE.</div>
+    </div></div>`;
+}
+function drawHisto(item){ const el = $('histo-chart'); if (!el) return; const d = histoEtude(item); if (d && !d.vide) chartHisto(el, d); }
+// Rafraîchit la seule carte (saisie du prix) sans reconstruire toute la vue, en gardant le focus et le curseur dans le champ
+function refreshHisto(item){
+  const old = $('histoCard'); if (!old) return; const foc = document.activeElement?.dataset?.hk, sel = foc ? document.activeElement.selectionStart : null;
+  const tmp = document.createElement('div'); tmp.innerHTML = histoCard(item); const nu = tmp.firstElementChild; if (!nu) return; old.replaceWith(nu); drawHisto(item);
+  if (foc) { const el = nu.querySelector(`[data-hk="${foc}"]`); if (el) { el.focus(); try { if (sel != null) el.setSelectionRange(sel, sel); } catch(_) {} } }
+}
 async function renderPersp(item){
   const box = $('etude'); box.innerHTML = `<div class="card glass"><div class="empty"><p>Chargement des séries macroéconomiques…</p></div></div>`; setStatus('busy', 'Séries macro…');
-  await Promise.all([ensureMacro(), ensureDemo()]);
+  await Promise.all([ensureMacro(), ensureDemo(), ensureHisto()]);
   if (MACRO_ERR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Séries macro indisponibles</h3><p>${esc(MACRO_ERR)} — data/macro.json est produit par le run mensuel (scripts/fetch_macro.py).</p></div></div>`; setStatus('err', 'macro indisponible'); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Les perspectives s'appliquent à la zone étudiée (et à l'immeuble valorisé, s'il y en a un). Sélectionnez une zone dans les filtres ou localisez une adresse.</p></div></div>`; setStatus('ok', statusLine()); return; }
   const M = MACRO.series; const tx = lastOf(M.taux_credit.obs), oat = lastOf(M.oat_10.obs), ip = lastOf(M.ipch.obs), ins = lastOf(M.insee_paris_appart.obs), loy = lastOf(M.loyers_paris.obs), pm = lastOf(M.permis_paris.obs);
@@ -1518,6 +1621,7 @@ async function renderPersp(item){
         <div class="h"><div class="l">Vitesse d'ajustement</div><div class="row"><select data-pk="lam" aria-label="Vitesse d'ajustement"><option value="0.12" ${P.lam==0.12?'selected':''}>lente · 12 %/trim</option><option value="0.2" ${P.lam==0.2?'selected':''}>20 %/trim (rétrospectif)</option><option value="0.35" ${P.lam==0.35?'selected':''}>rapide · 35 %/trim</option></select></div><div class="src">Part de l'écart entre prix et cible comblée chaque trimestre. Écart actuel : <b>${fmtPctS(CAL.ecartCourant*100)}</b> (prix ${CAL.ecartCourant<0?'sous':'au-dessus de'} la cible).</div></div>
       </div>
       <div class="hint">Point de départ${ib('persp_pont')} : Paris ${fmt0(SERIE_PARIS[o.qDvf])} €/m² au ${moisLabel(o.qDvf)} (DVF)${o.pont ? ` × ${o.pont.ratio.toFixed(3).replace('.',',')} (indice Notaires-INSEE ${moisLabel(o.pont.de)} → ${moisLabel(o.pont.a)})` : ''} = <b>${fmt0(o.prix)} €/m²</b> au ${moisLabel(o.q)}. Zone : ${ref.median ? `<b>${fmt0(ref.median)} €/m²</b> (${ref.n} ventes, ${fmtMois(ref.from)} → ${fmtMois(ref.to)})` : 'effectif insuffisant sur 12 mois'}${valo?.valeur ? ` · immeuble valorisé <b>${fmtEur(valo.valeur)}</b>` : ''}.${stale.length ? ` <span style="color:var(--warn)">Séries à surveiller : ${esc(stale.join(' ; '))}.</span>` : ''}</div></div></div>
+    ${histoCard(item)}
     ${demoCard(item, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : sc)}
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
       <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
@@ -1533,10 +1637,13 @@ async function renderPersp(item){
       <div class="method"><b>Méthode.</b> ${esc(HELP.persp_modele[1])} ${esc(HELP.persp_retro[1])} Sources : taux et IPCH BCE (${moisLabel(tx.k)}, ${moisLabel(ip.k)}), indice Notaires-INSEE Paris (${moisLabel(ins.k)}), loyers INSEE (${moisLabel(loy.k)}), logements autorisés à Paris ${fmt0(pm.v)} sur 12 mois en ${moisLabel(pm.k)}${permisMoy ? ` (moyenne ${fmt0(permisMoy)} sur dix ans)` : ''}. Ce sont des scénarios conditionnels aux hypothèses affichées, pas des prévisions.</div></div></div>`;
   chartLines($('persp-chart'), [{pts: sc.bas.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--bad)'}, {pts: sc.central.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--s1)', w:2}, {pts: sc.haut.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--good)'}], {fmt: v => v.toFixed(0)});
   chartLines($('retro-chart'), [{pts: retro.points.map(p=>({k:p.q, v:p.obs})), color:'var(--s1)', w:2}, {pts: retro.points.filter(p=>p.sim).map(p=>({k:p.q, v:p.sim})), color:'var(--gold)', w:2, dash:true}], {fmt: fmt0});
+  drawHisto(item);
   if (focus) { const el = box.querySelector(`[data-pk="${focus}"]`); if (el) el.focus(); }
   setStatus('ok', statusLine());
 }
-let perspTimer = null;
+let perspTimer = null, histoTimer = null;
+$('etude').addEventListener('input', e => { const el = e.target; if (!el.dataset.hk || S.vue !== 'persp') return; const v = Math.max(0, Math.round(parseFloat(el.value) || 0)); clearTimeout(histoTimer); histoTimer = setTimeout(() => { S.histo = {prix: v}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); }, 500); });
+$('etude').addEventListener('click', e => { if (!e.target.closest('[data-hk-clear]') || S.vue !== 'persp') return; S.histo = {prix: 0}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); });
 $('etude').addEventListener('click', e => { const b = e.target.closest('button[data-demo]'); if (!b || S.vue !== 'persp') return; S.persp.demo = +b.dataset.demo || 0; writeHash(); renderPersp(S.id ? findItem(S.niveau, S.id) : null); });
 $('etude').addEventListener('input', e => { const el = e.target; const k = el.dataset.pk; if (!k) return; const v = parseFloat(el.value); if (isNaN(v)) return; S.persp[k] = v; clearTimeout(perspTimer); perspTimer = setTimeout(() => { writeHash(); renderPersp(S.id ? findItem(S.niveau, S.id) : null); }, el.tagName === 'SELECT' ? 0 : 400); });
 // Courbes (perspectives, rétrospectif) : plusieurs séries sur un axe trimestriel
@@ -1751,6 +1858,7 @@ async function perspPourPdf(item){   // scénarios avec les hypothèses courante
   const demoD = demoEtude(item); const scPdf = E.scenarios(MACRO, SERIE_PARIS, CAL, params); if (demoD?.ind) demoD.lecture = demoLecture(demoD, ref, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : scPdf);   // scénario sans coefficient, sinon compté deux fois
   return {demo: demoD, demoErr: DEMO_ERR, params, sc: scPdf, sens: E.sensibilite(MACRO, SERIE_PARIS, CAL, params), retro: E.retrospectif(MACRO, SERIE_PARIS, {lag: CAL.lag, lam: P.lam, trainUntil: '2019-Q4'}), cal: CAL, ref, valoValeur: valo?.valeur || null, macro: MACRO, tl: tendanceLocale(item)};
 }
+async function histoPourPdf(item){ await Promise.all([ensureMacro(), ensureHisto()]); if (!item) return null; const d = histoEtude(item); if (!d) return {err: HISTO_ERR || 'séries indisponibles'}; if (!d.vide) d.positionTxt = histoPositionTxt(d); return d; }
 // ── Lot 18 : composition du rapport ───────────────────────────────────────────────────────────────────────────
 // Clés des parties (celles du PDF : pdf.js `sec(k)`), description et disponibilité selon l'étude courante
 const PDF_SECS = [
@@ -1765,6 +1873,7 @@ const PDF_SECS = [
   {k:'rayon', l:'Visuel « marché autour de l’immeuble »', d:'Le graphique du deck (médiane, Bottom 10 et Top 10 par année dans le rayon) et son tableau — rayon de l’étude, sinon 300 m.', adr:true},
   {k:'persp', l:'Perspectives', d:'Hypothèses, scénarios à 3, 5 et 10 ans, sensibilité, rétrospectif du modèle.'},
   {k:'demo', l:'Démographie et parc', d:'Ce qu’il faut retenir, impact du coefficient démographique, détail INSEE.'},
+  {k:'histo', l:'Longue période 2006–2025', d:'La crise de 2008 dans la zone (moyenne 2008–2009, pic, creux, retour), moyennes annuelles depuis 2006 avec taux de crédit et OAT, prix envisagé.'},
   {k:'methode', l:'Méthode et sources', d:'Périmètre, règles de traitement DVF, définition des indicateurs, sources.'},
 ];
 const PDF_ESSENTIEL = ['garde', 'global', 'typos', 'typoTable', 'valo', 'persp'];
@@ -1775,7 +1884,7 @@ const PDF_ESSENTIEL = ['garde', 'global', 'typos', 'typoTable', 'valo', 'persp']
 function pdfDispo(item){
   const et = lastEtude?.et, PT = lastEtude?.parType, etTypo = PT ? PT.app : et, adr = !!LAST_ADDR?.props;
   const typoOn = !!(etTypo && S.typos.some(t => t.on && t.surfMax > t.surfMin && etTypo.by_typo?.[t.id])), typoAny = !!(etTypo && S.typos.some(t => t.surfMax > t.surfMin && etTypo.by_typo?.[t.id]));
-  return {garde: true, global: !!(S.global || PT), types: !!PT, typos: typoOn, typoTable: typoAny, annuel: !!et?.by_year, valo: adr, loyers: adr, rayon: adr && !!SALES.lon, persp: true, demo: true, methode: true};
+  return {garde: true, global: !!(S.global || PT), types: !!PT, typos: typoOn, typoTable: typoAny, annuel: !!et?.by_year, valo: adr, loyers: adr, rayon: adr && !!SALES.lon, persp: true, demo: true, histo: true, methode: true};
 }
 function pdfSelection(item){ const dispo = pdfDispo(item); const out = {}; PDF_SECS.forEach(x => { out[x.k] = dispo[x.k] && !S.pdfOff.includes(x.k); }); return out; }
 function renderPdfDlg(item){
@@ -1889,7 +1998,7 @@ async function exportPdf(){
     const {colorIdx} = groupsSorted();
     await P.exportPdf({
       META, S, item, et: lastEtude.et, nVentes: lastEtude.n, typos: S.typos.filter(t => t.surfMax > t.surfMin), crumbs: crumbsOf(item).filter(c => c !== 'disque entièrement couvert'), niveauLabel: NIVEAUX[S.niveau], periodeLabel: PERIODES[S.per], granLabel: GRANS[S.gran],
-      sections: pdfSelection(item), address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), rayon: pdfSelection(item).rayon ? await rayonPourPdf(item, true) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
+      sections: pdfSelection(item), address: LAST_ADDR, valo: await valoPourPdf(), persp: await perspPourPdf(item), histo: pdfSelection(item).histo ? await histoPourPdf(item) : null, rayon: pdfSelection(item).rayon ? await rayonPourPdf(item, true) : null, rayonM: S.niveau === 'rayon' ? item.r : 0, geo: GEO, groupOfFeature, groupNiveau, colorOf: g => colorOf(g, colorIdx[g]), groupLabel, secteurNom: id => REF.sr[id]?.nom || id, locRows, communeNom, communesRef: META.communes_ref || {},
       parType: lastEtude.parType, typeLbl: TYPE_LBL(S.type),
       helpers: {bilanExclusions, fmt0: v => fmt0(v).replace(/\u00A0/g, '\u202F'), fmtSurf: v => fmtSurf(v).replace(/\u00A0/g, '\u202F'), fmtPct, fmtPctS, fmtPct2, fmtEur: v => fmtEur(v).replace(/\u00A0/g, '\u202F'), fmtMois, moisLabel, lastOf, perAn, evoData, evoTxt, seriesFor, windowOf, labelOf, axisLabel, HELP, EFFECTIF_FAIBLE, NIV_COURT, logoUrl: 'assets/logo-jadero.png'},
     });

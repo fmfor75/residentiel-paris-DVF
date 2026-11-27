@@ -40,7 +40,9 @@ CONFIGS = {
   # rayon tous logements, historique 2 ans, une typologie
   "saintmaur_rayon_tous2": f"niveau=rayon&id=500&per=2&gran=trimestre&type=Tous&global=1&vue=etude&typos={typos('T3')}&rprix=:9000:::2:T3:1&addr=2.487589,48.803825,20 Avenue Foch 94100 Saint-Maur-des-Fossés",
   # lot 17 : page « Démographie et parc » — commune avec coefficient appliqué (+0,3), secteur = plusieurs arrondissements, Paris entier
-  "neuilly_persp_demo": f"niveau=commune&id=92051&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T4')}&persp=3.5:12:2:0.5:0:0.2:0.3",
+  "neuilly_persp_demo": f"niveau=commune&id=92051&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T4')}&persp=3.5:12:2:0.5:0:0.2:0.3&histo=9000",
+  # lot 20 : page « Longue période » — arrondissement (prix notaires mesuré) avec prix envisagé au-dessus de tout l'historique
+  "arr8_histo_prix": f"niveau=arrondissement&id=8&per=10&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T3')}&histo=13500",
   "secteur_persp_demo": f"niveau=secteur&id=3&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T3')}&persp=3.5:12:2:0.5:0:0.2:0",
   # 26/10 : valorisation à la moyenne pondérée + démographie
   "penthievre_valo_wmean": f"niveau=quartier&id=P30&per=5&gran=annee&type=Appartement&global=1&vue=etude&typos={typos('T2','T3')}&valo=50|0|1|wmean;T2:4:42:0:2,T3:3:62:0:3&persp=3.5:12:2:0.5:0:0.2:0.18&addr=2.316624,48.87293,13 Rue de Penthièvre 75008 Paris",
