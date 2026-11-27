@@ -179,7 +179,7 @@ function pageDemographie(st, doc, h, item, D, params){
 const qL = q => q ? `T${q.slice(-1)} ${q.slice(0, 4)}` : '—';
 function pageHisto(st, doc, h, item, D, lastYear){
   const cr = D.cr, lab = D.geo.label, est = D.mesure ? '' : 'estimation · ';
-  st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(`2006 → ${lastYear} · appartements anciens · ${D.mesure ? 'prix notaires (base BIEN)' : `indice Notaires-INSEE ${D.depLbl}, reconstitué`} · DVF · ${D.tauxLbl || 'taux'} et OAT (BCE)`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+  st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(`2006 → ${lastYear} · appartements anciens · ${D.mesure ? 'prix notaires (base BIEN)' : `indice Notaires-INSEE ${D.depLbl}, reconstitué`} · ${D.tauxLbl || 'taux'} et OAT (BCE)`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
   st.text(`Depuis 2006, avec la crise de 2008 · ${lab}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
   // six tuiles : la crise dans la zone
   if (cr) {
@@ -198,34 +198,32 @@ function pageHisto(st, doc, h, item, D, lastYear){
   // graphique : moyennes annuelles, prix à gauche, taux à droite, bande 2008–2009
   const ys = D.annees, nx = ys.length, cx0 = M, cy0 = st.y, cw = CW, ch = 64; st.need(ch + 14);
   const pl = 14, pr = 12, ptop = 7, pbot = 7, iw = cw - pl - pr, ih = ch - ptop - pbot; const X = y => cx0 + pl + (ys.indexOf(String(y)) + .5) * iw / nx;
-  const dvfOf = y => D.dvfAn[y]?.count >= 30 ? D.dvfAn[y].mean : null;
-  const allP = [...ys.map(y => D.serieAn.val[y]), ...ys.map(dvfOf), D.prix || null].filter(v => v != null); const lo = Math.min(...allP) * .92, hi = Math.max(...allP) * 1.05;
+  const allP = [...ys.map(y => D.serieAn.val[y]), D.prix || null].filter(v => v != null); const lo = Math.min(...allP) * .92, hi = Math.max(...allP) * 1.05;   /* 27/11 : plus de courbe DVF */
   const steps = [250, 500, 1000, 2000, 2500, 5000]; const ystep = steps[steps.findIndex(x => (hi - lo) / x <= 6)] || 5000; const p0 = Math.floor(lo / ystep) * ystep, p1 = Math.ceil(hi / ystep) * ystep;
   const YP = v => cy0 + ptop + ih - (v - p0) / (p1 - p0 || 1) * ih; const rv = ys.flatMap(y => [D.taux.val[y], D.oat.val[y]]).filter(v => v != null); const r1 = Math.max(6, Math.ceil(Math.max(...rv))), r0 = Math.min(0, Math.floor(Math.min(...rv))); const YR = v => cy0 + ptop + ih - (v - r0) / (r1 - r0 || 1) * ih;
-  st.caps(`Moyennes annuelles · ${lab.split(' · ')[0]}`, cx0, cy0 + 2.5, { s: 5.8 });
+  st.caps(`Prix notaires · moyennes annuelles · ${lab.split(' · ')[0]}`, cx0, cy0 + 2.5, { s: 5.8 });
   st.rect(X(2008) - iw / nx / 2, cy0 + ptop, iw / nx * 2, ih, [232, 243, 236], null); st.text(`crise 2008–2009${cr ? ` · ${h.fmtPctS(cr.baisse)}` : ''}`, (X(2008) + X(2009)) / 2, cy0 + ptop + 3.2, { s: 5.2, w: 'bold', c: C.text2, align: 'center' });
   for (let v = p0; v <= p1 + 1e-9; v += ystep) { st.line(cx0 + pl, YP(v), cx0 + cw - pr, YP(v), C.line2, .2); st.text(h.fmt0(v), cx0 + pl - 1.5, YP(v) + .9, { s: 5, c: C.grey2, align: 'right' }); }
   for (let v = r0; v <= r1; v += (r1 - r0) > 8 ? 2 : 1) st.text(`${v} %`, cx0 + cw - pr + 1.5, YR(v) + .9, { s: 5, c: C.grey2 });
   const trace = (pts, Yf, col, w, dash) => { doc.setDrawColor(...col); doc.setLineWidth(w); doc.setLineJoin('round'); doc.setLineDashPattern(dash ? [1.4, 1] : [], 0); let pen = false;
     for (const [y, v] of pts) { if (v == null) { if (pen) doc.stroke(); pen = false; continue; } pen ? doc.lineTo(X(y), Yf(v)) : doc.moveTo(X(y), Yf(v)); pen = true; } if (pen) doc.stroke(); doc.setLineDashPattern([], 0); };
   trace(ys.map(y => [y, D.oat.val[y] ?? null]), YR, C.grey2, .3, true); trace(ys.map(y => [y, D.taux.val[y] ?? null]), YR, [35, 70, 138], .4, false);
-  trace(ys.map(y => [y, dvfOf(y)]), YP, C.gold, .45, true); trace(ys.map(y => [y, D.serieAn.val[y] ?? null]), YP, C.green, .6, false);
+  trace(ys.map(y => [y, D.serieAn.val[y] ?? null]), YP, C.green, .6, false);
   /* étiquettes sur fond blanc : les courbes des taux passaient dessus (zoom sur le rendu du 27/11) */
   const halo = (t, x, y, o) => { const w = st.width(t, o.s, o.w || 'normal'), hh = o.s * pt2mm; const x0 = o.align === 'right' ? x - w : o.align === 'center' ? x - w / 2 : x; st.rect(x0 - .4, y - hh + .2, w + .8, hh + .4, [255, 255, 255], null); st.text(t, x, y, o); };
-  const lastP = ys.filter(y => D.serieAn.val[y] != null).pop(), lastD = ys.filter(y => dvfOf(y) != null).pop();
+  const lastP = ys.filter(y => D.serieAn.val[y] != null).pop();
   if (lastP) halo(h.fmt0(D.serieAn.val[lastP]), X(lastP) - 1.5, YP(D.serieAn.val[lastP]) + 2.6, { s: 5.2, w: 'bold', c: C.green, align: 'right' });
-  if (lastD) halo(h.fmt0(dvfOf(lastD)), X(lastD) + 1.5, YP(dvfOf(lastD)) - 1.2, { s: 5.2, w: 'bold', c: C.gold, align: 'right' });   /* aligné à droite : à gauche du point, l'étiquette touchait « 4 % » de l'axe de droite (audit du 27/11) */
   if (cr) { doc.setDrawColor(...C.grey); doc.setLineWidth(.3); doc.setLineDashPattern([.6, 1.2], 0); doc.line(cx0 + pl, YP(cr.moy), cx0 + cw - pr, YP(cr.moy)); doc.setLineDashPattern([], 0); halo(`moyenne 2008–2009 · ${h.fmt0(cr.moy)} €/m²`, cx0 + cw - pr - 2, YP(cr.moy) + 3.2, { s: 5.2, w: 'bold', c: C.grey, align: 'right' }); }   /* 27/11 : la moyenne de crise sur le graphique */
   if (D.prix) { doc.setDrawColor(...C.bad); doc.setLineWidth(.4); doc.setLineDashPattern([2, 1.2], 0); doc.line(cx0 + pl, YP(D.prix), cx0 + cw - pr, YP(D.prix)); doc.setLineDashPattern([], 0); halo(`prix envisagé ${h.fmt0(D.prix)} €/m²`, cx0 + pl + 2, YP(D.prix) - 1.2, { s: 5.4, w: 'bold', c: C.bad }); }
   axisLabels(st, ys.filter(y => (+ys[ys.length - 1] - +y) % 2 === 0).map(y => ({ t: y, x: X(y), align: 'center' })), cy0 + ch - 1, 5);   /* depuis la dernière année : 2025, 2023, … (27/11) */
   st.y = cy0 + ch + 3;
   // légende
-  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, `${D.tauxLbl || 'Taux crédit habitat'} (axe droit)`], [C.grey2, true, 'OAT 10 ans (axe droit)'], [C.grey, true, 'Moyenne 2008–2009']];
+  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [[35, 70, 138], false, `${D.tauxLbl || 'Taux crédit habitat'} (axe droit)`], [C.grey2, true, 'OAT 10 ans (axe droit)'], [C.grey, true, 'Moyenne 2008–2009']];
   let lx = M; leg.forEach(([col, dash, t]) => { const w = 6.5 + st.width(t, 5.6); if (lx + w > PW - M) { lx = M; st.y += 4; }   /* cinq entrées : la dernière sortait de la marge (audit du 27/11) → retour à la ligne */
     doc.setDrawColor(...col); doc.setLineWidth(.5); doc.setLineDashPattern(dash ? [1.2, .8] : [], 0); doc.line(lx, st.y + 1.2, lx + 5, st.y + 1.2); doc.setLineDashPattern([], 0); st.text(t, lx + 6.5, st.y + 2.2, { s: 5.6, c: C.text2 }); lx += w + 7; });
   st.y += 7;
   const calTxt = D.cal ? ` Coefficient de reconstitution : ${D.cal.k.toFixed(1).replace('.', ',')} €/m² par point d'indice, calé sur ${D.cal.n} années DVF (${D.cal.annees[0]}–${D.cal.annees[D.cal.n - 1]}, écart annuel maximal ${(D.cal.ecartMax * 100).toFixed(1).replace('.', ',')} %).` : '';
-  st.para(`Méthode. ${h.HELP.histo_etude[1]} ${h.HELP.histo_crise[1]}${calTxt} Dernier trimestre publié par les notaires : ${qL(D.lastQ)} ; moyenne DVF sur les années à 30 ventes ou plus. Sources : ${D.source?.editeur || 'Notaires du Grand Paris – base BIEN'} (${D.source?.prix?.titre || 'prix par arrondissement'} ; ${D.source?.indices?.titre || 'indices par département'}), DVF (Etalab), BCE (taux des crédits à l'habitat, taux long terme).`, M, CW, { s: 6.8, c: C.grey });
+  st.para(`Méthode. ${h.HELP.histo_etude[1]} ${h.HELP.histo_crise[1]}${calTxt} Dernier trimestre publié par les notaires : ${qL(D.lastQ)} . Sources : ${D.source?.editeur || 'Notaires du Grand Paris – base BIEN'} (${D.source?.prix?.titre || 'prix par arrondissement'} ; ${D.source?.indices?.titre || 'indices par département'}), DVF (Etalab), BCE (taux des crédits à l'habitat, taux long terme).`, M, CW, { s: 6.8, c: C.grey });
 }
 
 function kpiRow(st, w, h, per, x, y, width, tall = true){
