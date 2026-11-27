@@ -24,13 +24,13 @@ import requests
 
 OUT = "data/macro.json"
 SERIES = {
-    "taux_credit": {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/MIR/M.FR.B.A2C.AM.R.A.2250.EUR.N?format=csvdata&startPeriod=2006-01",
+    "taux_credit": {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/MIR/M.FR.B.A2C.AM.R.A.2250.EUR.N?format=csvdata&startPeriod=2005-01",
                     "titre": "Taux des crédits à l'habitat (France, ménages, nouvelles opérations)", "unite": "%", "freq": "M"},
-    "oat_10":      {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=csvdata&startPeriod=2006-01",
+    "oat_10":      {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=csvdata&startPeriod=2005-01",
                     "titre": "Taux long terme France (critère de Maastricht, ≈ OAT 10 ans)", "unite": "%", "freq": "M"},
-    "euribor_3m":  {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA?format=csvdata&startPeriod=2006-01",
+    "euribor_3m":  {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA?format=csvdata&startPeriod=2005-01",
                     "titre": "Euribor 3 mois (moyenne mensuelle)", "unite": "%", "freq": "M"},   # lot 20 (27/11) : courbe longue période, à la place du taux de crédit
-    "ipch":        {"src": "BCE/Eurostat", "url": "https://data-api.ecb.europa.eu/service/data/ICP/M.FR.N.000000.4.INX?format=csvdata&startPeriod=2006-01",
+    "ipch":        {"src": "BCE/Eurostat", "url": "https://data-api.ecb.europa.eu/service/data/ICP/M.FR.N.000000.4.INX?format=csvdata&startPeriod=2005-01",
                     "titre": "Indice des prix à la consommation harmonisé, France (2015 = 100)", "unite": "indice", "freq": "M"},
     "insee_paris_appart": {"src": "INSEE / Notaires", "url": "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/010567013",
                     "titre": "Indice Notaires-INSEE des prix des appartements anciens, Paris (CVS, 2015 = 100)", "unite": "indice", "freq": "Q"},
@@ -39,7 +39,7 @@ SERIES = {
     "permis_paris": {"src": "INSEE / Sit@del2", "url": "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001761793",
                     "titre": "Logements autorisés, Ville de Paris, cumul 12 mois", "unite": "logements", "freq": "M"},
 }
-DEBUT = "2006"            # lot 20 : volet « longue période » (crise de 2008) — les séries BCE répondent depuis 2003 (MIR) et 1990 (IRS), l'INSEE depuis 1996
+DEBUT = "2005"            # lot 20 (27/11 : 2005 pour l'IPCH du TCAM réel 2005 → 2025) : volet « longue période » (crise de 2008) — les séries BCE répondent depuis 2003 (MIR) et 1990 (IRS), l'INSEE depuis 1996
 RETARD_MOIS = 8
 MIN_POINTS = 24            # une série tronquée (page d'erreur, format changé) est refusée, pas prise pour vraie
 

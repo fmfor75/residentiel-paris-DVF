@@ -542,7 +542,7 @@ footer a{color:var(--text3)}
 .gbx small{display:block;font-weight:400;color:var(--text4);font-size:11px}
 .lect{display:grid;gap:8px}.lect p{font-size:13px;line-height:1.55;color:var(--text2);padding:10px 14px;border-radius:12px;background:var(--soft2)}.lect p b{color:var(--text)}
 .verd{display:grid;gap:10px}
-.hk{grid-template-columns:repeat(4,1fr)}.hk .kpi .v{font-size:20px}.hk .kpi .v .chip{vertical-align:middle;margin-right:4px}
+.hk{grid-template-columns:repeat(4,1fr)}.hk .kpi .v{font-size:20px}.hk .kpi .v .kreel{display:block;font-size:12.5px;font-weight:600;color:var(--accent);margin-top:3px}.hk .kpi .v .chip{vertical-align:middle;margin-right:4px}
 .hprix{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:16px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--glass2)}
 .hprix label{font-size:12.5px;font-weight:600;color:var(--text2);display:flex;align-items:center}.hprix .row{display:flex;align-items:center;gap:8px}.hprix input{border:1px solid var(--line3);border-radius:10px;background:var(--soft);font-size:14px;padding:6px 8px;width:110px;font-variant-numeric:tabular-nums}.hprix input:focus{border-color:var(--accent);outline:none;background:var(--soft3)}.hprix .u{font-size:12px;color:var(--text3)}
 .hpos{flex-basis:100%;font-size:13px;line-height:1.55;color:var(--text2);margin:0}.hpos.muted{color:var(--text4);font-size:12px}
@@ -1544,7 +1544,7 @@ function histoEtude(item){
   const taux = E.moyAnnuelle(tauxSerie.obs), oat = E.moyAnnuelle(M.oat_10.obs);
   const prix = S.histo?.prix > 0 ? S.histo.prix : 0; const pos = prix ? E.positionPrix(prix, serieAn, cr) : null;
   const lastQ = Object.keys(serieQ).sort().pop(), lastAn = serieAn.annees[serieAn.annees.length-1], lastDvf = Object.keys(dvfAn).filter(y => dvfAn[y].count >= 30).sort().pop();
-  const tl = E.tendanceLongue(serieAn, 20), anComplet = tl ? tl.dernierComplet : lastAn;   /* dernière année à 4 trimestres : les tuiles « vs pic » et la tendance s'y arrêtent */
+  const tl = E.tendanceLongue(serieAn, 20, M.ipch?.obs ? E.moyAnnuelle(M.ipch.obs) : null), anComplet = tl ? tl.dernierComplet : lastAn;   /* dernière année à 4 trimestres : les tuiles « vs pic » et la tendance s'y arrêtent */
   /* moyenne de crise en euros d'aujourd'hui : IPCH de la dernière année complète disponible ÷ IPCH moyen 2008–2009 */
   let infl = null; if (cr && M.ipch?.obs) { const ia = E.moyAnnuelle(M.ipch.obs); const ref = ia.val['2008'] != null && ia.val['2009'] != null ? (ia.val['2008'] + ia.val['2009']) / 2 : null; const yI = ia.annees.filter(y => ia.pts[y] === 12 && +y <= +anComplet).pop(); if (ref && yI) infl = {an: yI, coef: ia.val[yI] / ref, moyActuelle: cr.moy * ia.val[yI] / ref}; }
   return {geo, mesure, cal, serieQ, serieAn, dvfAn, annees, cr, taux, oat, tauxLbl, tauxCourt, prix, pos, lastQ, lastAn, lastDvf, ly, tl, anComplet, infl, source: HISTO.source, generated: HISTO.generated_at,
@@ -1620,7 +1620,7 @@ function histoCard(item){
     ${kpi('Retour au pic', cr.retour ? qLbl(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimSousPic} trimestres sous le pic (${qLbl(cr.pic.q)} → ${qLbl(cr.retour.q)})` : `${qLbl(d.lastQ)} : toujours sous le pic`)}
     ${kpi(`${d.anComplet} vs pic 2008`, fmtPctS(d.vsPicDernier), `moyenne ${d.anComplet} : ${fmt0(d.serieAn.val[d.anComplet])} €/m²`)}
     ${d.tl ? kpi('Moyenne 20 ans', `${est}${fmt0(d.tl.moy)} €/m²`, `${d.tl.de} → ${d.tl.a} · moyenne des ${d.tl.nAnnees} moyennes annuelles`) : ''}
-    ${d.tl && d.tl.cagr != null ? kpi('Croissance annuelle 20 ans', fmtPctS(d.tl.cagr).replace(' %', ' %/an'), `TCAM ${d.tl.cagrDe} → ${d.tl.a} · ${fmt0(d.serieAn.val[d.tl.cagrDe])} → ${fmt0(d.serieAn.val[d.tl.a])} €/m²`) : ''}</div>` : `<div class="hint">Chiffres de crise non calculables (série trop courte avant 2010).</div>`;
+    ${d.tl && d.tl.cagr != null ? kpi('Croissance annuelle 20 ans', `${fmtPctS(d.tl.cagr).replace(' %', ' %/an')}${d.tl.cagrReel != null ? `<small class="kreel">${fmtPctS(d.tl.cagrReel).replace(' %', ' %/an')} hors inflation</small>` : ''}`, `TCAM ${d.tl.cagrDe} → ${d.tl.a} · ${fmt0(d.serieAn.val[d.tl.cagrDe])} → ${fmt0(d.serieAn.val[d.tl.a])} €/m²${d.tl.cagrReel != null ? ` · inflation ${fmtPctS(d.tl.inflationAn).replace(' %', ' %/an')} (IPCH ${d.tl.cagrDe} → ${d.tl.ipchA})` : ' · nominal, IPCH indisponible'}`) : ''}</div>` : `<div class="hint">Chiffres de crise non calculables (série trop courte avant 2010).</div>`;
   const sub = `${d.mesure ? `prix au m² standardisé des notaires (base BIEN), ${esc(d.geo.label)}` : `indice Notaires-INSEE ${esc(d.depLbl)} reconstitué en €/m² · ${esc(d.geo.label)}`} · appartements anciens · ${d.tauxLbl} et OAT (BCE)`;
   const calTxt = d.cal ? ` Coefficient de reconstitution : ${d.cal.k.toFixed(1).replace('.',',')} €/m² par point d'indice, calé sur ${d.cal.n} années DVF (${d.cal.annees[0]}–${d.cal.annees[d.cal.n-1]}, écart annuel maximal ${(d.cal.ecartMax*100).toFixed(1).replace('.',',')} %${d.cal.ecartes.length ? `, ${d.cal.ecartes.length} année(s) à moins de 30 ventes écartée(s)` : ''}).` : '';
   return `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t">${titre}</div><span class="card-sub">${sub}</span></div>

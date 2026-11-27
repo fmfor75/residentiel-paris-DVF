@@ -18,7 +18,7 @@ ok(E.histoColonne(H, 'prix', '99999') === null && E.histoColonne(null, 'prix', '
 
 // moyennes annuelles : trimestriel et mensuel, années incomplètes signalées
 const ma = E.moyAnnuelle(p8); ok(ma.annees.length >= 29 && Math.abs(ma.val['2008'] - (7900 + 7740 + 8560 + 7910) / 4) < 1e-9 && ma.incomplets.length <= 2, `moyenne 2008 du 8e = ${ma.val['2008']} ; années incomplètes ${ma.incomplets} (au plus 1995 et l'année en cours)`);
-const mt = E.moyAnnuelle(macro.series.taux_credit.obs); ok(mt.annees[0] === '2006' && mt.pts['2006'] === 12 && mt.incomplets.length === 1, `taux : depuis ${mt.annees[0]}, incomplets ${mt.incomplets}`);
+const mt = E.moyAnnuelle(macro.series.taux_credit.obs); ok(mt.annees[0] <= '2006' && mt.pts['2006'] === 12 && mt.incomplets.length === 1, `taux : depuis ${mt.annees[0]}, incomplets ${mt.incomplets}`);
 ok(Math.abs(mt.val['2008'] - 5.0) < .3 && mt.val['2021'] < 1.3, `taux moyen 2008 ≈ 5 % (${mt.val['2008'].toFixed(2)}), 2021 ≈ 1,1 % (${mt.val['2021'].toFixed(2)})`);
 
 // calage : Paris entier sur l'indice 75 et nos moyennes DVF annuelles
@@ -39,6 +39,9 @@ const tl = E.tendanceLongue(ma, 20); const aC = tl.dernierComplet;
 ok(ma.pts[aC] === 4 && tl.nAnnees === 20 && +tl.de === +aC - 19 && tl.cagrDe === String(+aC - 20) && tl.cagr > 2 && tl.cagr < 8, `8e : ${tl.nAnnees} ans ${tl.de}–${tl.a}, moyenne ${tl.moy.toFixed(0)}, TCAM ${tl.cagr?.toFixed(2)} %/an depuis ${tl.cagrDe}`);
 ok(Math.abs(tl.cagr - (Math.pow(ma.val[aC] / ma.val[tl.cagrDe], 1 / 20) - 1) * 100) < 1e-9, 'TCAM = (fin/début)^(1/20) − 1');
 ok(E.tendanceLongue({ annees: ['2026'], pts: { 2026: 2 }, val: { 2026: 1 }, complet: 4 }) === null, 'aucune année complète → null');
+const ipchAn = E.moyAnnuelle(macro.series.ipch.obs); const tr = E.tendanceLongue(ma, 20, ipchAn);
+ok(tr.cagrReel != null && tr.cagrReel < tr.cagr && tr.inflationAn > 1 && tr.inflationAn < 3 && Math.abs((1 + tr.cagr / 100) / (1 + tr.inflationAn / 100) - 1 - tr.cagrReel / 100) < 1e-9, `TCAM réel ${tr.cagrReel?.toFixed(2)} %/an = nominal ${tr.cagr.toFixed(2)} déflaté de l'IPCH ${tr.inflationAn?.toFixed(2)} %/an (${tr.cagrDe} → ${tr.ipchA})`);
+ok(E.tendanceLongue(ma, 20, { annees: ['2024'], pts: { 2024: 12 }, val: { 2024: 120 }, complet: 12 }).cagrReel === null, 'IPCH sans l\'année de départ → pas de TCAM réel, le nominal reste');
 const cP = E.crise(cal.serieQ), cI = E.crise(iP); ok(Math.abs(cP.baisse - cI.baisse) < 1e-9 && cP.pic.q === cI.pic.q, `Paris reconstitué : même baisse que l'indice (${cI.baisse.toFixed(1)} %, pic ${cI.pic.q})`);
 ok(E.crise({ '2008-Q1': 1 }) === null && E.crise(null) === null, 'série trop courte → null');
 

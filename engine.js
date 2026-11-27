@@ -451,11 +451,16 @@ export function crise(serieQ, F = CRISE){
 }
 // Tendance longue sur les `n` dernières années complètes de la série annuelle : moyenne des moyennes annuelles et taux de
 // croissance annuel moyen (TCAM) entre l'année n années avant la dernière complète et celle-ci (27/11 : « moyenne sur 20 ans et CAGR »)
-export function tendanceLongue(serieAn, n = 20){
+export function tendanceLongue(serieAn, n = 20, ipchAn = null){
   if (!serieAn?.annees?.length) return null; const comp = serieAn.annees.filter(y => serieAn.pts[y] >= serieAn.complet); if (!comp.length) return null;
   const a = comp[comp.length - 1], fen = comp.filter(y => +y > +a - n); const moy = fen.reduce((s, y) => s + serieAn.val[y], 0) / fen.length;
   const y0 = String(+a - n), cagr = serieAn.val[y0] != null && serieAn.pts[y0] >= serieAn.complet ? (Math.pow(serieAn.val[a] / serieAn.val[y0], 1 / n) - 1) * 100 : null;
-  return { dernierComplet: a, moy, de: fen[0], a, nAnnees: fen.length, cagr, cagrDe: cagr != null ? y0 : null };
+  // TCAM réel (27/11 : « la croissance annuelle est retraitée de l'inflation ? » — elle ne l'était pas) : déflaté par l'IPCH annuel
+  // moyen entre y0 et a ; si l'IPCH de a manque (série en retard), on prend la dernière année complète ≤ a et on le dit (ipchA)
+  let reel = null, inflation = null, ipchA = null;
+  if (cagr != null && ipchAn?.val?.[y0] != null && ipchAn.pts[y0] >= ipchAn.complet) { ipchA = ipchAn.annees.filter(y => +y <= +a && ipchAn.pts[y] >= ipchAn.complet).pop();
+    if (ipchA && +ipchA > +y0) { const nI = +ipchA - +y0, infl = Math.pow(ipchAn.val[ipchA] / ipchAn.val[y0], 1 / nI); inflation = (infl - 1) * 100; reel = ((1 + cagr / 100) / infl - 1) * 100; } }
+  return { dernierComplet: a, moy, de: fen[0], a, nAnnees: fen.length, cagr, cagrDe: cagr != null ? y0 : null, cagrReel: reel, inflationAn: inflation, ipchA };
 }
 // Où se situe un prix envisagé (€/m²) : écart au dernier point, au pic de 2008, à la moyenne de crise, et première année où la
 // moyenne annuelle de la série a atteint ce niveau (null : jamais atteint)
