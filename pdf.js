@@ -188,8 +188,10 @@ function pageHisto(st, doc, h, item, D, lastYear){
     st.y += 27;
   } else { st.text('Chiffres de crise non calculables (série trop courte avant 2010).', M, st.y + 4, { s: 8, c: C.grey }); st.y += 10; }
   // prix envisagé
-  if (D.prix && D.positionTxt) { const lines = st.wrap(D.positionTxt, CW - 10, 7.2); const hh = 9 + lines.length * 7.2 * pt2mm * 1.45; st.need(hh + 4);
-    st.rect(M, st.y, CW, hh, [254, 242, 242], [248, 180, 180], 1.4); st.caps(`Prix envisagé · ${h.fmt0(D.prix)} €/m²`, M + 4, st.y + 5, { s: 5.6, c: C.bad }); let yy = st.y + 9.5; lines.forEach(l => { st.text(l, M + 4, yy, { s: 7.2, c: C.text2 }); yy += 7.2 * pt2mm * 1.45; }); st.y += hh + 5; }
+  if (D.prix && D.positionLignes?.length) {   /* 27/11 : trois lignes (aujourd'hui · crise de 2008 · repère), titre en gras */
+    const lh = 7.2 * pt2mm * 1.45, tw0 = 22; const blocs = D.positionLignes.map(([t, x]) => [t, st.wrap(x, CW - 10 - tw0, 7.2)]); const hh = 9 + blocs.reduce((a, [, ls]) => a + ls.length * lh, 0) + (blocs.length - 1) * 1.2; st.need(hh + 4);
+    st.rect(M, st.y, CW, hh, [254, 242, 242], [248, 180, 180], 1.4); st.caps(`Prix envisagé · ${h.fmt0(D.prix)} €/m²`, M + 4, st.y + 5, { s: 5.6, c: C.bad }); let yy = st.y + 9.5;
+    blocs.forEach(([t, ls]) => { st.text(t, M + 4, yy, { s: 7.2, w: 'bold', c: C.text, fit: tw0 - 2 }); ls.forEach(l => { st.text(l, M + 4 + tw0, yy, { s: 7.2, c: C.text2 }); yy += lh; }); yy += 1.2; }); st.y += hh + 5; }
   // graphique : moyennes annuelles, prix à gauche, taux à droite, bande 2008–2009
   const ys = D.annees, nx = ys.length, cx0 = M, cy0 = st.y, cw = CW, ch = 64; st.need(ch + 14);
   const pl = 14, pr = 12, ptop = 7, pbot = 7, iw = cw - pl - pr, ih = ch - ptop - pbot; const X = y => cx0 + pl + (ys.indexOf(String(y)) + .5) * iw / nx;
@@ -210,12 +212,14 @@ function pageHisto(st, doc, h, item, D, lastYear){
   const lastP = ys.filter(y => D.serieAn.val[y] != null).pop(), lastD = ys.filter(y => dvfOf(y) != null).pop();
   if (lastP) halo(h.fmt0(D.serieAn.val[lastP]), X(lastP) - 1.5, YP(D.serieAn.val[lastP]) + 2.6, { s: 5.2, w: 'bold', c: C.green, align: 'right' });
   if (lastD) halo(h.fmt0(dvfOf(lastD)), X(lastD) + 1.5, YP(dvfOf(lastD)) - 1.2, { s: 5.2, w: 'bold', c: C.gold, align: 'right' });   /* aligné à droite : à gauche du point, l'étiquette touchait « 4 % » de l'axe de droite (audit du 27/11) */
+  if (cr) { doc.setDrawColor(...C.grey); doc.setLineWidth(.3); doc.setLineDashPattern([.6, 1.2], 0); doc.line(cx0 + pl, YP(cr.moy), cx0 + cw - pr, YP(cr.moy)); doc.setLineDashPattern([], 0); halo(`moyenne 2008–2009 · ${h.fmt0(cr.moy)} €/m²`, cx0 + cw - pr - 2, YP(cr.moy) + 3.2, { s: 5.2, w: 'bold', c: C.grey, align: 'right' }); }   /* 27/11 : la moyenne de crise sur le graphique */
   if (D.prix) { doc.setDrawColor(...C.bad); doc.setLineWidth(.4); doc.setLineDashPattern([2, 1.2], 0); doc.line(cx0 + pl, YP(D.prix), cx0 + cw - pr, YP(D.prix)); doc.setLineDashPattern([], 0); halo(`prix envisagé ${h.fmt0(D.prix)} €/m²`, cx0 + pl + 2, YP(D.prix) - 1.2, { s: 5.4, w: 'bold', c: C.bad }); }
   axisLabels(st, ys.filter(y => (+ys[ys.length - 1] - +y) % 2 === 0).map(y => ({ t: y, x: X(y), align: 'center' })), cy0 + ch - 1, 5);   /* depuis la dernière année : 2025, 2023, … (27/11) */
   st.y = cy0 + ch + 3;
   // légende
-  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, 'Taux crédit habitat (axe droit)'], [C.grey2, true, 'OAT 10 ans (axe droit)']];
-  let lx = M; leg.forEach(([col, dash, t]) => { doc.setDrawColor(...col); doc.setLineWidth(.5); doc.setLineDashPattern(dash ? [1.2, .8] : [], 0); doc.line(lx, st.y + 1.2, lx + 5, st.y + 1.2); doc.setLineDashPattern([], 0); st.text(t, lx + 6.5, st.y + 2.2, { s: 5.6, c: C.text2 }); lx += 6.5 + st.width(t, 5.6) + 7; });
+  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, 'Taux crédit habitat (axe droit)'], [C.grey2, true, 'OAT 10 ans (axe droit)'], [C.grey, true, 'Moyenne 2008–2009']];
+  let lx = M; leg.forEach(([col, dash, t]) => { const w = 6.5 + st.width(t, 5.6); if (lx + w > PW - M) { lx = M; st.y += 4; }   /* cinq entrées : la dernière sortait de la marge (audit du 27/11) → retour à la ligne */
+    doc.setDrawColor(...col); doc.setLineWidth(.5); doc.setLineDashPattern(dash ? [1.2, .8] : [], 0); doc.line(lx, st.y + 1.2, lx + 5, st.y + 1.2); doc.setLineDashPattern([], 0); st.text(t, lx + 6.5, st.y + 2.2, { s: 5.6, c: C.text2 }); lx += w + 7; });
   st.y += 7;
   const calTxt = D.cal ? ` Coefficient de reconstitution : ${D.cal.k.toFixed(1).replace('.', ',')} €/m² par point d'indice, calé sur ${D.cal.n} années DVF (${D.cal.annees[0]}–${D.cal.annees[D.cal.n - 1]}, écart annuel maximal ${(D.cal.ecartMax * 100).toFixed(1).replace('.', ',')} %).` : '';
   st.para(`Méthode. ${h.HELP.histo_etude[1]} ${h.HELP.histo_crise[1]}${calTxt} Dernier trimestre publié par les notaires : ${qL(D.lastQ)} ; moyenne DVF sur les années à 30 ventes ou plus. Sources : ${D.source?.editeur || 'Notaires du Grand Paris – base BIEN'} (${D.source?.prix?.titre || 'prix par arrondissement'} ; ${D.source?.indices?.titre || 'indices par département'}), DVF (Etalab), BCE (taux des crédits à l'habitat, taux long terme).`, M, CW, { s: 6.8, c: C.grey });
