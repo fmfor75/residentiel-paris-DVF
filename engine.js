@@ -445,7 +445,17 @@ export function crise(serieQ, F = CRISE){
   if (!pic) return null; let creux = null; for (const q of qs) if (q > pic.q && q <= F.creuxA && (!creux || serieQ[q] < creux.v)) creux = { q, v: serieQ[q] };
   if (!creux) return null; let retour = null; for (const q of qs) if (q > creux.q && serieQ[q] >= pic.v) { retour = { q, v: serieQ[q] }; break; }
   const nq = (a, b) => (+b.slice(0, 4) - +a.slice(0, 4)) * 4 + (+b.slice(-1) - +a.slice(-1));
-  return { moy, pic, creux, baisse: (creux.v / pic.v - 1) * 100, retour, trimPicCreux: nq(pic.q, creux.q), trimCreuxRetour: retour ? nq(creux.q, retour.q) : null, de: F.de, a: F.a, nFen: fen.length };
+  // trimSousPic : trimestres passés sous le pic (pic → retour), la durée réelle de l'épisode ; la moyenne 2008–2009 est une
+  // fenêtre calendaire fixe (le niveau de prix pendant la crise), les deux ne mesurent pas la même chose (question du 27/11)
+  return { moy, pic, creux, baisse: (creux.v / pic.v - 1) * 100, retour, trimPicCreux: nq(pic.q, creux.q), trimCreuxRetour: retour ? nq(creux.q, retour.q) : null, trimSousPic: retour ? nq(pic.q, retour.q) : null, de: F.de, a: F.a, nFen: fen.length };
+}
+// Tendance longue sur les `n` dernières années complètes de la série annuelle : moyenne des moyennes annuelles et taux de
+// croissance annuel moyen (TCAM) entre l'année n années avant la dernière complète et celle-ci (27/11 : « moyenne sur 20 ans et CAGR »)
+export function tendanceLongue(serieAn, n = 20){
+  if (!serieAn?.annees?.length) return null; const comp = serieAn.annees.filter(y => serieAn.pts[y] >= serieAn.complet); if (!comp.length) return null;
+  const a = comp[comp.length - 1], fen = comp.filter(y => +y > +a - n); const moy = fen.reduce((s, y) => s + serieAn.val[y], 0) / fen.length;
+  const y0 = String(+a - n), cagr = serieAn.val[y0] != null && serieAn.pts[y0] >= serieAn.complet ? (Math.pow(serieAn.val[a] / serieAn.val[y0], 1 / n) - 1) * 100 : null;
+  return { dernierComplet: a, moy, de: fen[0], a, nAnnees: fen.length, cagr, cagrDe: cagr != null ? y0 : null };
 }
 // Où se situe un prix envisagé (€/m²) : écart au dernier point, au pic de 2008, à la moyenne de crise, et première année où la
 // moyenne annuelle de la série a atteint ce niveau (null : jamais atteint)

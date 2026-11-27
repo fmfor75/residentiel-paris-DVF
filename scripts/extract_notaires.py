@@ -8,7 +8,12 @@ la mise en page change rarement mais n'est pas garantie) :
   - indices Notaires-INSEE des appartements anciens par département d'Île-de-France (base 100 en 2015), trimestriel
     depuis T1 1991 (75, 92, 93, 94) ou T1 1996 (77, 78, 91, 95).
 
-Usage : python3 scripts/extract_notaires.py --arr arr.pdf --dept dept.pdf [--macro data/macro.json] [--out data/historique_notaires.json]
+Usage : python3 scripts/extract_notaires.py [--arr arr.pdf --dept dept.pdf] [--macro data/macro.json] [--out data/historique_notaires.json]
+Sans --arr/--dept : télécharge la version la plus récente publiée sur paris.notaires.fr. Relevé du 27/11/2026 : le fichier de
+basebien.com date de mars 2025 (T4 2024) alors que paris.notaires.fr republie chaque trimestre sous un suffixe croissant
+(…pararrdt_4.pdf et …pardept_4.pdf du 8 septembre 2026 : T2 2026 ; _1 nov. 2025, _2 mars 2026, _3 mai 2026). On essaie donc
+les suffixes du plus grand au plus petit et on prend le premier qui existe. Si rien n'est joignable et qu'un fichier de sortie
+existe déjà, il est conservé (code 0, comme fetch_demo) ; sinon code 1.
 
 Contrôles (le programme sort en erreur s'ils échouent — une colonne décalée produirait un fichier plausible et faux) :
   - chaque ligne de trimestre porte exactement le nombre de colonnes attendu (21 pour les arrondissements, 11 pour les
@@ -19,7 +24,31 @@ Contrôles (le programme sort en erreur s'ils échouent — une colonne décalé
   - les prix des arrondissements et l'indice Paris évoluent dans le même sens : corrélation des variations trimestrielles
     de la moyenne simple des 20 arrondissements avec celles de l'indice Paris > 0,8.
 """
-import argparse, json, os, re, subprocess, sys, datetime, statistics
+import argparse, json, os, re, subprocess, sys, datetime, statistics, tempfile, urllib.request
+
+SITE = "https://paris.notaires.fr/sites/default/files/"
+BASES = {"arr": "HistoriquedesprixaumappartementsanciensParispararrdt", "dept": "Indicesdesprixdesappartementspardept"}
+SUFFIXES = [f"_{n}" for n in range(12, -1, -1)] + [""]
+
+
+def plus_recent(kind, timeout=30):
+    """(url, Last-Modified) du PDF au plus grand suffixe existant ; (None, None) si aucun ne répond."""
+    for suf in SUFFIXES:
+        url = f"{SITE}{BASES[kind]}{suf}.pdf"
+        try:
+            req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "residentiel-paris-DVF"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                if r.status == 200:
+                    return url, r.headers.get("Last-Modified")
+        except Exception:
+            continue
+    return None, None
+
+
+def telecharger(url, dest, timeout=60):
+    req = urllib.request.Request(url, headers={"User-Agent": "residentiel-paris-DVF"})
+    with urllib.request.urlopen(req, timeout=timeout) as r, open(dest, "wb") as f:
+        f.write(r.read())
 
 ARR_COLS = ["centre"] + [f"751{i:02d}" for i in range(1, 21)]
 DEPT_COLS = ["idf", "75", "pc", "92", "93", "94", "gc", "77", "78", "91", "95"]
@@ -70,12 +99,31 @@ def quarters(a, b):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arr", required=True)
-    ap.add_argument("--dept", required=True)
+    ap.add_argument("--arr", default=None, help="PDF local des prix par arrondissement (sinon téléchargé)")
+    ap.add_argument("--dept", default=None, help="PDF local des indices par département (sinon téléchargé)")
     ap.add_argument("--macro", default="data/macro.json")
     ap.add_argument("--out", default="data/historique_notaires.json")
     a = ap.parse_args()
     errs = []
+    meta_src = {}
+    if not (a.arr and a.dept):
+        tmp = tempfile.mkdtemp()
+        for kind in ("arr", "dept"):
+            url, lm = plus_recent(kind)
+            if not url:
+                msg = f"aucun PDF {kind} joignable sur paris.notaires.fr"
+                if os.path.exists(a.out):
+                    print(f"  ! {msg} — fichier précédent conservé"); return
+                print(f"  ✗ {msg}"); sys.exit(1)
+            dest = os.path.join(tmp, f"{kind}.pdf")
+            try:
+                telecharger(url, dest)
+            except Exception as e:
+                if os.path.exists(a.out):
+                    print(f"  ! téléchargement {kind} en échec ({e}) — fichier précédent conservé"); return
+                print(f"  ✗ téléchargement {kind} en échec : {e}"); sys.exit(1)
+            setattr(a, kind, dest); meta_src[kind] = {"url": url, "last_modified": lm}
+            print(f"{kind} : {url} ({lm})")
 
     prix, bad1 = parse(pdftotext(a.arr), len(ARR_COLS), "prix")
     idx, bad2 = parse(pdftotext(a.dept), len(DEPT_COLS), "indice")
@@ -137,10 +185,10 @@ def main():
         "source": {
             "editeur": "Notaires du Grand Paris – base BIEN (Paris Notaires Services)",
             "prix": {"titre": "Historique des prix au m² standardisés des appartements anciens à Paris par arrondissement",
-                     "url": "https://www.basebien.com/PNSPublic/DocPublic/HistoriquedesprixaumappartementsanciensParispararrdt.pdf",
+                     "url": meta_src.get("arr", {}).get("url", a.arr), "last_modified": meta_src.get("arr", {}).get("last_modified"),
                      "note": "Appartements anciens vendus libres, de gré à gré, en pleine propriété, à usage d'habitation ; prix standardisé (à qualité constante, méthode des indices Notaires-INSEE), en €/m², trimestriel."},
             "indices": {"titre": "Indices Notaires-INSEE des appartements anciens par département",
-                        "url": "https://www.basebien.com/PNSPublic/DocPublic/Indicesdesprixdesappartementspardept.pdf",
+                        "url": meta_src.get("dept", {}).get("url", a.dept), "last_modified": meta_src.get("dept", {}).get("last_modified"),
                         "note": "Base 100 en 2015 ; trimestriel ; 75/92/93/94 depuis 1991, 77/78/91/95 depuis 1996."},
         },
         "controles": {"trimestres_communs_insee": n_comm, "ecart_max_insee_pt": round(ecart_max, 2), "correlation_arr_vs_paris": round(corr, 3)},

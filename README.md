@@ -26,7 +26,7 @@ scripts/build_geo.py          ← construction manuelle du référentiel géogra
 scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run (manuel)
 scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run (manuel)
 scripts/fetch_demo.py         ← démographie et parc INSEE (recensements 2012/2017/2023, API Melodi) → data/demographie.json (clair)
-scripts/extract_notaires.py   ← séries longues des notaires (deux PDF publics) → data/historique_notaires.json (clair), à la main une fois par an
+scripts/extract_notaires.py   ← séries longues des notaires (dernier PDF de paris.notaires.fr) → data/historique_notaires.json (clair), à chaque run
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
 .github/workflows/update-dvf.yml ← run manuel (Actions → Run workflow ; plus de cron depuis le 27/11/2026) : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
@@ -256,15 +256,17 @@ et section PDF « Longue période » au même endroit, sélectionnable comme les
 sous les en-têtes des tableaux (`thU`, classe `.thu`), au-dessus des axes des graphiques, annoncé sur les tableaux du PDF. DVF n'existe en open data que depuis 2014 (décret du 28/12/2018, cinq ans
 glissants ; aucun millésime antérieur publié — vérifié) et DV3F du Cerema (2010 →) est réservé aux acteurs publics : avant 2014,
 seule donnée publique, les séries des notaires du Grand Paris (`scripts/extract_notaires.py` → `data/historique_notaires.json`,
-relecture manuelle annuelle des deux PDF de basebien.com, mise en page contrôlée : 21 et 11 colonnes par ligne, trimestres
+téléchargés à chaque run depuis paris.notaires.fr — le PDF au plus grand suffixe `_N` est le plus récent, republié chaque trimestre (T2 2026 le 8/9/2026) ; basebien.com s'était arrêté à T4 2024 — mise en page contrôlée : 21 et 11 colonnes par ligne, trimestres
 consécutifs, indice Paris = INSEE à 1,5 pt près par trimestre et 0,5 pt en moyenne annuelle, corrélation prix / indice 0,95).
 Arrondissement de Paris : **prix au m² standardisé mesuré** (trimestriel depuis 1996). Paris entier, commune, secteur, zone :
 **prix reconstitué** = indice Notaires-INSEE du département × k, k calé sur nos moyennes DVF annuelles des années communes
 (`engine.calerSurDvf`, années à moins de 30 ventes écartées et comptées), toujours étiqueté « estimation ». Chiffres de crise
 (`engine.crise`) : moyenne des huit trimestres 2008–2009 (chiffre principal, choix de Franck), pic avant fin 2008, creux après le
 pic jusqu'à fin 2010, baisse, retour au pic. Graphique des moyennes annuelles : série notaires, moyenne DVF en pointillés depuis
-2014 (les deux ne se raccordent pas : deux courbes), taux des crédits à l'habitat et OAT 10 ans (BCE, `fetch_macro.py` reculé de
-2010 à 2006) sur un second axe, bande 2008–2009. **Prix envisagé** (`histo=` dans le hash, €/m²) tracé sur le graphique et situé
+2014 (les deux ne se raccordent pas : deux courbes), Euribor 3 mois (série BCE `euribor_3m`, ajoutée le 27/11 à la place du taux de crédit) et OAT 10 ans (`fetch_macro.py` reculé de
+2010 à 2006) sur un second axe, bande 2008–2009 et pointillé de la moyenne 2008–2009. Huit tuiles : moyenne 2008–2009, pic, creux,
+baisse, retour au pic (trimestres passés sous le pic), dernière année complète face au pic, moyenne 20 ans, TCAM 20 ans
+(`engine.tendanceLongue`). La lecture du prix envisagé donne aussi la moyenne de crise en euros d'aujourd'hui (IPCH). **Prix envisagé** (`histo=` dans le hash, €/m²) tracé sur le graphique et situé
 (dernier point, pic, moyenne de crise, première année où la zone l'a atteint). Gardes : `tests/test_histo.mjs` (valeurs relues
 à l'œil sur le PDF, moyennes, calage, crise, position), `test_persp` ne dépend plus d'un trimestre INSEE littéral, deux
 configurations dans `tests/audit_pdf.py`.

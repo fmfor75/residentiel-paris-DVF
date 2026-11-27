@@ -47,6 +47,8 @@ jobs:
 
       - name: Dépendances
         run: pip install requests cryptography
+      - name: Outils PDF (pdftotext pour les séries des notaires)
+        run: sudo apt-get install -y -qq poppler-utils
 
       # La suite de tests tourne sur un jeu de données jetable : elle prouve que le code est correct,
       # pas que les sources réelles ont le format attendu — c'est le run réel qui le prouve.
@@ -65,6 +67,10 @@ jobs:
       # Lot 17 : démographie et parc de logements (INSEE, recensements 2012/2017/2023 via Melodi) → data/demographie.json
       - name: Démographie et parc (INSEE Melodi)
         run: python scripts/fetch_demo.py ${{ github.event.inputs.mode == 'probe' && '--probe' || '' }}
+
+      - name: Séries longues des notaires (paris.notaires.fr, dernier PDF publié)
+        if: ${{ github.event.inputs.mode != 'probe' }}
+        run: python scripts/extract_notaires.py
 
       - name: Sondage des sources (probe)
         if: ${{ github.event.inputs.mode == 'probe' }}
@@ -112,7 +118,7 @@ jobs:
         run: |
           git config user.name "DVF Bot"
           git config user.email "dvf-bot@github-actions"
-          git add data/enc data/dvf_cache.json.gz data/macro.json data/loyers.json data/demographie.json
+          git add data/enc data/dvf_cache.json.gz data/macro.json data/loyers.json data/demographie.json data/historique_notaires.json
           git status --short data/
           PERIODE=$(python -c "import json; print(json.load(open('data/dvf_paris.json'))['meta']['periode'])")
           git diff --staged --quiet || git commit -m "DVF $(date +'%Y-%m-%d') — ${PERIODE}"

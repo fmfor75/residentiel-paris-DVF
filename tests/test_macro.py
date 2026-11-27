@@ -12,7 +12,7 @@ class Fixture(http.server.SimpleHTTPRequestHandler):
 class FetchMacro(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(); self.out = os.path.join(self.tmp, "macro.json")
-        for k in ("taux_credit", "oat_10", "ipch"): open(os.path.join(self.tmp, k), "w").write(ECB)
+        for k in ("taux_credit", "oat_10", "ipch", "euribor_3m"): open(os.path.join(self.tmp, k), "w").write(ECB)
         for k in ("insee_paris_appart", "loyers_paris", "permis_paris"): open(os.path.join(self.tmp, k), "w").write(INSEE)
         self.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Fixture, directory=self.tmp))
         threading.Thread(target=self.srv.serve_forever, daemon=True).start(); self.base = f"http://127.0.0.1:{self.srv.server_address[1]}"
@@ -22,7 +22,7 @@ class FetchMacro(unittest.TestCase):
 
     def test_lecture_et_noop(self):
         r = self.run_fetch(); self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        m = json.load(open(self.out)); self.assertEqual(len(m["series"]), 6); self.assertEqual(m["echecs"], [])
+        m = json.load(open(self.out)); self.assertEqual(len(m["series"]), 7); self.assertEqual(m["echecs"], [])
         self.assertEqual(m["series"]["taux_credit"]["n"], 60); self.assertEqual(m["series"]["insee_paris_appart"]["dernier"], "2019-Q4")
         self.assertEqual(m["series"]["insee_paris_appart"]["last_update"], "2026-09-08"); self.assertTrue(m["series"]["ipch"]["retard"])   # fixture ancienne → retard signalé
         mt = os.path.getmtime(self.out); r = self.run_fetch(); self.assertIn("inchangé", r.stdout); self.assertEqual(os.path.getmtime(self.out), mt)
@@ -37,7 +37,7 @@ class FetchMacro(unittest.TestCase):
         self.assertTrue(m["series"]["ipch"]["stale"]); self.assertIn("points seulement", m["series"]["ipch"]["stale_motif"])
 
     def test_tout_en_echec_sans_precedent(self):
-        for k in ("taux_credit", "oat_10", "ipch", "insee_paris_appart", "loyers_paris", "permis_paris"): os.remove(os.path.join(self.tmp, k))
+        for k in ("taux_credit", "oat_10", "ipch", "euribor_3m", "insee_paris_appart", "loyers_paris", "permis_paris"): os.remove(os.path.join(self.tmp, k))
         r = self.run_fetch(); self.assertEqual(r.returncode, 2); self.assertFalse(os.path.exists(self.out))
 
 if __name__ == "__main__":

@@ -179,13 +179,16 @@ function pageDemographie(st, doc, h, item, D, params){
 const qL = q => q ? `T${q.slice(-1)} ${q.slice(0, 4)}` : '—';
 function pageHisto(st, doc, h, item, D, lastYear){
   const cr = D.cr, lab = D.geo.label, est = D.mesure ? '' : 'estimation · ';
-  st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(`2006 → ${lastYear} · appartements anciens · ${D.mesure ? 'prix notaires (base BIEN)' : `indice Notaires-INSEE ${D.depLbl}, reconstitué`} · DVF · BCE`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
+  st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(`2006 → ${lastYear} · appartements anciens · ${D.mesure ? 'prix notaires (base BIEN)' : `indice Notaires-INSEE ${D.depLbl}, reconstitué`} · DVF · ${D.tauxLbl || 'taux'} et OAT (BCE)`, PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' });
   st.text(`Depuis 2006, avec la crise de 2008 · ${lab}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 16;
   // six tuiles : la crise dans la zone
   if (cr) {
-    const tiles = [['Moyenne 2008–2009', `${h.fmt0(cr.moy)} €/m²`, `${est}${cr.nFen} trimestres · ${D.mesure ? 'prix notaires mesuré' : `indice ${D.depLbl} reconstitué`}`], ['Pic avant la crise', `${h.fmt0(cr.pic.v)} €/m²`, `${est}${qL(cr.pic.q)}`], ['Creux', `${h.fmt0(cr.creux.v)} €/m²`, `${est}${qL(cr.creux.q)} · ${cr.trimPicCreux} trim. après le pic`], ['Baisse pic → creux', h.fmtPctS(cr.baisse), D.mesure ? 'mesurée' : `celle de l'indice ${D.depLbl}`], ['Retour au pic', cr.retour ? qL(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimCreuxRetour} trim. après le creux` : `${qL(D.lastQ)} : sous le pic`], [`${D.lastAn} vs pic 2008`, h.fmtPctS(D.vsPicDernier), `moyenne ${D.lastAn} : ${h.fmt0(D.serieAn.val[D.lastAn])} €/m²`]];
-    const tw = (CW - 15) / 6; st.need(30); tiles.forEach(([l, v, u], i) => { const cx = M + i * (tw + 3); st.rect(cx, st.y, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, st.y + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, st.y + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, st.y + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
-    st.y += 27;
+    const tl = D.tl, aC = D.anComplet;   /* 27/11 : huit tuiles sur deux rangées (moyenne 20 ans, croissance annuelle 20 ans, dernière année complète face au pic) */
+    const tiles = [['Moyenne 2008–2009', `${h.fmt0(cr.moy)} €/m²`, `${est}${cr.nFen} trimestres · ${D.mesure ? 'prix notaires mesuré' : `indice ${D.depLbl} reconstitué`}`], ['Pic avant la crise', `${h.fmt0(cr.pic.v)} €/m²`, `${est}${qL(cr.pic.q)}`], ['Creux', `${h.fmt0(cr.creux.v)} €/m²`, `${est}${qL(cr.creux.q)} · ${cr.trimPicCreux} trim. après le pic`], ['Baisse pic → creux', h.fmtPctS(cr.baisse), D.mesure ? 'mesurée' : `celle de l'indice ${D.depLbl}`],
+      ['Retour au pic', cr.retour ? qL(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimSousPic} trimestres sous le pic (${qL(cr.pic.q)} → ${qL(cr.retour.q)})` : `${qL(D.lastQ)} : sous le pic`], [`${aC} vs pic 2008`, h.fmtPctS(D.vsPicDernier), `moyenne ${aC} : ${h.fmt0(D.serieAn.val[aC])} €/m²`],
+      ...(tl ? [['Moyenne 20 ans', `${h.fmt0(tl.moy)} €/m²`, `${est}${tl.de} → ${tl.a} · ${tl.nAnnees} moyennes annuelles`]] : []), ...(tl && tl.cagr != null ? [['Croissance annuelle 20 ans', h.fmtPctS(tl.cagr).replace(' %', ' %/an'), `TCAM ${tl.cagrDe} → ${tl.a} · ${h.fmt0(D.serieAn.val[tl.cagrDe])} → ${h.fmt0(D.serieAn.val[tl.a])} €/m²`]] : [])];
+    const tw = (CW - 9) / 4; st.need(52); tiles.forEach(([l, v, u], i) => { const cx = M + (i % 4) * (tw + 3), cy = st.y + Math.floor(i / 4) * 25; st.rect(cx, cy, tw, 22, C.tile, C.line, 1.4); st.caps(l, cx + 2.5, cy + 5, { s: 5.2, fit: tw - 5 }); st.text(v, cx + 2.5, cy + 12.5, { s: 11, w: 'bold', c: C.navy, fit: tw - 5 }); st.wrap(u, tw - 5, 5).slice(0, 2).forEach((ln, j) => st.text(ln, cx + 2.5, cy + 16.5 + j * 2.6, { s: 5, c: C.grey })); });
+    st.y += 25 * Math.ceil(tiles.length / 4) + 2;
   } else { st.text('Chiffres de crise non calculables (série trop courte avant 2010).', M, st.y + 4, { s: 8, c: C.grey }); st.y += 10; }
   // prix envisagé
   if (D.prix && D.positionLignes?.length) {   /* 27/11 : trois lignes (aujourd'hui · crise de 2008 · repère), titre en gras */
@@ -217,7 +220,7 @@ function pageHisto(st, doc, h, item, D, lastYear){
   axisLabels(st, ys.filter(y => (+ys[ys.length - 1] - +y) % 2 === 0).map(y => ({ t: y, x: X(y), align: 'center' })), cy0 + ch - 1, 5);   /* depuis la dernière année : 2025, 2023, … (27/11) */
   st.y = cy0 + ch + 3;
   // légende
-  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, 'Taux crédit habitat (axe droit)'], [C.grey2, true, 'OAT 10 ans (axe droit)'], [C.grey, true, 'Moyenne 2008–2009']];
+  const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, `${D.tauxLbl || 'Taux crédit habitat'} (axe droit)`], [C.grey2, true, 'OAT 10 ans (axe droit)'], [C.grey, true, 'Moyenne 2008–2009']];
   let lx = M; leg.forEach(([col, dash, t]) => { const w = 6.5 + st.width(t, 5.6); if (lx + w > PW - M) { lx = M; st.y += 4; }   /* cinq entrées : la dernière sortait de la marge (audit du 27/11) → retour à la ligne */
     doc.setDrawColor(...col); doc.setLineWidth(.5); doc.setLineDashPattern(dash ? [1.2, .8] : [], 0); doc.line(lx, st.y + 1.2, lx + 5, st.y + 1.2); doc.setLineDashPattern([], 0); st.text(t, lx + 6.5, st.y + 2.2, { s: 5.6, c: C.text2 }); lx += w + 7; });
   st.y += 7;

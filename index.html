@@ -542,13 +542,13 @@ footer a{color:var(--text3)}
 .gbx small{display:block;font-weight:400;color:var(--text4);font-size:11px}
 .lect{display:grid;gap:8px}.lect p{font-size:13px;line-height:1.55;color:var(--text2);padding:10px 14px;border-radius:12px;background:var(--soft2)}.lect p b{color:var(--text)}
 .verd{display:grid;gap:10px}
-.hk{grid-template-columns:repeat(6,1fr)}.hk .kpi .v{font-size:20px}.hk .kpi .v .chip{vertical-align:middle;margin-right:4px}
+.hk{grid-template-columns:repeat(4,1fr)}.hk .kpi .v{font-size:20px}.hk .kpi .v .chip{vertical-align:middle;margin-right:4px}
 .hprix{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:16px 0 14px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--glass2)}
 .hprix label{font-size:12.5px;font-weight:600;color:var(--text2);display:flex;align-items:center}.hprix .row{display:flex;align-items:center;gap:8px}.hprix input{border:1px solid var(--line3);border-radius:10px;background:var(--soft);font-size:14px;padding:6px 8px;width:110px;font-variant-numeric:tabular-nums}.hprix input:focus{border-color:var(--accent);outline:none;background:var(--soft3)}.hprix .u{font-size:12px;color:var(--text3)}
 .hpos{flex-basis:100%;font-size:13px;line-height:1.55;color:var(--text2);margin:0}.hpos.muted{color:var(--text4);font-size:12px}
 dl.hpos{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}dl.hpos dt{font-weight:600;color:var(--text);white-space:nowrap}dl.hpos dd{margin:0}
 @media (max-width:700px){dl.hpos{grid-template-columns:1fr;gap:2px}dl.hpos dd{margin-bottom:6px}}
-@media (max-width:1100px){.hk{grid-template-columns:repeat(3,1fr)}}@media (max-width:700px){.hk{grid-template-columns:repeat(2,1fr)}.hk .kpi .v{font-size:18px}}
+@media (max-width:1100px){.hk{grid-template-columns:repeat(2,1fr)}}@media (max-width:700px){.hk{grid-template-columns:repeat(2,1fr)}.hk .kpi .v{font-size:18px}}
 .vd{border:1px solid var(--line);border-left:4px solid var(--text4);border-radius:14px;padding:12px 16px;background:var(--glass2)}
 .vd.pression{border-left-color:var(--bad-vif)}.vd.soutien{border-left-color:var(--good-vif)}.vd.neutre{border-left-color:var(--text4)}.vd.contexte{border-left-color:var(--accent3)}
 .vd-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}.vd-h b{font-size:14px;font-weight:600}.vd-c{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
@@ -1538,11 +1538,17 @@ function histoEtude(item){
   else { const iq = E.histoColonne(HISTO, 'indices', geo.key); cal = iq ? E.calerSurDvf(iq, dvfAn) : null; serieQ = cal ? cal.serieQ : null; }
   if (!serieQ) return {geo, mesure, vide: true, dvfAn, motif: mesure ? 'colonne absente du fichier des notaires' : cal === null && E.histoColonne(HISTO, 'indices', geo.key) ? 'moins de 3 années DVF à 30 ventes ou plus pour caler l\'indice' : `indice du département ${geo.dep} absent du fichier`};
   const serieAn = E.moyAnnuelle(serieQ); const annees = []; for (let y = y0; y <= ly; y++) annees.push(String(y));
-  const cr = E.crise(serieQ); const M = MACRO.series; const taux = E.moyAnnuelle(M.taux_credit.obs), oat = E.moyAnnuelle(M.oat_10.obs);
+  const cr = E.crise(serieQ); const M = MACRO.series;
+  /* 27/11 : Euribor 3 mois à la place du taux de crédit (repli sur le taux de crédit avec un macro.json antérieur au lot 20) */
+  const tauxSerie = M.euribor_3m || M.taux_credit, tauxLbl = M.euribor_3m ? 'Euribor 3 mois' : 'Taux crédit habitat', tauxCourt = M.euribor_3m ? 'Euribor' : 'crédit';
+  const taux = E.moyAnnuelle(tauxSerie.obs), oat = E.moyAnnuelle(M.oat_10.obs);
   const prix = S.histo?.prix > 0 ? S.histo.prix : 0; const pos = prix ? E.positionPrix(prix, serieAn, cr) : null;
   const lastQ = Object.keys(serieQ).sort().pop(), lastAn = serieAn.annees[serieAn.annees.length-1], lastDvf = Object.keys(dvfAn).filter(y => dvfAn[y].count >= 30).sort().pop();
-  return {geo, mesure, cal, serieQ, serieAn, dvfAn, annees, cr, taux, oat, prix, pos, lastQ, lastAn, lastDvf, ly, source: HISTO.source, generated: HISTO.generated_at,
-          depLbl: DEP_LBL[geo.dep] || geo.dep, vsPicDernier: cr && serieAn.val[lastAn] ? (serieAn.val[lastAn] / cr.pic.v - 1) * 100 : null};
+  const tl = E.tendanceLongue(serieAn, 20), anComplet = tl ? tl.dernierComplet : lastAn;   /* dernière année à 4 trimestres : les tuiles « vs pic » et la tendance s'y arrêtent */
+  /* moyenne de crise en euros d'aujourd'hui : IPCH de la dernière année complète disponible ÷ IPCH moyen 2008–2009 */
+  let infl = null; if (cr && M.ipch?.obs) { const ia = E.moyAnnuelle(M.ipch.obs); const ref = ia.val['2008'] != null && ia.val['2009'] != null ? (ia.val['2008'] + ia.val['2009']) / 2 : null; const yI = ia.annees.filter(y => ia.pts[y] === 12 && +y <= +anComplet).pop(); if (ref && yI) infl = {an: yI, coef: ia.val[yI] / ref, moyActuelle: cr.moy * ia.val[yI] / ref}; }
+  return {geo, mesure, cal, serieQ, serieAn, dvfAn, annees, cr, taux, oat, tauxLbl, tauxCourt, prix, pos, lastQ, lastAn, lastDvf, ly, tl, anComplet, infl, source: HISTO.source, generated: HISTO.generated_at,
+          depLbl: DEP_LBL[geo.dep] || geo.dep, vsPicDernier: cr && serieAn.val[anComplet] ? (serieAn.val[anComplet] / cr.pic.v - 1) * 100 : null};
 }
 const qLbl = q => q ? `T${q.slice(-1)} ${q.slice(0,4)}` : '—';
 const fmtPctS0 = v => v==null ? '—' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(0)} %`;
@@ -1576,15 +1582,16 @@ function chartHisto(el, d){
   const mark = i => { const y = ys[i], pv = prixDe(y), dv = dvfDe(y), v = pv ?? dv; if (v == null) { mk.innerHTML = ''; return; }
     const cx = x(i), cy = yP(v), bw = Math.min(262, W - pl - pr), tx = Math.min(Math.max(cx, pl + bw/2), W - pr - bw/2), ty = Math.max(cy - 60, 0);
     const l1 = pv != null ? `${y} · ${fmt0(pv)} €/m²${d.mesure ? '' : ' (est.)'}` : `${y} · DVF ${fmt0(dv)} €/m²`;
-    const l2 = [pv != null && dv != null ? `DVF ${fmt0(dv)} €/m²` : null, d.taux.val[y] != null ? `crédit ${pctF(d.taux.val[y])}` : null, d.oat.val[y] != null ? `OAT ${pctF(d.oat.val[y])}` : null].filter(Boolean).join(' · ');
+    const l2 = [pv != null && dv != null ? `DVF ${fmt0(dv)} €/m²` : null, d.taux.val[y] != null ? `${d.tauxCourt} ${pctF(d.taux.val[y])}` : null, d.oat.val[y] != null ? `OAT ${pctF(d.oat.val[y])}` : null].filter(Boolean).join(' · ');
     mk.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt-6}" y2="${pt+ih}" stroke="var(--line3)"/><circle cx="${cx}" cy="${cy}" r="6.5" fill="${pv != null ? 'var(--brand)' : 'var(--gold)'}" stroke="#fff" stroke-width="3"/>
       <rect x="${tx-bw/2}" y="${ty}" width="${bw}" height="40" rx="10" fill="rgba(31,36,48,.96)" stroke="rgba(255,255,255,.18)"/>
       <text x="${tx}" y="${ty+17}" text-anchor="middle" fill="#f1f4f9" font-size="12.5" font-weight="700">${l1}</text>
       <text x="${tx}" y="${ty+32}" text-anchor="middle" fill="#c9d3e0" font-size="11">${l2}</text>`; };
-  let def = ys.length - 1; while (def > 0 && prixDe(ys[def]) == null) def--; mark(def);
+  /* 27/11 : « l'affichage reste même si mon curseur est hors de la zone » — bulle seulement pendant le survol ou le toucher, effacée dès qu'on sort */
   const at = ev => { const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; return Math.max(0, Math.min(nx-1, Math.round((mx-pl)/(iw/(nx-1))))); };
-  svg.addEventListener('mousemove', ev => mark(at(ev))); svg.addEventListener('mouseleave', () => mark(def));
-  svg.addEventListener('touchstart', ev => { if (ev.touches[0]) mark(at(ev.touches[0])); }, {passive: true}); svg.addEventListener('touchmove', ev => { if (ev.touches[0]) mark(at(ev.touches[0])); }, {passive: true});
+  const clear = () => { mk.innerHTML = ''; };
+  svg.addEventListener('pointermove', ev => mark(at(ev))); svg.addEventListener('pointerleave', clear); svg.addEventListener('pointercancel', clear);
+  svg.addEventListener('pointerup', ev => { if (ev.pointerType !== 'mouse') setTimeout(clear, 1500); });
 }
 // Phrase de position du prix envisagé (partagée avec le PDF via helpers)
 // Lecture du prix envisagé : lignes courtes (27/11 : « revois le commentaire »). Renvoie un tableau de [titre, texte] ;
@@ -1592,9 +1599,10 @@ function chartHisto(el, d){
 function histoPositionLignes(d){
   const p = d.pos; if (!p) return []; const cr = d.cr, L = []; const u = d.mesure ? 'prix notaires' : 'prix reconstitué'; const pos = v => v > 0 ? `${fmtPctS(v).replace('+', '')} au-dessus` : v < 0 ? `${fmtPctS(v).replace('−', '')} en dessous` : 'au niveau';
   const dv = d.lastDvf && d.dvfAn[d.lastDvf] ? d.dvfAn[d.lastDvf] : null;
-  L.push(['Aujourd\'hui', `${dv ? `${pos((p.prix / dv.mean - 1) * 100)} de la moyenne DVF ${d.lastDvf} (${fmt0(dv.mean)} €/m², ${fmt0(dv.count)} ventes) · ` : ''}${pos(p.vsDernier)} du ${u} ${p.dernier.y} (${fmt0(p.dernier.v)} €/m²).`]);
+  const part = d.serieAn.pts[p.dernier.y] < d.serieAn.complet ? ` (${d.serieAn.pts[p.dernier.y]} trimestre${d.serieAn.pts[p.dernier.y] > 1 ? 's' : ''} publié${d.serieAn.pts[p.dernier.y] > 1 ? 's' : ''})` : '';
+  L.push(['Aujourd\'hui', `${dv ? `${pos((p.prix / dv.mean - 1) * 100)} de la moyenne DVF ${d.lastDvf} (${fmt0(dv.mean)} €/m², ${fmt0(dv.count)} ventes) · ` : ''}${pos(p.vsDernier)} du ${u} ${p.dernier.y}${part} (${fmt0(p.dernier.v)} €/m²).`]);
   if (cr) { const rechute = p.prix * (1 + cr.baisse / 100);
-    L.push(['Crise de 2008', `${pos(p.vsPic)} du pic de ${qLbl(cr.pic.q)} (${fmt0(cr.pic.v)} €/m²) · ${pos(p.vsMoyCrise)} de la moyenne 2008–2009 (${fmt0(cr.moy)} €/m²). Une baisse comme celle de 2008–2009 (${fmtPctS(cr.baisse)} en ${cr.trimPicCreux} trimestre${cr.trimPicCreux > 1 ? 's' : ''}) ramènerait ce prix à ${fmt0(rechute)} €/m².`]); }
+    L.push(['Crise de 2008', `${pos(p.vsPic)} du pic de ${qLbl(cr.pic.q)} (${fmt0(cr.pic.v)} €/m²) · ${pos(p.vsMoyCrise)} de la moyenne 2008–2009 (${fmt0(cr.moy)} €/m²). Une baisse comme celle de 2008–2009 (${fmtPctS(cr.baisse)} en ${cr.trimPicCreux} trimestre${cr.trimPicCreux > 1 ? 's' : ''}) ramènerait ce prix à ${fmt0(rechute)} €/m².${d.infl ? ` En euros de ${d.infl.an} (inflation ${fmtPctS((d.infl.coef - 1) * 100)} depuis 2008–2009), la moyenne de crise vaut ${fmt0(d.infl.moyActuelle)} €/m² : votre prix est ${pos((p.prix / d.infl.moyActuelle - 1) * 100)} de ce niveau.` : ''}`]); }
   const serie = d.mesure ? 'la série des notaires' : 'la série reconstituée';
   L.push(['Repère', p.auDessusDuMax ? `Jamais atteint en moyenne annuelle dans ${serie} : le maximum est ${fmt0(p.max.v)} €/m² en ${p.max.y}.` : p.premiereAnnee === d.serieAn.annees[0] ? `Niveau déjà dépassé en ${p.premiereAnnee}, premier point de ${serie}.` : p.premiereAnnee ? `Niveau atteint pour la première fois en ${p.premiereAnnee} dans ${serie} (maximum ${fmt0(p.max.v)} €/m² en ${p.max.y}).` : `Niveau inférieur à toute ${serie}.`]);
   return L;
@@ -1611,16 +1619,18 @@ function histoCard(item){
     ${kpi('Pic avant la crise', `${fmt0(cr.pic.v)} €/m²`, `${est}${qLbl(cr.pic.q)}`)}
     ${kpi('Creux', `${fmt0(cr.creux.v)} €/m²`, `${est}${qLbl(cr.creux.q)} · ${cr.trimPicCreux} trimestre${cr.trimPicCreux > 1 ? 's' : ''} après le pic`)}
     ${kpi('Baisse pic → creux', fmtPctS(cr.baisse), d.mesure ? 'mesurée' : `celle de l'indice ${d.depLbl}`)}
-    ${kpi('Retour au pic', cr.retour ? qLbl(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimCreuxRetour} trimestres après le creux` : `${qLbl(d.lastQ)} : toujours sous le pic`)}
-    ${kpi(`${d.lastAn} vs pic 2008`, fmtPctS(d.vsPicDernier), `moyenne ${d.lastAn} : ${fmt0(d.serieAn.val[d.lastAn])} €/m²`)}</div>` : `<div class="hint">Chiffres de crise non calculables (série trop courte avant 2010).</div>`;
-  const sub = `${d.mesure ? `prix au m² standardisé des notaires (base BIEN), ${esc(d.geo.label)}` : `indice Notaires-INSEE ${esc(d.depLbl)} reconstitué en €/m² · ${esc(d.geo.label)}`} · appartements anciens · DVF depuis 2014 · taux BCE`;
+    ${kpi('Retour au pic', cr.retour ? qLbl(cr.retour.q) : 'pas encore', cr.retour ? `${cr.trimSousPic} trimestres sous le pic (${qLbl(cr.pic.q)} → ${qLbl(cr.retour.q)})` : `${qLbl(d.lastQ)} : toujours sous le pic`)}
+    ${kpi(`${d.anComplet} vs pic 2008`, fmtPctS(d.vsPicDernier), `moyenne ${d.anComplet} : ${fmt0(d.serieAn.val[d.anComplet])} €/m²`)}
+    ${d.tl ? kpi('Moyenne 20 ans', `${est}${fmt0(d.tl.moy)} €/m²`, `${d.tl.de} → ${d.tl.a} · moyenne des ${d.tl.nAnnees} moyennes annuelles`) : ''}
+    ${d.tl && d.tl.cagr != null ? kpi('Croissance annuelle 20 ans', fmtPctS(d.tl.cagr).replace(' %', ' %/an'), `TCAM ${d.tl.cagrDe} → ${d.tl.a} · ${fmt0(d.serieAn.val[d.tl.cagrDe])} → ${fmt0(d.serieAn.val[d.tl.a])} €/m²`) : ''}</div>` : `<div class="hint">Chiffres de crise non calculables (série trop courte avant 2010).</div>`;
+  const sub = `${d.mesure ? `prix au m² standardisé des notaires (base BIEN), ${esc(d.geo.label)}` : `indice Notaires-INSEE ${esc(d.depLbl)} reconstitué en €/m² · ${esc(d.geo.label)}`} · appartements anciens · DVF depuis 2014 · ${d.tauxLbl} et OAT (BCE)`;
   const calTxt = d.cal ? ` Coefficient de reconstitution : ${d.cal.k.toFixed(1).replace('.',',')} €/m² par point d'indice, calé sur ${d.cal.n} années DVF (${d.cal.annees[0]}–${d.cal.annees[d.cal.n-1]}, écart annuel maximal ${(d.cal.ecartMax*100).toFixed(1).replace('.',',')} %${d.cal.ecartes.length ? `, ${d.cal.ecartes.length} année(s) à moins de 30 ventes écartée(s)` : ''}).` : '';
   return `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t">${titre}</div><span class="card-sub">${sub}</span></div>
     <div class="card-b">
       <h4 class="sh">La crise de 2008 dans la zone${ib('histo_crise')}</h4>${kpis}
       <div class="hprix"><label for="histoPrix">Prix envisagé${ib('histo_prix')}</label><div class="row"><input type="number" id="histoPrix" data-hk="prix" min="0" step="100" inputmode="numeric" value="${d.prix || ''}" placeholder="ex. ${fmt0(Math.round((d.serieAn.val[d.lastAn] || 10000) / 100) * 100).replace(/ /g,' ')}" aria-label="Prix envisagé en euros par m²"><span class="u">€/m²</span>${d.prix ? `<button type="button" class="lnkb" data-hk-clear="1">retirer</button>` : ''}</div>${d.pos ? `<dl class="hpos">${histoPositionLignes(d).map(([t, x]) => `<dt>${esc(t)}</dt><dd>${esc(x)}</dd>`).join('')}</dl>` : `<p class="hpos muted">Saisissez un prix au m² pour le situer dans le cycle (dernier point, pic de 2008, moyenne de crise, première année où la zone l'a atteint).</p>`}</div>
-      <div class="chart"><div class="chart-t"><span>Moyennes annuelles · ${esc(d.geo.label.split(' · ')[0])}</span><span class="legend"><span><i style="border-image:linear-gradient(90deg,var(--accent3),var(--brand)) 1"></i>${d.mesure ? 'Prix notaires' : 'Prix reconstitué (indice)'}</span><span><i style="border-color:var(--gold);border-top-style:dashed"></i>Moyenne DVF</span><span><i style="border-color:var(--accent3)"></i>Taux crédit habitat</span><span><i style="border-color:var(--text4);border-top-style:dashed"></i>OAT 10 ans</span><span><i class="band"></i>2008–2009</span><span><i style="border-top-style:dotted;border-color:var(--text3)"></i>Moyenne 2008–2009</span></span></div><div id="histo-chart"></div></div>
-      <div class="hint" style="margin-top:8px"><b>Comment lire.</b> ${d.mesure ? `La courbe pleine est le prix au m² publié par les notaires pour ${esc(d.geo.label.split(' · ')[0])} (appartements anciens, à qualité constante, moyenne des quatre trimestres ; dernier trimestre publié ${qLbl(d.lastQ)}).` : `La courbe pleine est une estimation : l'indice Notaires-INSEE ${esc(d.depLbl)} converti en €/m² (coefficient calé sur nos ventes DVF ${d.cal ? `${d.cal.annees[0]}–${d.cal.annees[d.cal.n-1]}` : ''}) ; les pourcentages sont ceux du département, les euros un ordre de grandeur.`} La courbe dorée est la moyenne des ventes DVF de la zone chaque année depuis 2014 (années à 30 ventes ou plus) ; elle ne se raccorde pas à la première, les méthodes diffèrent. Les taux (crédit habitat et OAT 10 ans, moyennes annuelles BCE) se lisent sur l'axe de droite ; la bande grise marque 2008–2009 et le pointillé gris la moyenne de ces deux années.${calTxt} Sources : ${esc(d.source?.editeur || 'Notaires du Grand Paris')} (fichiers publics, relevés ${fmtDate(d.generated)}), DVF, BCE.</div>
+      <div class="chart"><div class="chart-t"><span>Moyennes annuelles · ${esc(d.geo.label.split(' · ')[0])}</span><span class="legend"><span><i style="border-image:linear-gradient(90deg,var(--accent3),var(--brand)) 1"></i>${d.mesure ? 'Prix notaires' : 'Prix reconstitué (indice)'}</span><span><i style="border-color:var(--gold);border-top-style:dashed"></i>Moyenne DVF</span><span><i style="border-color:var(--accent3)"></i>${esc(d.tauxLbl)}</span><span><i style="border-color:var(--text4);border-top-style:dashed"></i>OAT 10 ans</span><span><i class="band"></i>2008–2009</span><span><i style="border-top-style:dotted;border-color:var(--text3)"></i>Moyenne 2008–2009</span></span></div><div id="histo-chart"></div></div>
+      <div class="hint" style="margin-top:8px"><b>Comment lire.</b> ${d.mesure ? `La courbe pleine est le prix au m² publié par les notaires pour ${esc(d.geo.label.split(' · ')[0])} (appartements anciens, à qualité constante, moyenne des quatre trimestres ; dernier trimestre publié ${qLbl(d.lastQ)}).` : `La courbe pleine est une estimation : l'indice Notaires-INSEE ${esc(d.depLbl)} converti en €/m² (coefficient calé sur nos ventes DVF ${d.cal ? `${d.cal.annees[0]}–${d.cal.annees[d.cal.n-1]}` : ''}) ; les pourcentages sont ceux du département, les euros un ordre de grandeur.`} La courbe dorée est la moyenne des ventes DVF de la zone chaque année depuis 2014 (années à 30 ventes ou plus) ; elle ne se raccorde pas à la première, les méthodes diffèrent. Les taux (${esc(d.tauxLbl)} et OAT 10 ans, moyennes annuelles BCE) se lisent sur l'axe de droite ; la bande grise marque 2008–2009 et le pointillé gris la moyenne de ces deux années.${calTxt} Sources : ${esc(d.source?.editeur || 'Notaires du Grand Paris')} (fichiers publics, relevés ${fmtDate(d.generated)}), DVF, BCE.</div>
     </div></div>`;
 }
 function drawHisto(item){ const el = $('histo-chart'); if (!el) return; const d = histoEtude(item); if (d && !d.vide) chartHisto(el, d); }

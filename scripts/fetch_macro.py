@@ -6,6 +6,7 @@ fetch_macro.py — séries macroéconomiques servies au dashboard (onglet Perspe
 Sources relevées le 22/09/2026, toutes accessibles sans clé (contrat, voir README) :
   BCE  data-api.ecb.europa.eu  CSV  MIR  taux des crédits à l'habitat, France, mensuel
                                     IRS  taux long terme (critère de Maastricht ≈ OAT 10 ans), France, mensuel
+                                    FM   Euribor 3 mois, moyenne mensuelle (zone euro)
                                     ICP  IPCH France, indice mensuel (2015 = 100)
   INSEE api.insee.fr/series/BDM  XML SDMX (sans jeton)
                                     010567013  indice Notaires-INSEE, appartements anciens, Paris, CVS, trimestriel
@@ -27,6 +28,8 @@ SERIES = {
                     "titre": "Taux des crédits à l'habitat (France, ménages, nouvelles opérations)", "unite": "%", "freq": "M"},
     "oat_10":      {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/IRS/M.FR.L.L40.CI.0000.EUR.N.Z?format=csvdata&startPeriod=2006-01",
                     "titre": "Taux long terme France (critère de Maastricht, ≈ OAT 10 ans)", "unite": "%", "freq": "M"},
+    "euribor_3m":  {"src": "BCE", "url": "https://data-api.ecb.europa.eu/service/data/FM/M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA?format=csvdata&startPeriod=2006-01",
+                    "titre": "Euribor 3 mois (moyenne mensuelle)", "unite": "%", "freq": "M"},   # lot 20 (27/11) : courbe longue période, à la place du taux de crédit
     "ipch":        {"src": "BCE/Eurostat", "url": "https://data-api.ecb.europa.eu/service/data/ICP/M.FR.N.000000.4.INX?format=csvdata&startPeriod=2006-01",
                     "titre": "Indice des prix à la consommation harmonisé, France (2015 = 100)", "unite": "indice", "freq": "M"},
     "insee_paris_appart": {"src": "INSEE / Notaires", "url": "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/010567013",
