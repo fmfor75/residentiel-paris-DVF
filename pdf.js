@@ -211,7 +211,7 @@ function pageHisto(st, doc, h, item, D, lastYear){
   if (lastP) halo(h.fmt0(D.serieAn.val[lastP]), X(lastP) - 1.5, YP(D.serieAn.val[lastP]) + 2.6, { s: 5.2, w: 'bold', c: C.green, align: 'right' });
   if (lastD) halo(h.fmt0(dvfOf(lastD)), X(lastD) + 1.5, YP(dvfOf(lastD)) - 1.2, { s: 5.2, w: 'bold', c: C.gold, align: 'right' });   /* aligné à droite : à gauche du point, l'étiquette touchait « 4 % » de l'axe de droite (audit du 27/11) */
   if (D.prix) { doc.setDrawColor(...C.bad); doc.setLineWidth(.4); doc.setLineDashPattern([2, 1.2], 0); doc.line(cx0 + pl, YP(D.prix), cx0 + cw - pr, YP(D.prix)); doc.setLineDashPattern([], 0); halo(`prix envisagé ${h.fmt0(D.prix)} €/m²`, cx0 + pl + 2, YP(D.prix) - 1.2, { s: 5.4, w: 'bold', c: C.bad }); }
-  axisLabels(st, ys.filter(y => +y % 2 === 0).map(y => ({ t: y, x: X(y), align: 'center' })), cy0 + ch - 1, 5);
+  axisLabels(st, ys.filter(y => (+ys[ys.length - 1] - +y) % 2 === 0).map(y => ({ t: y, x: X(y), align: 'center' })), cy0 + ch - 1, 5);   /* depuis la dernière année : 2025, 2023, … (27/11) */
   st.y = cy0 + ch + 3;
   // légende
   const leg = [[C.green, false, D.mesure ? 'Prix notaires (standardisé)' : 'Prix reconstitué (indice)'], [C.gold, true, 'Moyenne DVF (appartements)'], [[35, 70, 138], false, 'Taux crédit habitat (axe droit)'], [C.grey2, true, 'OAT 10 ans (axe droit)']];
