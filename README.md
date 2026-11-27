@@ -23,12 +23,12 @@ data/dvf_cache.json.gz        ← cache des mutations consolidées par (départe
 scripts/process_dvf.py        ← pipeline : sources → mutations → statistiques (dvf_paris.json + dvf_sales.bin, non commités)
 scripts/build_site.py         ← gzip + chiffrement AES-GCM de meta et sales (clé dérivée de DVF_CODE)
 scripts/build_geo.py          ← construction manuelle du référentiel géographique (opendata.paris.fr, IGN) ; table des communes
-scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run mensuel
-scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run mensuel
+scripts/fetch_macro.py        ← séries macro BCE / INSEE → data/macro.json (clair), au run (manuel)
+scripts/fetch_loyers.py       ← encadrement des loyers Paris + carte des loyers → data/loyers.json (clair), au run (manuel)
 scripts/fetch_demo.py         ← démographie et parc INSEE (recensements 2012/2017/2023, API Melodi) → data/demographie.json (clair)
 scripts/extract_notaires.py   ← séries longues des notaires (deux PDF publics) → data/historique_notaires.json (clair), à la main une fois par an
 tests/                        ← pipeline sur fixtures HTTP locales · chiffrement · parité moteur JS / pipeline Python · valorisation
-.github/workflows/update-dvf.yml ← run mensuel : ne retélécharge que les sources modifiées, ne commite que si changement
+.github/workflows/update-dvf.yml ← run manuel (Actions → Run workflow ; plus de cron depuis le 27/11/2026) : ne retélécharge que les sources modifiées, ne commite que si changement
 ```
 
 ## Fonctionnement du dashboard (lot 4)
@@ -65,7 +65,7 @@ l'encadrement pour le quartier de l'adresse, selon vide / meublé, le nombre de 
 pièces et plus) et l'époque de construction de l'immeuble (avant 1946, 1946–1970, 1971–1990, après 1990) ; hors Paris,
 loyer d'annonce de la commune (« carte des loyers » DHUP/ANIL, 1–2 pièces / 3 pièces et plus, charges comprises).
 Rentabilité brute = loyer annuel ÷ valeur retenue, par ligne et globale, avec la fourchette sur les valeurs P90 / P10.
-Données dans `data/loyers.json` (clair), produites par `scripts/fetch_loyers.py` au run mensuel (export opendata.paris.fr
+Données dans `data/loyers.json` (clair), produites par `scripts/fetch_loyers.py` au run (manuel) (export opendata.paris.fr
 de la dernière année publiée — 2 560 combinaisons attendues — et dernier jeu « Carte des loyers » sur data.gouv, filtré
 sur les communes du référentiel). Tests : `python -m unittest tests.test_loyers`, `node tests/test_valo.mjs`.
 
@@ -76,7 +76,7 @@ deux trimestres) × niveau des prix ; une seule constante calée sur 2014–2025
 calé ≤ 2019-Q4, simulé 2020–2025 avec taux et inflation réels → erreur moyenne 4,2 %, max 8,5 % (`node tests/test_persp.mjs`
 le rejoue). Point de départ : dernière médiane DVF prolongée par l'indice Notaires-INSEE. La prime locale vaut 0 par défaut :
 les tendances relatives des quartiers ne persistent pas d'une période à l'autre (corrélation −0,43). Séries macro dans
-`data/macro.json` (clair), produites par `scripts/fetch_macro.py` au run mensuel — BCE (taux crédits habitat MIR, taux long
+`data/macro.json` (clair), produites par `scripts/fetch_macro.py` au run (manuel) — BCE (taux crédits habitat MIR, taux long
 IRS, IPCH) et INSEE BDM sans jeton (indice Paris 010567013, loyers 010600352, logements autorisés Paris 001761793) ; une
 série en échec est conservée et marquée `stale`, un dernier point ancien est marqué `retard` (l'IPCH base 2015 s'arrête à
 déc. 2025 : changement de base). Tests : `python -m unittest tests.test_macro`.

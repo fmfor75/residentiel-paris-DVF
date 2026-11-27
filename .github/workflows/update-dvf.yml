@@ -1,14 +1,10 @@
 name: Mise à jour DVF
 
 on:
-  schedule:
-    # Hebdomadaire (lundi 6 h UTC, depuis le 27/11/2026 ; mensuel auparavant) : DGFiP publie en avril (données au 31/12 N-1)
-    # et en octobre (au 30/06 N), puis Etalab régénère geo-dvf quelques semaines plus tard (18 mai en 2026 ; le 12/10/2026
-    # la DGFiP a publié 2026-S1 et geo-dvf n'était toujours pas régénéré le 27/11). Un calendrier fixe ratait cette
-    # régénération ; le mensuel pouvait la rater d'un mois. Le script compare l'empreinte de chaque source (Last-Modified +
-    # taille) à celle du run précédent et s'arrête sans rien écrire si rien n'a changé : un run à vide coûte ~2 min et ne
-    # produit aucun commit.
-    - cron: '0 6 * * 1'
+  # Plus de déclenchement automatique (décision de Franck, 27/11/2026 : « arrête les run automatiques, je lance de mon côté »).
+  # Lancement manuel : Actions → Mise à jour DVF → Run workflow. Calendrier des sources : DGFiP publie en avril (données au
+  # 31/12 N-1) et en octobre (au 30/06 N), Etalab régénère geo-dvf quelques semaines plus tard (18 mai en 2026). Le script
+  # compare l'empreinte de chaque source à celle du run précédent et s'arrête sans rien écrire si rien n'a changé.
   workflow_dispatch:
     inputs:
       mode:

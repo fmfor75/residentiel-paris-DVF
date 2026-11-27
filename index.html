@@ -1317,7 +1317,7 @@ function computeRent(v){
 const fmtPct2 = v => v==null ? '—' : (v*100).toFixed(2).replace('.',',') + ' %';
 function rentCard(v){
   const paris = LAST_ADDR.props.commune === PARIS;
-  if (LOYERS_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Rentabilité brute</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Loyers indisponibles (${esc(LOYERS_ERR)}) — data/loyers.json est produit par le run mensuel.</p></div></div></div>`;
+  if (LOYERS_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Loyers</span>Rentabilité brute</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Loyers indisponibles (${esc(LOYERS_ERR)}) — data/loyers.json est produit par le run de mise à jour (Actions).</p></div></div></div>`;
   if (!LOYERS) return `<div class="card glass"><div class="card-b"><div class="empty" style="padding:12px"><p>Chargement des loyers…</p></div></div></div>`;
   const rt = computeRent(v); const src = paris ? LOYERS.paris : LOYERS.carte;
   const stale = src?.stale ? ` <span style="color:var(--warn)">(source en échec au dernier run, valeurs conservées)</span>` : '';
@@ -1465,7 +1465,7 @@ function demoLecture(d, zone, sc){
 }
 const SENS_LBL = {pression: 'Pression sur les prix', soutien: 'Soutien aux prix', neutre: 'Neutre', contexte: 'Contexte'};
 function demoCard(item, sc){
-  if (DEMO_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Données INSEE indisponibles (${esc(DEMO_ERR)}) — data/demographie.json est produit par le run mensuel (scripts/fetch_demo.py).</p></div></div></div>`;
+  if (DEMO_ERR) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Données INSEE indisponibles (${esc(DEMO_ERR)}) — data/demographie.json est produit par le run de mise à jour (Actions) (scripts/fetch_demo.py).</p></div></div></div>`;
   const d = demoEtude(item); if (!d) return '';
   if (!d.ind) return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Démographie</span>Démographie et parc · ${esc(d.geo.label)}</div></div><div class="card-b"><div class="empty" style="padding:12px"><p>Aucune donnée INSEE pour cette géographie (${d.geo.ids.join(', ')}).</p></div></div></div>`;
   const {ind, ref, sg, pv, bandes} = d; const c = ind.cur, r = ref?.cur || {}, y = ind.dernier, e = ind.evo, P = S.persp, cur = +P.demo || 0;
@@ -1633,7 +1633,7 @@ function refreshHisto(item){
 async function renderPersp(item){
   const box = $('etude'); box.innerHTML = `<div class="card glass"><div class="empty"><p>Chargement des séries macroéconomiques…</p></div></div>`; setStatus('busy', 'Séries macro…');
   await Promise.all([ensureMacro(), ensureDemo()]);
-  if (MACRO_ERR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Séries macro indisponibles</h3><p>${esc(MACRO_ERR)} — data/macro.json est produit par le run mensuel (scripts/fetch_macro.py).</p></div></div>`; setStatus('err', 'macro indisponible'); return; }
+  if (MACRO_ERR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Séries macro indisponibles</h3><p>${esc(MACRO_ERR)} — data/macro.json est produit par le run de mise à jour (Actions) (scripts/fetch_macro.py).</p></div></div>`; setStatus('err', 'macro indisponible'); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Les perspectives s'appliquent à la zone étudiée (et à l'immeuble valorisé, s'il y en a un). Sélectionnez une zone dans les filtres ou localisez une adresse.</p></div></div>`; setStatus('ok', statusLine()); return; }
   const M = MACRO.series; const tx = lastOf(M.taux_credit.obs), oat = lastOf(M.oat_10.obs), ip = lastOf(M.ipch.obs), ins = lastOf(M.insee_paris_appart.obs), loy = lastOf(M.loyers_paris.obs), pm = lastOf(M.permis_paris.obs);
   if (!S.persp) S.persp = PERSP_DEFAUT(); if (S.persp.tauxH == null) S.persp.tauxH = Math.round(tx.v * 100) / 100;
