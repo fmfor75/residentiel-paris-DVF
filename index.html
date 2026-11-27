@@ -185,6 +185,7 @@ table{border-collapse:collapse;width:100%}
 .typo-tbl td:first-child,.ytbl td:first-child,.valo-tbl td:first-child,.ptbl td:first-child{border-radius:12px 0 0 12px}
 .typo-tbl td:last-child,.ytbl td:last-child,.valo-tbl td:last-child,.ptbl td:last-child{border-radius:0 12px 12px 0}
 .ytbl td{padding:7px 10px;font-size:12.5px}
+.ytbl th .thu,.typo-tbl th .thu{display:block;font-size:9.5px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text4);margin-top:1px}
 .ytbl td .mx{color:var(--text4);font-size:10.5px}
 .typo-tbl td:first-child{font-weight:600}
 .typo-tbl td:first-child small{color:var(--text3);font-weight:400;margin-left:6px;font-size:11px}
@@ -885,7 +886,7 @@ let LOYERS = null, LOYERS_ERR = null;
 let DEMO = null, DEMO_ERR = null;
 async function ensureDemo(){ if (DEMO || DEMO_ERR) return; try { const r = await fetch('data/demographie.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); DEMO = await r.json(); if (!DEMO.geos) throw new Error('fichier sans géographies'); } catch(ex) { DEMO_ERR = ex.message; DEMO = null; } }
 // Lot 20 : séries longues des notaires (data/historique_notaires.json, clair, public) — chargé à la première vue Perspectives
-let HISTO = null, HISTO_ERR = null;
+let HISTO = null, HISTO_ERR = null, histoRender = null;
 async function ensureHisto(){ if (HISTO || HISTO_ERR) return; try { const r = await fetch('data/historique_notaires.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); HISTO = await r.json(); if (!HISTO.prix || !HISTO.indices) throw new Error('fichier sans séries'); } catch(ex) { HISTO_ERR = ex.message; HISTO = null; } }
 async function ensureLoyers(){ if (LOYERS || LOYERS_ERR) return; try { const r = await fetch('data/loyers.json', {cache:'no-store'}); if (!r.ok) throw new Error(`HTTP ${r.status}`); LOYERS = await r.json(); } catch(ex) { LOYERS_ERR = ex.message; } }
 
@@ -1118,7 +1119,7 @@ function chartBand(el, pts){
   const x = i => pl + i*(iw/(pts.length-1)), y = v => pt + ih - (v-y0)/(y1-y0)*ih;
   const P = k => pts.map((p,i) => [x(i), y(p[k])]);
   const band = lisse(P('p90')) + ' L' + lisse(P('p10').reverse()).slice(1) + ' Z';
-  let ylab = ''; for (let v = y0; v <= y1 + 1e-9; v += ystep) ylab += `<text x="${pl-12}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`;
+  let ylab = ''; for (let v = y0; v <= y1 + 1e-9; v += ystep) ylab += `<text x="${pl-12}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; ylab += `<text x="${pl-12}" y="${pt-14}" text-anchor="end" ${AX}>€/m²</text>`;   /* 27/11 : unité au-dessus de l'axe */
   const pills = pts.length <= 12;
   let xlab = ''; if (!pills) { const step = Math.ceil(pts.length/8); pts.forEach((p,i)=>{ if (i%step===0 || i===pts.length-1) xlab += `<text x="${x(i).toFixed(1)}" y="${H+12}" text-anchor="${i===pts.length-1?'end':i===0?'start':'middle'}" ${AX}>${esc(axisLabel(p.k))}</text>`; }); }
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H + (pills ? 0 : 18)}" role="img" aria-label="Évolution du prix au m²"><defs>
@@ -1205,16 +1206,18 @@ function typoTable(et){
     return `<tr class="${id===top?'top':''} ${!w?'dim':''}"><td>${id}<small>${tdef.surfMin}–${tdef.surfMax} m²</small></td><td><span class="share"><span class="bar"><i style="width:${(t.share/maxShare*100).toFixed(0)}%"></i></span>${t.share.toFixed(1).replace('.',',')} %</span></td>
       <td data-l="Ventes">${w?fmt0(w.count):'—'}${faible?' <span title="effectif faible" style="color:var(--warn)">•</span>':''}</td><td data-l="Bottom 10">${fmt0(w?.p10)}</td><td data-l="Médiane"><b>${fmt0(w?.median)}</b></td><td data-l="Moy. pond.">${fmt0(w?.wmean)}</td><td data-l="Top 10">${fmt0(w?.p90)}</td><td data-l="Max">${fmt0(w?.max)}</td><td data-l="1 an" class="${e1>0?'up':e1<0?'down':''}">${fmtPct(e1)}</td><td data-l="5 ans" class="${e5>0?'up':e5<0?'down':''}">${fmtPct(e5)}</td></tr>`; }).join('');
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Typologies</span>Répartition et prix par surface · ${S.type === 'Tous' ? 'appartements' : esc(TYPE_LBL(S.type).toLowerCase())}</div><span class="card-sub">part sur ${esc(META.meta.periode)} · prix sur ${esc(PERIODES[S.per]).toLowerCase()}</span></div>
-    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché${ib('share')}</th><th>Ventes${ib('typo')}</th><th>Bottom 10${ib('p10')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>Top 10${ib('p90')}</th><th>Max${ib('max')}</th><th>1 an${ib('evo_n')}</th><th>5 ans${ib('evo_n')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="typo-tbl"><thead><tr><th>Typologie</th><th>Part du marché${ib('share')}</th><th>Ventes${ib('typo')}</th>${thU('Bottom 10', 'p10')}${thU('Médiane', 'median')}${thU('Moy. pond.', 'wmean')}${thU('Top 10', 'p90')}${thU('Max', 'max')}<th>1 an${ib('evo_n')}</th><th>5 ans${ib('evo_n')}</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="hint">Fourchettes modifiables dans les filtres (Typologies). Parts calculées sur tout l'historique ; prix et ventes sur la période sélectionnée. • effectif inférieur à ${EFFECTIF_FAIBLE} ventes.</div></div></div>`;
 }
+/* 27/11 : « dans les tableaux et graph mets €/m² » — unité sous l'en-tête des colonnes de prix */
+const thU = (l, help, u = '€/m²') => `<th>${l}${ib(help)}<small class="thu">${u}</small></th>`;
 function yearTable(st, nom){
   const by = st.by_year || {}; const years = Object.keys(by).sort();
   const rows = years.map((y,i)=>{ const v = by[y], prev = by[years[i-1]]; const e = prev ? (v.median/prev.median-1)*100 : null;
     return `<tr><td>${y}</td><td>${fmt0(v.count)}</td><td>${fmt0(v.p10)}</td><td>${fmt0(v.q1)}</td><td><b>${fmt0(v.median)}</b></td><td>${fmt0(v.wmean)}</td><td>${fmt0(v.q3)}</td><td>${fmt0(v.p90)}</td><td>${fmt0(v.max)}<small class="mx"> ${fmtSurf(v.max_surf)} m²</small></td><td>${fmt0(v.mean)}</td><td>${fmtSurf(v.surf_mean)} m²</td><td class="${e>0?'up':e<0?'down':''}">${fmtPct(e)}</td></tr>`; }).join('');
   const csv = ['annee;ventes;bottom_10;q1;mediane;moyenne_ponderee;q3;top_10;max;surface_max;moyenne;surface_moyenne', ...years.map(y=>{const v=by[y];return [y,v.count,v.p10,v.q1,v.median,v.wmean,v.q3,v.p90,v.max,v.max_surf,v.mean,v.surf_mean].join(';');})].join('\n');
   return `<div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Tableau</span>Statistiques annuelles · ${esc(nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}</div><button class="btn btn-ghost btn-sm" type="button" data-csv="${esc(csv)}" data-name="${esc(nom)}">Exporter CSV</button></div>
-    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th><th>Bottom 10${ib('p10')}</th><th>Q1${ib('q')}</th><th>Médiane${ib('median')}</th><th>Moy. pond.${ib('wmean')}</th><th>Q3${ib('q')}</th><th>Top 10${ib('p90')}</th><th>Max${ib('max')}</th><th>Moyenne${ib('mean')}</th><th>Surf. moy.${ib('surf')}</th><th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+    <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ytbl"><thead><tr><th>Année</th><th>Ventes${ib('count')}</th>${thU('Bottom 10', 'p10')}${thU('Q1', 'q')}${thU('Médiane', 'median')}${thU('Moy. pond.', 'wmean')}${thU('Q3', 'q')}${thU('Top 10', 'p90')}${thU('Max', 'max')}${thU('Moyenne', 'mean')}${thU('Surf. moy.', 'surf', 'm²')}<th>Méd. vs n-1${ib('yoy')}</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
 }
 document.addEventListener('click', e => { const b = e.target.closest('button[data-csv]'); if (!b) return; const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(b.dataset.csv); a.download = `dvf_${b.dataset.name.replace(/[^\w]+/g,'_')}_${S.type}.csv`; a.click(); });
 
@@ -1286,6 +1289,8 @@ function update(soft=false){
   if (etTypo) { html += typoTable(etTypo);
     typosValides.filter(t=>t.on).forEach(t => { const st = etTypo.by_typo?.[t.id]; if (!st) return; html += sectionCard(`${t.id} · ${t.surfMin}–${t.surfMax} m²${pt ? ' · appartements' : ''}`, 'Typologie', st, `c-${t.id}`); charts.push([`c-${t.id}`, st]); }); }
   html += yearTable(et, item.nom);
+  html += `<div class="card glass" id="histoCard"><div class="card-h"><div class="card-t"><span class="badge">Longue période</span>Depuis 2006, avec la crise de 2008</div></div><div class="card-b"><div class="hint">Chargement des séries des notaires et des taux…</div></div></div>`;   /* lot 20b : rempli dès que les séries sont là */
+  const histoTok = histoRender = {}; Promise.all([ensureMacro(), ensureHisto()]).then(() => { if (histoRender === histoTok && S.vue === 'etude') refreshHisto(item); });
   if (S.niveau === 'rayon') html += rayonCard(item, idx);
   html += `<div class="card glass"><div class="card-b method"><b>Méthode.</b> Percentiles (Bottom 10, Q1, médiane, Q3, Top 10) et moyenne calculés dans votre navigateur sur les ventes de la période (${nb(lastEtude.n)} ventes, ${lastEtude.ms.toFixed(0)} ms). Évolutions : médiane de ${META.meta.last_year} rapportée à la médiane de l'année de référence ; taux annualisé = taux composé. Les zones sont des polygones officiels (quartiers administratifs, IRIS) ; chaque vente est rattachée à son quartier par ses coordonnées.${(() => { const b = bilanExclusions(); return b ? `<br><b>Périmètre.</b> ${esc(b.texte)}` : ''; })()}
     <div class="row"><span class="tag">${nb(META.meta.total_mutations)} ventes retenues</span><span class="tag">dernière vente ${fmtDate(META.meta.last_date)}</span><span class="tag">parseur v${META.meta.parser_version}</span></div></div></div>`;
@@ -1541,21 +1546,40 @@ const qLbl = q => q ? `T${q.slice(-1)} ${q.slice(0,4)}` : '—';
 const fmtPctS0 = v => v==null ? '—' : `${v>0?'+':v<0?'−':''}${Math.abs(v).toFixed(0)} %`;
 // Graphique : moyennes annuelles (prix à gauche en €/m², taux à droite en %), bande 2008–2009, ligne du prix envisagé
 function chartHisto(el, d){
-  /* téléphone : viewBox plus étroit (sinon le texte à 10,5 px tombe à 5 px une fois le SVG réduit à 360 px — mesuré 99 px de haut) */
-  const narrow = (el.clientWidth || 760) < 520; const W = narrow ? 440 : 760, H = narrow ? 300 : 250, pl = 54, pr = 44, pt = 14, pb = 28, iw = W-pl-pr, ih = H-pt-pb; const ys = d.annees, nx = ys.length; const x = y => pl + (ys.indexOf(String(y)) + .5) * (iw / nx);
-  const pv = ys.map(y => d.serieAn.val[y]).filter(v => v != null), dv = ys.map(y => d.dvfAn[y]?.count >= 30 ? d.dvfAn[y].mean : null).filter(v => v != null), allP = [...pv, ...dv, ...(d.prix ? [d.prix] : [])];
-  const lo = Math.min(...allP) * .92, hi = Math.max(...allP) * 1.05; const ystep = [250,500,1000,2000,2500,5000][[250,500,1000,2000,2500,5000].findIndex(s => (hi-lo)/s <= 6)] || 5000; const p0 = Math.floor(lo/ystep)*ystep, p1 = Math.ceil(hi/ystep)*ystep;
+  /* même lecture que « Prix au m² · annuel » (chartBand) : repère à la largeur affichée, courbe lissée, bulle au survol ou au
+     toucher, point sur la série de prix ; en plus : taux sur l'axe de droite, bande 2008–2009, ligne du prix envisagé */
+  const W = reperW(el), H = W < 560 ? 250 : 270, pl = 60, pr = 46, pt = 32, pb = 14, iw = W-pl-pr, ih = H-pt-pb, gid = el.id;
+  const ys = d.annees, nx = ys.length; const x = i => pl + i*(iw/(nx-1)), xi = y => x(ys.indexOf(String(y)));
+  const prixDe = y => d.serieAn.val[y] ?? null, dvfDe = y => d.dvfAn[y]?.count >= 30 ? d.dvfAn[y].mean : null;
+  const allP = [...ys.map(prixDe), ...ys.map(dvfDe), d.prix || null].filter(v => v != null); const lo = Math.min(...allP) * .92, hi = Math.max(...allP) * 1.05;
+  const steps = [250,500,1000,2000,2500,5000]; const ystep = steps[steps.findIndex(v => (hi-lo)/v <= 6)] || 5000; const p0 = Math.floor(lo/ystep)*ystep, p1 = Math.ceil(hi/ystep)*ystep;
   const yP = v => pt + ih - (v-p0)/(p1-p0||1)*ih; const rv = ys.flatMap(y => [d.taux.val[y], d.oat.val[y]]).filter(v => v != null); const r1 = Math.max(6, Math.ceil(Math.max(...rv))), r0 = Math.min(0, Math.floor(Math.min(...rv))); const yR = v => pt + ih - (v-r0)/(r1-r0||1)*ih;
-  let g = '', yl = '', yr = ''; for (let v = p0; v <= p1 + 1e-9; v += ystep) { g += `<line x1="${pl}" x2="${W-pr}" y1="${yP(v).toFixed(1)}" y2="${yP(v).toFixed(1)}" stroke="var(--line2)"/>`; yl += `<text x="${pl-8}" y="${(yP(v)+3.5).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; }
-  for (let v = r0; v <= r1; v += (r1 - r0) > 8 ? 2 : 1) yr += `<text x="${W-pr+8}" y="${(yR(v)+3.5).toFixed(1)}" ${AX}>${v} %</text>`;
-  const xl = ys.map((y,i) => (+y % (narrow ? 4 : 2) === 2 % (narrow ? 4 : 2) || nx <= 14) ? `<text x="${x(y).toFixed(1)}" y="${H-8}" text-anchor="middle" ${AX}>${y}</text>` : '').join('');
-  const band = `<rect x="${(x(2008) - iw/nx/2).toFixed(1)}" y="${pt}" width="${(iw/nx*2).toFixed(1)}" height="${ih}" fill="var(--band)" opacity=".55"/><text x="${((x(2008) + x(2009)) / 2).toFixed(1)}" y="${pt+12}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--text3)" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">crise 2008–2009${d.cr ? ` · ${fmtPctS(d.cr.baisse)}` : ''}</text>`;
-  const path = (pts, yfn) => { let out = '', pen = false; for (const [y, v] of pts) { if (v == null) { pen = false; continue; } out += `${pen?'L':'M'}${x(y).toFixed(1)},${yfn(v).toFixed(1)} `; pen = true; } return out; };
-  const L = [[ys.map(y => [y, d.serieAn.val[y] ?? null]), yP, 'var(--s1)', 2.2, false], [ys.map(y => [y, d.dvfAn[y]?.count >= 30 ? d.dvfAn[y].mean : null]), yP, 'var(--gold)', 2, true], [ys.map(y => [y, d.taux.val[y] ?? null]), yR, 'var(--accent3)', 1.6, false], [ys.map(y => [y, d.oat.val[y] ?? null]), yR, 'var(--text4)', 1.4, true]];
-  const paths = L.map(([pts, yfn, col, w, dash]) => `<path d="${path(pts, yfn)}" fill="none" stroke="${col}" stroke-width="${w}" ${dash ? 'stroke-dasharray="5 4"' : ''} stroke-linejoin="round" stroke-linecap="round"/>`).join('');
-  const lastLbl = (pts, yfn, col, fmt, side = 'middle') => { const p = pts.filter(q => q[1] != null).pop(); return p ? `<text x="${(x(p[0]) + (side === 'end' ? -5 : side === 'start' ? 5 : 0)).toFixed(1)}" y="${(yfn(p[1]) - (side === 'middle' ? 7 : -3.5)).toFixed(1)}" text-anchor="${side}" font-size="10.5" font-weight="600" fill="${col}" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">${fmt(p[1])}</text>` : ''; };
+  let ylab = '', yr = ''; for (let v = p0; v <= p1 + 1e-9; v += ystep) ylab += `<text x="${pl-12}" y="${(yP(v)+4).toFixed(1)}" text-anchor="end" ${AX}>${fmt0(v)}</text>`; ylab += `<text x="${pl-12}" y="${pt-16}" text-anchor="end" ${AX}>€/m²</text>`; yr += `<text x="${W-pr+10}" y="${pt-16}" ${AX}>taux</text>`;
+  for (let v = r0; v <= r1; v += (r1 - r0) > 8 ? 2 : 1) yr += `<text x="${W-pr+10}" y="${(yR(v)+4).toFixed(1)}" ${AX}>${v} %</text>`;
+  const pas = W < 560 ? 4 : 2; const xl = ys.map((y,i) => (+y % pas === 2 % pas) ? `<text x="${x(i).toFixed(1)}" y="${H+12}" text-anchor="middle" ${AX}>${y}</text>` : '').join('');
+  const half = iw/(nx-1)/2; const band = `<rect x="${(xi(2008)-half).toFixed(1)}" y="${pt-6}" width="${(half*4).toFixed(1)}" height="${ih+6}" fill="var(--band)" opacity=".55" rx="6"/><text x="${((xi(2008)+xi(2009))/2).toFixed(1)}" y="${pt+ih-8}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--text3)" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">crise 2008–2009${d.cr ? ` · ${fmtPctS(d.cr.baisse)}` : ''}</text>`;
+  /* tronçons continus (une série peut avoir des trous : année DVF à moins de 30 ventes) */
+  const trace = (f, yfn) => { const segs = []; let cur = []; ys.forEach((y,i) => { const v = f(y); if (v == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push([x(i), yfn(v)]); }); if (cur.length) segs.push(cur); return segs.map(sg => sg.length === 1 ? `M${sg[0][0].toFixed(1)},${sg[0][1].toFixed(1)} l0,0` : lisse(sg)).join(' '); };
+  const paths = `<path d="${trace(y => d.oat.val[y] ?? null, yR)}" fill="none" stroke="var(--text4)" stroke-width="1.4" stroke-dasharray="5 4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${trace(y => d.taux.val[y] ?? null, yR)}" fill="none" stroke="var(--accent3)" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${trace(dvfDe, yP)}" fill="none" stroke="var(--gold)" stroke-width="2.2" stroke-dasharray="6 5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="${trace(prixDe, yP)}" fill="none" stroke="url(#${gid}-ln)" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>`;
   const ligne = d.prix ? `<line x1="${pl}" x2="${W-pr}" y1="${yP(d.prix).toFixed(1)}" y2="${yP(d.prix).toFixed(1)}" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="7 4"/><text x="${pl+6}" y="${(yP(d.prix)-5).toFixed(1)}" font-size="10.5" font-weight="700" fill="var(--bad)" font-family="inherit" paint-order="stroke" stroke="#fff" stroke-opacity=".88" stroke-width="3.5" stroke-linejoin="round">prix envisagé ${fmt0(d.prix)} €/m²</text>` : '';
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img">${band}${g}${yl}${yr}${xl}${paths}${lastLbl(L[0][0], yP, 'var(--s1)', fmt0, 'end')}${lastLbl(L[1][0], yP, 'var(--gold)', fmt0, 'start')}${ligne}</svg>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H+18}" role="img" aria-label="Moyennes annuelles depuis 2006"><defs><linearGradient id="${gid}-ln" x1="0" x2="1"><stop offset="0" stop-color="var(--accent3)"/><stop offset="1" stop-color="var(--brand)"/></linearGradient></defs>
+    ${band}${ylab}${yr}${xl}${paths}${ligne}<g class="mk"></g><rect x="${pl}" y="0" width="${iw}" height="${H}" fill="transparent"/></svg>`;
+  const svg = el.querySelector('svg'), mk = el.querySelector('.mk'); const pctF = v => v == null ? '—' : v.toFixed(2).replace('.',',') + ' %';
+  const mark = i => { const y = ys[i], pv = prixDe(y), dv = dvfDe(y), v = pv ?? dv; if (v == null) { mk.innerHTML = ''; return; }
+    const cx = x(i), cy = yP(v), bw = Math.min(262, W - pl - pr), tx = Math.min(Math.max(cx, pl + bw/2), W - pr - bw/2), ty = Math.max(cy - 60, 0);
+    const l1 = pv != null ? `${y} · ${fmt0(pv)} €/m²${d.mesure ? '' : ' (est.)'}` : `${y} · DVF ${fmt0(dv)} €/m²`;
+    const l2 = [pv != null && dv != null ? `DVF ${fmt0(dv)} €/m²` : null, d.taux.val[y] != null ? `crédit ${pctF(d.taux.val[y])}` : null, d.oat.val[y] != null ? `OAT ${pctF(d.oat.val[y])}` : null].filter(Boolean).join(' · ');
+    mk.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pt-6}" y2="${pt+ih}" stroke="var(--line3)"/><circle cx="${cx}" cy="${cy}" r="6.5" fill="${pv != null ? 'var(--brand)' : 'var(--gold)'}" stroke="#fff" stroke-width="3"/>
+      <rect x="${tx-bw/2}" y="${ty}" width="${bw}" height="40" rx="10" fill="rgba(31,36,48,.96)" stroke="rgba(255,255,255,.18)"/>
+      <text x="${tx}" y="${ty+17}" text-anchor="middle" fill="#f1f4f9" font-size="12.5" font-weight="700">${l1}</text>
+      <text x="${tx}" y="${ty+32}" text-anchor="middle" fill="#c9d3e0" font-size="11">${l2}</text>`; };
+  let def = ys.length - 1; while (def > 0 && prixDe(ys[def]) == null) def--; mark(def);
+  const at = ev => { const r = svg.getBoundingClientRect(); const mx = (ev.clientX-r.left)/r.width*W; return Math.max(0, Math.min(nx-1, Math.round((mx-pl)/(iw/(nx-1))))); };
+  svg.addEventListener('mousemove', ev => mark(at(ev))); svg.addEventListener('mouseleave', () => mark(def));
+  svg.addEventListener('touchstart', ev => { if (ev.touches[0]) mark(at(ev.touches[0])); }, {passive: true}); svg.addEventListener('touchmove', ev => { if (ev.touches[0]) mark(at(ev.touches[0])); }, {passive: true});
 }
 // Phrase de position du prix envisagé (partagée avec le PDF via helpers)
 function histoPositionTxt(d){
@@ -1582,7 +1606,7 @@ function histoCard(item){
     <div class="card-b">
       <h4 class="sh">La crise de 2008 dans la zone${ib('histo_crise')}</h4>${kpis}
       <div class="hprix"><label for="histoPrix">Prix envisagé${ib('histo_prix')}</label><div class="row"><input type="number" id="histoPrix" data-hk="prix" min="0" step="100" inputmode="numeric" value="${d.prix || ''}" placeholder="ex. ${fmt0(Math.round((d.serieAn.val[d.lastAn] || 10000) / 100) * 100).replace(/ /g,' ')}" aria-label="Prix envisagé en euros par m²"><span class="u">€/m²</span>${d.prix ? `<button type="button" class="lnkb" data-hk-clear="1">retirer</button>` : ''}</div>${d.pos ? `<p class="hpos">${esc(histoPositionTxt(d))}</p>` : `<p class="hpos muted">Saisissez un prix au m² pour le situer dans le cycle (dernier point, pic de 2008, moyenne de crise, première année où la zone l'a atteint).</p>`}</div>
-      <div class="chart"><div class="chart-t"><span>Moyennes annuelles · ${esc(d.geo.label.split(' · ')[0])}</span><span class="legend"><span><i></i>${d.mesure ? 'Prix notaires' : 'Prix reconstitué (indice)'}</span><span><i style="border-color:var(--gold);border-top-style:dashed"></i>Moyenne DVF</span><span><i style="border-color:var(--accent3)"></i>Taux crédit habitat</span><span><i style="border-color:var(--text4);border-top-style:dashed"></i>OAT 10 ans</span><span><i class="band"></i>2008–2009</span></span></div><div id="histo-chart"></div></div>
+      <div class="chart"><div class="chart-t"><span>Moyennes annuelles · ${esc(d.geo.label.split(' · ')[0])}</span><span class="legend"><span><i style="border-image:linear-gradient(90deg,var(--accent3),var(--brand)) 1"></i>${d.mesure ? 'Prix notaires' : 'Prix reconstitué (indice)'}</span><span><i style="border-color:var(--gold);border-top-style:dashed"></i>Moyenne DVF</span><span><i style="border-color:var(--accent3)"></i>Taux crédit habitat</span><span><i style="border-color:var(--text4);border-top-style:dashed"></i>OAT 10 ans</span><span><i class="band"></i>2008–2009</span></span></div><div id="histo-chart"></div></div>
       <div class="hint" style="margin-top:8px">${d.mesure ? `Prix notaires : mesure trimestrielle à qualité constante, moyennée par année (dernier trimestre publié ${qLbl(d.lastQ)}).` : `Prix reconstitué : indice Notaires-INSEE ${esc(d.depLbl)} × coefficient, une estimation de niveau, pas une mesure ; les variations en % sont celles de l'indice.${calTxt}`} Moyenne DVF : prix moyen au m² des appartements vendus chaque année dans la zone (années à 30 ventes ou plus). Les deux sources ne se raccordent pas exactement : méthodes différentes, d'où deux courbes. Taux : moyennes annuelles BCE. Sources : ${esc(d.source?.editeur || 'Notaires du Grand Paris')} (fichiers publics, relevés ${fmtDate(d.generated)}), DVF, BCE.</div>
     </div></div>`;
 }
@@ -1595,7 +1619,7 @@ function refreshHisto(item){
 }
 async function renderPersp(item){
   const box = $('etude'); box.innerHTML = `<div class="card glass"><div class="empty"><p>Chargement des séries macroéconomiques…</p></div></div>`; setStatus('busy', 'Séries macro…');
-  await Promise.all([ensureMacro(), ensureDemo(), ensureHisto()]);
+  await Promise.all([ensureMacro(), ensureDemo()]);
   if (MACRO_ERR) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Séries macro indisponibles</h3><p>${esc(MACRO_ERR)} — data/macro.json est produit par le run mensuel (scripts/fetch_macro.py).</p></div></div>`; setStatus('err', 'macro indisponible'); return; }
   if (!item) { box.innerHTML = `<div class="card glass"><div class="empty"><h3>Choisissez une zone</h3><p>Les perspectives s'appliquent à la zone étudiée (et à l'immeuble valorisé, s'il y en a un). Sélectionnez une zone dans les filtres ou localisez une adresse.</p></div></div>`; setStatus('ok', statusLine()); return; }
   const M = MACRO.series; const tx = lastOf(M.taux_credit.obs), oat = lastOf(M.oat_10.obs), ip = lastOf(M.ipch.obs), ins = lastOf(M.insee_paris_appart.obs), loy = lastOf(M.loyers_paris.obs), pm = lastOf(M.permis_paris.obs);
@@ -1621,7 +1645,6 @@ async function renderPersp(item){
         <div class="h"><div class="l">Vitesse d'ajustement</div><div class="row"><select data-pk="lam" aria-label="Vitesse d'ajustement"><option value="0.12" ${P.lam==0.12?'selected':''}>lente · 12 %/trim</option><option value="0.2" ${P.lam==0.2?'selected':''}>20 %/trim (rétrospectif)</option><option value="0.35" ${P.lam==0.35?'selected':''}>rapide · 35 %/trim</option></select></div><div class="src">Part de l'écart entre prix et cible comblée chaque trimestre. Écart actuel : <b>${fmtPctS(CAL.ecartCourant*100)}</b> (prix ${CAL.ecartCourant<0?'sous':'au-dessus de'} la cible).</div></div>
       </div>
       <div class="hint">Point de départ${ib('persp_pont')} : Paris ${fmt0(SERIE_PARIS[o.qDvf])} €/m² au ${moisLabel(o.qDvf)} (DVF)${o.pont ? ` × ${o.pont.ratio.toFixed(3).replace('.',',')} (indice Notaires-INSEE ${moisLabel(o.pont.de)} → ${moisLabel(o.pont.a)})` : ''} = <b>${fmt0(o.prix)} €/m²</b> au ${moisLabel(o.q)}. Zone : ${ref.median ? `<b>${fmt0(ref.median)} €/m²</b> (${ref.n} ventes, ${fmtMois(ref.from)} → ${fmtMois(ref.to)})` : 'effectif insuffisant sur 12 mois'}${valo?.valeur ? ` · immeuble valorisé <b>${fmtEur(valo.valeur)}</b>` : ''}.${stale.length ? ` <span style="color:var(--warn)">Séries à surveiller : ${esc(stale.join(' ; '))}.</span>` : ''}</div></div></div>
-    ${histoCard(item)}
     ${demoCard(item, params.demo ? E.scenarios(MACRO, SERIE_PARIS, CAL, {...params, demo: 0}) : sc)}
     <div class="card glass"><div class="card-h"><div class="card-t"><span class="badge">Scénarios</span>Valeur projetée · ${esc(item.nom)} · ${esc(TYPE_LBL(S.type).toLowerCase())}${ib('persp_scen')}</div><span class="card-sub">depuis ${moisLabel(o.q)} · en % puis en €/m²${valo?.valeur ? ' et en valeur d\'immeuble' : ''}</span></div>
       <div class="card-b" style="padding-top:6px"><div class="tbl-wrap"><table class="ptbl"><thead><tr><th>Horizon</th><th>Bas<br><small>taux +1 pt · inflation −0,5</small></th><th>Central<br><small>vos hypothèses</small></th><th>Haut<br><small>taux −1 pt · inflation +0,5</small></th></tr></thead><tbody>
@@ -1637,13 +1660,12 @@ async function renderPersp(item){
       <div class="method"><b>Méthode.</b> ${esc(HELP.persp_modele[1])} ${esc(HELP.persp_retro[1])} Sources : taux et IPCH BCE (${moisLabel(tx.k)}, ${moisLabel(ip.k)}), indice Notaires-INSEE Paris (${moisLabel(ins.k)}), loyers INSEE (${moisLabel(loy.k)}), logements autorisés à Paris ${fmt0(pm.v)} sur 12 mois en ${moisLabel(pm.k)}${permisMoy ? ` (moyenne ${fmt0(permisMoy)} sur dix ans)` : ''}. Ce sont des scénarios conditionnels aux hypothèses affichées, pas des prévisions.</div></div></div>`;
   chartLines($('persp-chart'), [{pts: sc.bas.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--bad)'}, {pts: sc.central.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--s1)', w:2}, {pts: sc.haut.path.map(p=>({k:p.q, v:p.ratio*100})), color:'var(--good)'}], {fmt: v => v.toFixed(0)});
   chartLines($('retro-chart'), [{pts: retro.points.map(p=>({k:p.q, v:p.obs})), color:'var(--s1)', w:2}, {pts: retro.points.filter(p=>p.sim).map(p=>({k:p.q, v:p.sim})), color:'var(--gold)', w:2, dash:true}], {fmt: fmt0});
-  drawHisto(item);
   if (focus) { const el = box.querySelector(`[data-pk="${focus}"]`); if (el) el.focus(); }
   setStatus('ok', statusLine());
 }
 let perspTimer = null, histoTimer = null;
-$('etude').addEventListener('input', e => { const el = e.target; if (!el.dataset.hk || S.vue !== 'persp') return; const v = Math.max(0, Math.round(parseFloat(el.value) || 0)); clearTimeout(histoTimer); histoTimer = setTimeout(() => { S.histo = {prix: v}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); }, 500); });
-$('etude').addEventListener('click', e => { if (!e.target.closest('[data-hk-clear]') || S.vue !== 'persp') return; S.histo = {prix: 0}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); });
+$('etude').addEventListener('input', e => { const el = e.target; if (!el.dataset.hk || S.vue !== 'etude') return; const v = Math.max(0, Math.round(parseFloat(el.value) || 0)); clearTimeout(histoTimer); histoTimer = setTimeout(() => { S.histo = {prix: v}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); }, 500); });
+$('etude').addEventListener('click', e => { if (!e.target.closest('[data-hk-clear]') || S.vue !== 'etude') return; S.histo = {prix: 0}; writeHash(); refreshHisto(S.id ? findItem(S.niveau, S.id) : null); });
 $('etude').addEventListener('click', e => { const b = e.target.closest('button[data-demo]'); if (!b || S.vue !== 'persp') return; S.persp.demo = +b.dataset.demo || 0; writeHash(); renderPersp(S.id ? findItem(S.niveau, S.id) : null); });
 $('etude').addEventListener('input', e => { const el = e.target; const k = el.dataset.pk; if (!k) return; const v = parseFloat(el.value); if (isNaN(v)) return; S.persp[k] = v; clearTimeout(perspTimer); perspTimer = setTimeout(() => { writeHash(); renderPersp(S.id ? findItem(S.niveau, S.id) : null); }, el.tagName === 'SELECT' ? 0 : 400); });
 // Courbes (perspectives, rétrospectif) : plusieurs séries sur un axe trimestriel
@@ -1692,7 +1714,7 @@ function rayonLive(d){
   const rows = d.series.flatMap(se => d.years.map(y => { const s = se.st.annees[y]; return `<tr class="${s?'':'dim'}"><td data-l="Année"><b style="font-family:var(--sans)">${y}</b></td>${multi ? `<td data-l="Surfaces">${esc(RY.serieLabel(se))}</td>` : ''}<td data-l="Ventes">${s ? s.n : `<span class="warn">moins de 5 ventes</span>`}</td><td data-l="Bottom 10">${s ? fmt0(s.p10) : '—'}</td><td data-l="Médiane"><b>${s ? fmt0(s.median) : '—'}</b></td><td data-l="Top 10">${s ? fmt0(s.p90) : '—'}</td></tr>`; })).join('');
   return `<div class="rayon-svg" id="rayonSvg" style="margin-top:14px">${d.svg}</div>
       <div class="hint" style="margin-top:8px">Visuel au format du deck Jadero (8,38 × 5,11 pouces, 200 dpi, fond transparent) : le PNG se glisse directement dans une présentation. ${multi ? `Séries : ${d.series.map(RY.serieLabel).map(esc).join(' · ')} — bornes modifiables dans le panneau Typologies. ` : d.series[0].typo ? `Surfaces ${RY.serieLabel(d.series[0])}. ` : ''}${d.couv.couverte < .999 ? `<span class="warn">${Math.round(d.couv.couverte*100)} % du disque dans les communes couvertes.</span>` : ''}</div>
-      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th>${multi ? '<th>Surfaces</th>' : ''}<th>Ventes</th><th>Bottom 10${ib('rayon_dec')}</th><th>Médiane${ib('rayon_med')}</th><th>Top 10${ib('rayon_dec')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      <div class="tbl-wrap" style="margin-top:12px"><table class="ytbl"><thead><tr><th>Année</th>${multi ? '<th>Surfaces</th>' : ''}<th>Ventes</th>${thU('Bottom 10', 'rayon_dec')}${thU('Médiane', 'rayon_med')}${thU('Top 10', 'rayon_dec')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function rayonCard(item, idx){
   if (!SALES.lon) return `<div class="card glass"><div class="empty"><h3>Coordonnées absentes</h3><p>Les ventes servies n'ont pas encore de coordonnées (format DVS1) : l'analyse par rayon sera disponible après le prochain run de mise à jour.</p></div></div>`;

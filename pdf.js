@@ -462,12 +462,6 @@ export async function exportPdf(ctx){
     if (D?.ind) pageDemographie(st, doc, h, item, D, PP.params);
     else { st.caps('Démographie et parc', M, st.y + 2, { s: 6, c: C.green }); st.text(`Données INSEE indisponibles (${PP.demoErr || 'aucune donnée pour cette géographie'}).`, M, st.y + 9, { s: 8, c: C.grey }); st.y += 16; }
   }
-  // ── Longue période (lot 20) : notaires 1996 → 2024 + DVF + BCE, crise de 2008, prix envisagé ──
-  const HI = ctx.histo;
-  if (HI && sec('histo')) { st.freshPage();
-    if (HI.err || HI.vide) { st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(HI.err ? `Séries des notaires indisponibles (${HI.err}).` : `Série longue non calculable pour cette zone : ${HI.motif}.`, M, st.y + 9, { s: 8, c: C.grey, maxWidth: CW }); st.y += 16; }
-    else pageHisto(st, doc, h, item, HI, META.meta.last_year);
-  }
   const PT = ctx.parType, etTypo = PT ? PT.app : et;   // lot 13 : en « Tous », distinction par type et typologies sur les appartements
   if ((S.global || PT) && sec('global')) section(`${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, 'Marché global', et);
   if (PT && sec('types')) { if (PT.app) section(`${item.nom} · appartements · toutes surfaces`, 'Appartements', PT.app);
@@ -477,7 +471,7 @@ export async function exportPdf(ctx){
   // ── Tableaux ──────────────────────────────────────────────────────────────────────────────────
   const bt = etTypo?.by_typo || {}, tIds = typos.map(t => t.id).filter(id => bt[id]);
   if (tIds.length && sec('typoTable')) {
-    if (firstSection) { st.freshPage(); firstSection = false; } st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); const partTxt = `part sur ${META.meta.periode} · prix sur ${periodeLabel.toLowerCase()}`;
+    if (firstSection) { st.freshPage(); firstSection = false; } st.need(40); st.caps('Typologies', M, st.y + 2, { s: 6, c: C.green }); const partTxt = `part sur ${META.meta.periode} · prix en €/m² sur ${periodeLabel.toLowerCase()}`;
     st.text(`Répartition et prix par surface · ${PT ? 'appartements' : ctx.typeLbl.toLowerCase()}`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW - st.width(partTxt, 7.5) - 4, min: 9 });
     st.text(partTxt, PW - M, st.y + 8.5, { s: 7.5, c: C.grey, align: 'right' }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
     const evo = (by, n) => { const ly = META.meta.last_year, a = by?.[String(ly)]?.median, b = by?.[String(ly - n)]?.median; return (a && b) ? (a / b - 1) * 100 : null; };
@@ -488,13 +482,19 @@ export async function exportPdf(ctx){
     st.y += 6;
   }
   const by = et.by_year || {}, years = Object.keys(by).sort();
-  if (sec('annuel')) { if (firstSection) { st.freshPage(); firstSection = false; } st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;
+  if (sec('annuel')) { if (firstSection) { st.freshPage(); firstSection = false; } st.need(40); st.caps('Tableau', M, st.y + 2, { s: 6, c: C.green }); st.text('prix en €/m² · surfaces en m²', PW - M, st.y + 2, { s: 7, c: C.grey, align: 'right' }); st.text(`Statistiques annuelles · ${item.nom} · ${ctx.typeLbl.toLowerCase()} · toutes surfaces`, M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy, fit: CW, min: 9 }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 15;   /* 27/11 : unité annoncée sur la ligne du cartouche (sur la ligne du titre, elle le chevauchait — audit) */
   table(st, [{ l: 'Année', w: .8 }, { l: 'Ventes', w: .9, align: 'right' }, { l: 'Bottom 10', w: .95, align: 'right' }, { l: 'Q1', w: .95, align: 'right' }, { l: 'Médiane', w: 1.05, align: 'right' }, { l: 'Moy. pond.', w: 1.15, align: 'right' }, { l: 'Q3', w: .95, align: 'right' }, { l: 'Top 10', w: .95, align: 'right' }, { l: 'Max', w: .95, align: 'right' }, { l: 'Moyenne', w: 1, align: 'right' }, { l: 'Surf. moy.', w: 1, align: 'right' }, { l: 'Méd. vs n−1', w: 1.15, align: 'right' }],
     years.map((yy, i) => { const v = by[yy], prev = by[years[i - 1]], e = prev ? (v.median / prev.median - 1) * 100 : null;
       return { cells: [{ t: yy, w: 'bold' }, h.fmt0(v.count), h.fmt0(v.p10), h.fmt0(v.q1), { t: h.fmt0(v.median), w: 'bold' }, h.fmt0(v.wmean), h.fmt0(v.q3), h.fmt0(v.p90), h.fmt0(v.max), h.fmt0(v.mean), `${h.fmtSurf(v.surf_mean)} m²`, { t: h.fmtPct(e), c: e == null ? C.grey2 : e > 0 ? C.good : e < 0 ? C.bad : C.text }] }; }), M, CW, { rh: 5.6, s: 6.6 });
   }
 
   // ── Méthode ───────────────────────────────────────────────────────────────────────────────────
+  // ── Longue période (lot 20, placée après le tableau annuel et avant la méthode — demande du 27/11) : notaires 1996 → 2024 + DVF + BCE, crise de 2008, prix envisagé ──
+  const HI = ctx.histo;
+  if (HI && sec('histo')) { st.freshPage();
+    if (HI.err || HI.vide) { st.caps('Longue période', M, st.y + 2, { s: 6, c: C.green }); st.text(HI.err ? `Séries des notaires indisponibles (${HI.err}).` : `Série longue non calculable pour cette zone : ${HI.motif}.`, M, st.y + 9, { s: 8, c: C.grey, maxWidth: CW }); st.y += 16; }
+    else pageHisto(st, doc, h, item, HI, META.meta.last_year);
+  }
   if (sec('methode')) {
   st.freshPage(); st.caps('Méthode', M, st.y + 2, { s: 6, c: C.green }); st.text('Méthode de calcul et sources', M, st.y + 8.5, { s: 13, w: 'bold', c: C.navy }); st.line(M, st.y + 12, PW - M, st.y + 12, C.line); st.y += 17;
   st.para(`Périmètre de l'étude : ${item.nom} (${niveauLabel.toLowerCase()}), ${ctx.typeLbl.toLowerCase()}, ${periodeLabel.toLowerCase()}${w ? ` (${w.from} → ${w.to})` : ''}, ${h.fmt0(ctx.nVentes)} ventes retenues sur l'ensemble de l'historique ${META.meta.periode}. Typologies : ${typos.map(t => `${t.id} ${t.surfMin}–${t.surfMax} m²`).join(', ')}${typoLabel ? ` (détaillées : ${typoLabel})` : ''}. Étude générée le ${dateFr(now)} depuis ${location.origin}${location.pathname}, calculs effectués dans le navigateur sur les ventes déchiffrées.`, M, CW, { s: 8.2 }); st.y += 3;

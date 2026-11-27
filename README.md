@@ -249,8 +249,11 @@ Bilan du périmètre (compteurs du pipeline, affiché dans la méthode à l'écr
 (4 %, volontaire : un prix de bloc n'est pas un prix au m² de logement), 10 558 hors bornes de prix (1,5 %), 7 073 avec local
 professionnel (1 %), 3 279 hors bornes de surface, 724 à valeur nulle. Paris seul : 499 985 → 351 249, autour de 30 000 par an.
 
-**Longue période 2006–2025 (lot 20, 27/11/2026).** Carte « Depuis 2006, avec la crise de 2008 » dans Perspectives et section PDF
-« Longue période », sélectionnable comme les autres. DVF n'existe en open data que depuis 2014 (décret du 28/12/2018, cinq ans
+**Longue période 2006–2025 (lot 20, 27/11/2026).** Carte « Depuis 2006, avec la crise de 2008 » dans l'Étude (après le tableau
+annuel, avant la méthode — demande du 27/11 ; chargée dès que séries des notaires et macro sont là, jeton de rendu `histoRender`)
+et section PDF « Longue période » au même endroit, sélectionnable comme les autres. Graphique au style de la courbe annuelle
+(`chartHisto` : repère à la largeur affichée, lissage, bulle au survol ou au toucher : prix, DVF, taux, OAT de l'année). Unités : `€/m²`
+sous les en-têtes des tableaux (`thU`, classe `.thu`), au-dessus des axes des graphiques, annoncé sur les tableaux du PDF. DVF n'existe en open data que depuis 2014 (décret du 28/12/2018, cinq ans
 glissants ; aucun millésime antérieur publié — vérifié) et DV3F du Cerema (2010 →) est réservé aux acteurs publics : avant 2014,
 seule donnée publique, les séries des notaires du Grand Paris (`scripts/extract_notaires.py` → `data/historique_notaires.json`,
 relecture manuelle annuelle des deux PDF de basebien.com, mise en page contrôlée : 21 et 11 colonnes par ligne, trimestres
